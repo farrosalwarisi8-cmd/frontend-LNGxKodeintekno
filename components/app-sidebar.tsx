@@ -19,6 +19,9 @@ import {
   UserPlus,
   ListOrdered,
   User,
+  Microscope,
+  HardHat,
+  Crown,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/store";
 import { NAV } from "@/lib/rbac";
@@ -41,6 +44,9 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "user-plus": UserPlus,
   "list-ordered": ListOrdered,
   user: User,
+  microscope: Microscope,
+  "hard-hat": HardHat,
+  crown: Crown,
 };
 
 export function AppSidebar() {

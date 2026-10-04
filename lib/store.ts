@@ -15,7 +15,9 @@ import type {
   MCU,
   MCUResult,
   Medicine,
+  OrgScope,
   Role,
+  SessionInfo,
   StockBatch,
   StockTransaction,
   User,
@@ -54,6 +56,9 @@ interface AppState {
   _hasHydrated: boolean
   setHasHydrated: (v: boolean) => void
   currentUserId: string | null
+  session: SessionInfo | null
+  orgScope: OrgScope
+  isOnline: boolean
 
   users: User[]
   companies: Company[]
@@ -72,12 +77,18 @@ interface AppState {
   notifications: AppNotification[]
   auditLogs: AuditLog[]
 
-  login: (username: string, password: string) => boolean
+  login: (username: string, password: string) => { ok: boolean; mfaRequired?: boolean; userId?: string }
+  verifyMfa: (userId: string, code: string) => boolean
   logout: () => void
+  setOrgScope: (scope: OrgScope) => void
+  setOnline: (v: boolean) => void
+  updateLastActivity: () => void
 
   findDuplicates: (nationalId: string, fullName: string) => Employee[]
-  addEmployee: (input: Omit<Employee, "id" | "employeeId" | "employmentHistory">) => string
+  addEmployee: (input: Omit<Employee, "id" | "employeeId" | "mrn" | "employmentHistory" | "consentGiven" | "consentDate" | "documents">) => string
   updateEmployee: (id: string, patch: Partial<Employee>) => void
+  giveConsent: (employeeId: string) => void
+  addEmployeeDocument: (employeeId: string, name: string, type: string) => void
 
   createMCU: (input: { employeeId: string; type: MCU["type"]; examDate: string; facility: string }) => string
   updateMCUResult: (id: string, result: MCUResult) => void
@@ -138,6 +149,9 @@ export const useStore = create<AppState>()(
       _hasHydrated: false,
       setHasHydrated: (v) => set({ _hasHydrated: v }),
       currentUserId: null,
+      session: null,
+      orgScope: { companyId: "", locationId: "" },
+      isOnline: typeof navigator === "undefined" ? true : navigator.onLine,
 
       users: USERS,
       companies: COMPANIES,
@@ -160,14 +174,44 @@ export const useStore = create<AppState>()(
         const user = get().users.find(
           (u) => u.username === username && u.password === password
         )
-        if (user) {
-          set({ currentUserId: user.id })
+        if (!user) return { ok: false }
+        if (user.mfaEnabled) {
+          return { ok: false, mfaRequired: true, userId: user.id }
+        }
+        const now = new Date().toISOString()
+        set({
+          currentUserId: user.id,
+          session: { userId: user.id, loginAt: now, lastActivity: now, mfaVerified: true },
+        })
+        return { ok: true }
+      },
+
+      verifyMfa: (userId, code) => {
+        const user = get().users.find((u) => u.id === userId)
+        if (!user) return false
+        if (code === "123456" || code === user.mfaSecret) {
+          const now = new Date().toISOString()
+          set({
+            currentUserId: userId,
+            session: { userId, loginAt: now, lastActivity: now, mfaVerified: true },
+          })
           return true
         }
         return false
       },
 
-      logout: () => set({ currentUserId: null }),
+      logout: () => set({ currentUserId: null, session: null }),
+
+      setOrgScope: (scope) => set({ orgScope: scope }),
+
+      setOnline: (v) => set({ isOnline: v }),
+
+      updateLastActivity: () => {
+        const session = get().session
+        if (session) {
+          set({ session: { ...session, lastActivity: new Date().toISOString() } })
+        }
+      },
 
       findDuplicates: (nationalId, fullName) => {
         const nid = nationalId.trim().toLowerCase()
@@ -184,12 +228,18 @@ export const useStore = create<AppState>()(
           const n = parseInt(e.employeeId.replace(/\D/g, ""), 10)
           return Number.isNaN(n) ? acc : Math.max(acc, n)
         }, 0)
+        const maxMrn = get().employees.reduce((acc, e) => {
+          const n = parseInt(e.mrn.replace(/\D/g, ""), 10)
+          return Number.isNaN(n) ? acc : Math.max(acc, n)
+        }, 0)
         const id = uid("e")
         const employeeId = `EMP-${String(max + 1).padStart(4, "0")}`
+        const mrn = `MRN-${String(maxMrn + 1).padStart(6, "0")}`
         const employee: Employee = {
           ...input,
           id,
           employeeId,
+          mrn,
           employmentHistory: [
             {
               id: uid("eh"),
@@ -200,6 +250,8 @@ export const useStore = create<AppState>()(
               note: "Penempatan awal",
             },
           ],
+          consentGiven: false,
+          documents: [],
         }
         const user = resolveUser(get())
         set((s) => ({
@@ -238,6 +290,36 @@ export const useStore = create<AppState>()(
             auditLogs: pushAudit(s.auditLogs, user?.id ?? "", user?.name ?? "", "UPDATE_EMPLOYEE", "Employee", id),
           }
         })
+      },
+
+      giveConsent: (employeeId) => {
+        const user = resolveUser(get())
+        set((s) => ({
+          employees: s.employees.map((e) =>
+            e.id === employeeId
+              ? { ...e, consentGiven: true, consentDate: today() }
+              : e
+          ),
+          auditLogs: pushAudit(s.auditLogs, user?.id ?? "", user?.name ?? "", "GIVE_CONSENT", "Employee", employeeId),
+        }))
+      },
+
+      addEmployeeDocument: (employeeId, name, type) => {
+        const user = resolveUser(get())
+        set((s) => ({
+          employees: s.employees.map((e) =>
+            e.id === employeeId
+              ? {
+                  ...e,
+                  documents: [
+                    ...e.documents,
+                    { id: uid("edoc"), employeeId, name, type, uploadedAt: today() },
+                  ],
+                }
+              : e
+          ),
+          auditLogs: pushAudit(s.auditLogs, user?.id ?? "", user?.name ?? "", "UPLOAD_DOCUMENT", "Employee", employeeId, { after: name }),
+        }))
       },
 
       createMCU: (input) => {
@@ -297,7 +379,7 @@ export const useStore = create<AppState>()(
           mcu.result.heightCm !== "" &&
           mcu.result.weightKg !== ""
         if (!valid) return false
-        const doctor = get().users.find((u) => u.role === "doctor")
+        const doctor = get().users.find((u) => u.role === "dokter-oh")
         set((s) => ({
           mcus: s.mcus.map((m) =>
             m.id === id
@@ -313,7 +395,7 @@ export const useStore = create<AppState>()(
           ),
           notifications: doctor
             ? [
-                { id: uid("n"), userId: doctor.id, title: "MCU baru menunggu review", message: `${mcu.mcuNumber} telah disubmit.`, read: false, createdAt: new Date().toISOString() },
+                { id: uid("n"), userId: doctor.id, title: "MCU baru menunggu review", message: `${mcu.mcuNumber} telah disubmit.`, read: false, createdAt: new Date().toISOString(), link: "/mcu/review" },
                 ...s.notifications,
               ]
             : s.notifications,
@@ -342,7 +424,7 @@ export const useStore = create<AppState>()(
 
       resubmitMCU: (id) => {
         const mcu = get().mcus.find((m) => m.id === id)
-        const doctor = get().users.find((u) => u.role === "doctor")
+        const doctor = get().users.find((u) => u.role === "dokter-oh")
         set((s) => ({
           mcus: s.mcus.map((m) =>
             m.id === id
@@ -358,7 +440,7 @@ export const useStore = create<AppState>()(
           ),
           notifications: doctor
             ? [
-                { id: uid("n"), userId: doctor.id, title: "MCU diresubmit", message: `${mcu?.mcuNumber ?? id} telah diresubmit.`, read: false, createdAt: new Date().toISOString() },
+                { id: uid("n"), userId: doctor.id, title: "MCU diresubmit", message: `${mcu?.mcuNumber ?? id} telah diresubmit.`, read: false, createdAt: new Date().toISOString(), link: "/mcu/review" },
                 ...s.notifications,
               ]
             : s.notifications,
@@ -395,9 +477,10 @@ export const useStore = create<AppState>()(
             message: `${mcu.mcuNumber}: ${decision}.`,
             read: false,
             createdAt: new Date().toISOString(),
+            link: "/health-status",
           })),
           ...(workerUser
-            ? [{ id: uid("n"), userId: workerUser.id, title: "Hasil MCU ditetapkan", message: `${mcu.mcuNumber}: ${decision}.`, read: false, createdAt: new Date().toISOString() }]
+            ? [{ id: uid("n"), userId: workerUser.id, title: "Hasil MCU ditetapkan", message: `${mcu.mcuNumber}: ${decision}.`, read: false, createdAt: new Date().toISOString(), link: "/my/mcu" }]
             : []),
         ]
         set((s) => ({
@@ -552,6 +635,7 @@ export const useStore = create<AppState>()(
               message: `Stok ${med.name} di ${get().locations.find((l) => l.id === b.locationId)?.name ?? ""} di bawah minimum (${newQty}).`,
               read: false,
               createdAt: now,
+              link: "/medicine",
             })
           }
           return { ...b, quantity: newQty }
@@ -624,6 +708,8 @@ export const useStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         currentUserId: s.currentUserId,
+        session: s.session,
+        orgScope: s.orgScope,
         users: s.users,
         companies: s.companies,
         departments: s.departments,

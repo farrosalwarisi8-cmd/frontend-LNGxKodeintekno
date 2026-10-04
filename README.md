@@ -1,36 +1,130 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EMR PT Layar Nusantara Gas — Modul 01
 
-## Getting Started
+**Frontend-only** Electronic Medical Record untuk Registrasi Pekerja, MRN, dan Consent.
 
-First, run the development server:
+> **Demo mode** — seluruh data dan permission disimulasikan di frontend. Tidak ada backend, database, atau email nyata.
+
+## Modul 01 — Registrasi Pekerja, MRN, dan Consent
+
+### Fitur
+
+- People list dengan search, filter, dan pagination
+- Registration wizard mobile-first (5 langkah)
+- Duplicate check menggunakan mock service
+- Simulasi pembuatan MRN dari response mock service
+- Upload dokumen pendukung secara lokal/mock
+- Consent selection dan review
+- Simulated email preview
+- Public consent page tanpa login
+- Consent approval/rejection simulation
+- Consent event timeline
+- Employee profile dengan tabs
+- Permission-based UI visibility (4 demo roles)
+- Masking identifier sensitif
+- Activity/audit presentation dari mock data
+- Offline-safe local draft (LocalStorage)
+- Loading, error, empty, success, disabled, offline, dan permission-denied states
+- Responsive layout mobile, tablet, dan desktop
+
+### Routes
+
+| Route | Deskripsi |
+|---|---|
+| `/demo` | Demo role switcher, mock config, public consent links |
+| `/people` | People list dengan search dan filter |
+| `/people/new` | Registration wizard (5 langkah) |
+| `/people/:patientId` | Employee profile dengan tabs |
+| `/public/consent/:token` | Public consent page (approve/reject) |
+
+### Demo Roles
+
+| Role | Permissions |
+|---|---|
+| Admin Klinik | Full access — create, edit, upload, resend consent |
+| HR/PIC | Create, upload, resend consent — no edit administrative data |
+| System Administrator | Read-only — view activity only |
+| Worker/Public | Public consent page only |
+
+## Menjalankan Aplikasi
+
+### Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Buka [http://localhost:3000](http://localhost:3000) — akan redirect ke `/demo`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Production Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+### Test
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run test          # unit + integration tests (Vitest)
+npm run test:watch    # watch mode
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Lint & Typecheck
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run lint
+npm run typecheck
+```
 
-## Deploy on Vercel
+## Struktur Proyek
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/
+  features/people/
+    api/              # TypeScript types, mock service, repository
+    components/       # People list, registration wizard, profile, public consent
+    fixtures/         # Seed data (organizations, sites, people)
+    hooks/            # usePeople, usePerson, useConsent, useDraft, useDemoRole
+  shared/
+    components/design-system/  # Reusable UI (Button, Card, Input, Modal, Badge, dll)
+    permissions/      # Permission map terpusat
+    storage/          # LocalStorage draft persistence
+    utils/            # Validation, masking, date formatting
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router) + React 19
+- **Language**: TypeScript (strict)
+- **Styling**: Tailwind CSS 4 + semantic color tokens
+- **State**: Zustand (demo role) + React hooks (async state)
+- **Icons**: Lucide React
+- **Testing**: Vitest
+
+## Accessibility
+
+- WCAG AA target
+- Semua input memiliki label
+- Error terhubung ke input via `aria-describedby`
+- Focus ring terlihat
+- Keyboard navigation (Escape menutup modal)
+- Touch target minimal 44px
+- Status tidak bergantung pada warna saja (label + icon + warna)
+
+## Backend Follow-up (Sengaja Tidak Dikerjakan)
+
+- Database schema/migration
+- Real authorization (server-side)
+- Secure token hashing
+- Real email provider
+- Real object storage
+- Immutable audit log
+- Server-side MRN uniqueness constraint
+
+## Known Limitations
+
+- Mock service menggunakan delay random 300–800ms (simulasi network)
+- Draft disimpan di LocalStorage (bukan IndexedDB)
+- Tidak ada E2E test (Playwright/Cypress) — hanya unit + integration tests
+- Font menggunakan system font stack (bukan Google Fonts untuk offline safety)

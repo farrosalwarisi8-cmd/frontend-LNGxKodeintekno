@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, Search, WifiOff, Globe } from "lucide-react";
 import { useStore, useCurrentUser } from "@/lib/store";
-import { ROLES } from "@/lib/constants";
+import { ROLES, LANGUAGES } from "@/lib/constants";
 import { NAV } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { initials } from "@/lib/format";
 
 export function AppTopbar() {
@@ -26,6 +40,9 @@ export function AppTopbar() {
   const logout = useStore((s) => s.logout);
   const notifications = useStore((s) => s.notifications);
   const markAllRead = useStore((s) => s.markAllNotificationsRead);
+  const markRead = useStore((s) => s.markNotificationRead);
+  const isOnline = useStore((s) => s.isOnline);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   if (!user) return null;
   const nav = NAV[user.role] ?? [];
@@ -34,12 +51,54 @@ export function AppTopbar() {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-white px-4">
-      <div>
-        <h2 className="text-sm font-semibold">{current?.title ?? "Kodein Klinik"}</h2>
-        <p className="text-xs text-muted-foreground">{ROLES[user.role].label}</p>
+      <div className="flex items-center gap-3">
+        <div>
+          <h2 className="text-sm font-semibold">{current?.title ?? "Kodein Klinik"}</h2>
+          <p className="text-xs text-muted-foreground">{ROLES[user.role].label}</p>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
+        <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+          <PopoverTrigger
+            render={
+              <Button variant="outline" size="sm" className="gap-2 text-muted-foreground">
+                <Search className="size-3.5" />
+                <span className="hidden sm:inline">Cari...</span>
+                <kbd className="hidden rounded bg-muted px-1 text-[10px] sm:inline">⌘K</kbd>
+              </Button>
+            }
+          />
+          <PopoverContent className="w-80 p-0" align="end">
+            <Command>
+              <CommandInput placeholder="Cari pasien, MCU, kunjungan..." />
+              <CommandList>
+                <CommandEmpty>Tidak ada hasil.</CommandEmpty>
+                <CommandGroup heading="Menu">
+                  {nav.map((item) => (
+                    <CommandItem
+                      key={item.href}
+                      onSelect={() => {
+                        router.push(item.href);
+                        setSearchOpen(false);
+                      }}
+                    >
+                      {item.title}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {!isOnline && (
+          <div className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">
+            <WifiOff className="size-3" />
+            <span className="hidden sm:inline">Offline</span>
+          </div>
+        )}
+
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -74,7 +133,14 @@ export function AppTopbar() {
               {notifications
                 .filter((n) => n.userId === user.id)
                 .map((n) => (
-                  <DropdownMenuItem key={n.id} className="flex-col items-start">
+                  <DropdownMenuItem
+                    key={n.id}
+                    className="flex-col items-start"
+                    onClick={() => {
+                      markRead(n.id);
+                      if (n.link) router.push(n.link);
+                    }}
+                  >
                     <div className="flex w-full items-start justify-between gap-2">
                       <span className="text-sm font-medium">{n.title}</span>
                       {!n.read && <Badge variant="outline" className="bg-blue-100 text-blue-700">Baru</Badge>}
@@ -109,6 +175,9 @@ export function AppTopbar() {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push("/my/profile")}>
+              <Globe className="size-4" /> Bahasa: {LANGUAGES.find((l) => l.code === user.preferredLanguage)?.label ?? "Indonesia"}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { logout(); router.replace("/login"); }}>
               <LogOut className="size-4" /> Keluar
             </DropdownMenuItem>
