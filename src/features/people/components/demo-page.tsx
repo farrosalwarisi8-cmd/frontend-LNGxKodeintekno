@@ -7,7 +7,6 @@ import {
   AlertTriangle,
   Copy,
   Check,
-  RefreshCw,
   UserRound,
   Users,
   Settings,
@@ -15,10 +14,8 @@ import {
 } from "lucide-react";
 import type { DemoRole } from "../api/people.types";
 import { useDemoRole } from "../hooks/use-demo-role";
-import { peopleRepository } from "../api/people.repository";
 import { Button } from "@/shared/components/design-system/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Switch } from "@/components/ui/switch";
 
 const ROLES: { role: DemoRole; label: string; description: string; icon: typeof UserRound }[] = [
   { role: "ADMIN_CLINIC", label: "Admin Klinik", description: "Akses penuh ke registrasi dan consent", icon: ShieldCheck },
@@ -29,22 +26,7 @@ const ROLES: { role: DemoRole; label: string; description: string; icon: typeof 
 
 export function DemoPage() {
   const { role, setRole } = useDemoRole();
-  const [config, setConfig] = useState(peopleRepository.getConfig());
-  const [resetting, setResetting] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
-
-  const handleToggle = (key: keyof typeof config) => {
-    const newConfig = { ...config, [key]: !config[key] };
-    setConfig(newConfig);
-    peopleRepository.setConfig(newConfig);
-  };
-
-  const handleReset = async () => {
-    setResetting(true);
-    await peopleRepository.resetDemoData();
-    setConfig(peopleRepository.getConfig());
-    setResetting(false);
-  };
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -93,42 +75,6 @@ export function DemoPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Mock Configuration</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Simulate Offline</p>
-              <p className="text-xs text-slate-500">Nonaktifkan semua operasi network</p>
-            </div>
-            <Switch checked={config.simulateOffline} onCheckedChange={() => handleToggle("simulateOffline")} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Simulate Failure</p>
-              <p className="text-xs text-slate-500">Semua request akan gagal</p>
-            </div>
-            <Switch checked={config.simulateFailure} onCheckedChange={() => handleToggle("simulateFailure")} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Duplicate Scenario</p>
-              <p className="text-xs text-slate-500">Duplicate check selalu mengembalikan BLOCK</p>
-            </div>
-            <Switch checked={config.duplicateScenario} onCheckedChange={() => handleToggle("duplicateScenario")} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Email Failure</p>
-              <p className="text-xs text-slate-500">Simulasi pengiriman email gagal</p>
-            </div>
-            <Switch checked={config.emailFailure} onCheckedChange={() => handleToggle("emailFailure")} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Public Consent Links</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -165,10 +111,6 @@ export function DemoPage() {
         <Link href="/people">
           <Button variant="outline">Buka People List</Button>
         </Link>
-        <Button variant="outline" onClick={handleReset} loading={resetting}>
-          <RefreshCw className="size-3.5" />
-          Reset Demo Data
-        </Button>
       </div>
     </div>
   );

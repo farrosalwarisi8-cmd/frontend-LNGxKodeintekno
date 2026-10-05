@@ -42,3 +42,7 @@ next-env.d.ts
 
 # opencode
 opencode.txt
+# Exclude backend workspace from frontend-only branch
+KODEINxLNG-Backend/
+# The .gitmodules file is for the backend submodule only
+.gitmodules

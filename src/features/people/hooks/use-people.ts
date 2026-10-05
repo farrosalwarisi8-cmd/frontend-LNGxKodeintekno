@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { ListPeopleParams, Paginated, PersonListItem } from "../api/people.types";
-import { peopleRepository } from "../api/people.repository";
+import { patientService } from "@/lib/services/patient.service";
 
 interface UsePeopleResult {
   data: Paginated<PersonListItem> | null;
@@ -23,7 +23,7 @@ export function usePeople(params: ListPeopleParams): UsePeopleResult {
   const fetchPeople = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const result = await peopleRepository.listPeople(JSON.parse(paramsKey));
+      const result = await patientService.list(JSON.parse(paramsKey));
       if (mountedRef.current) {
         setState({ data: result, loading: false, error: null });
       }

@@ -12,7 +12,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { usePerson } from "../hooks/use-person";
-import { useConsentEvents } from "../hooks/use-consent";
 import { useDemoRole } from "../hooks/use-demo-role";
 import { getPermissions } from "@/shared/permissions/permissions";
 import { Button } from "@/shared/components/design-system/button";
@@ -30,7 +29,6 @@ type Tab = "overview" | "identity" | "consent" | "documents" | "activity";
 
 export function EmployeeProfile({ patientId }: { patientId: string }) {
   const { data: person, loading, error, refetch } = usePerson(patientId);
-  const { data: events } = useConsentEvents(person?.consent?.id ?? "");
   const { role } = useDemoRole();
   const permissions = getPermissions(role);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -280,7 +278,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
                   <CardTitle>Consent Timeline</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ConsentTimeline events={events ?? []} />
+                  <ConsentTimeline events={person.consent?.events ?? []} />
                 </CardContent>
               </Card>
             </>

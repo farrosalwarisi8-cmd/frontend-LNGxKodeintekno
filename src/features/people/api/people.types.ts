@@ -29,6 +29,10 @@ export type ConsentEventType =
   | "EXPIRED"
   | "DELIVERY_FAILED";
 
+export type MockDeliveryStatus = "SIMULATED_SENT" | "SIMULATED_FAILED";
+
+export type MockConfigStatus = "none" | "failure" | "offline" | "duplicate";
+
 export type TokenState =
   | "VALID"
   | "EXPIRED"
@@ -191,33 +195,6 @@ export interface DuplicateCheckResult {
   };
 }
 
-export interface MockDocumentUploadResult {
-  documentId: string;
-  name: string;
-  type: string;
-  size: number;
-  mimeType: string;
-  tamperCheck: TamperCheckStatus;
-}
-
-export interface MockDeliveryResult {
-  success: boolean;
-  status: "SIMULATED_SENT" | "SIMULATED_FAILED";
-  message: string;
-}
-
-export interface PublicConsentView {
-  token: string;
-  state: TokenState;
-  personName: string;
-  personInitials: string;
-  consentType: string;
-  consentVersion: string;
-  consentText: string;
-  expiresAt: string;
-  createdAt: string;
-}
-
 export interface ListPeopleParams {
   search?: string;
   organizationId?: string;
@@ -237,22 +214,16 @@ export interface Paginated<T> {
   totalPages: number;
 }
 
-export interface PeopleMockService {
+export interface PeopleService {
   listPeople(params: ListPeopleParams): Promise<Paginated<PersonListItem>>;
   getPerson(patientId: string): Promise<Person>;
   duplicateCheck(input: DuplicateCheckInput): Promise<DuplicateCheckResult>;
   createPerson(input: CreatePersonDraft): Promise<CreatedPersonResult>;
-  uploadDocument(file: File): Promise<MockDocumentUploadResult>;
-  resendConsent(consentId: string): Promise<MockDeliveryResult>;
-  getConsentByToken(token: string): Promise<PublicConsentView>;
+  resendConsent(patientId: string): Promise<{ success: boolean; message: string }>;
   decideConsent(
     token: string,
     decision: "APPROVED" | "REJECTED"
   ): Promise<{ success: boolean; status: ConsentStatus }>;
-  getConsentEvents(consentId: string): Promise<ConsentEvent[]>;
-  resetDemoData(): Promise<void>;
-  setConfig(config: Partial<MockConfig>): void;
-  getConfig(): MockConfig;
 }
 
 export interface MockConfig {
@@ -260,4 +231,31 @@ export interface MockConfig {
   simulateOffline: boolean;
   duplicateScenario: boolean;
   emailFailure: boolean;
+}
+
+export interface MockDeliveryResult {
+  success: boolean;
+  status: MockDeliveryStatus;
+  message: string;
+}
+
+export interface MockDocumentUploadResult {
+  documentId: string;
+  name: string;
+  type: string;
+  size: number;
+  mimeType: string;
+  tamperCheck: TamperCheckStatus;
+}
+
+export interface PublicConsentView {
+  token: string;
+  state: TokenState;
+  personName: string;
+  personInitials: string;
+  consentType: string;
+  consentVersion: string;
+  consentText: string;
+  expiresAt: string;
+  createdAt: string;
 }

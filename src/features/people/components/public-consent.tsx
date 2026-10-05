@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { ShieldCheck, CircleCheck, Clock3, AlertTriangle, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShieldCheck, CircleCheck, Clock3, AlertTriangle, XCircle, FileText } from "lucide-react";
 import type { TokenState } from "../api/people.types";
-import { useConsentByToken, useDecideConsent } from "../hooks/use-consent";
+import { useDecideConsent } from "../hooks/use-consent";
+import { patientService } from "@/lib/services/patient.service";
+import { CONSENT_TEXT } from "../fixtures/people.fixtures";
 import { Button } from "@/shared/components/design-system/button";
 import { Card } from "@/shared/components/design-system/card";
 import { Modal } from "@/shared/components/design-system/modal";
@@ -19,11 +21,57 @@ const TOKEN_STATE_CONFIG: Record<TokenState, { icon: typeof ShieldCheck; color: 
   DELIVERY_FAILED: { icon: AlertTriangle, color: "text-danger-600", title: "Pengiriman Gagal", message: "Email consent tidak dapat dikirim. Hubungi admin." },
 };
 
+interface ConsentData {
+  token: string;
+  state: TokenState;
+  personName: string;
+  personInitials: string;
+  consentType: string;
+  consentVersion: string;
+  consentText: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export function PublicConsent({ token }: { token: string }) {
-  const { data, loading, error } = useConsentByToken(token);
+  const [data, setData] = useState<ConsentData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { decide, loading: deciding } = useDecideConsent();
   const [showConfirm, setShowConfirm] = useState<"APPROVED" | "REJECTED" | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const result = await patientService.verifyConsent(token, "VIEW");
+        const status = result.status as TokenState;
+        setData({
+          token,
+          state: status,
+          personName: status === "VALID" ? "Pekerja Terdaftar" : "",
+          personInitials: status === "VALID" ? "PT" : "",
+          consentType: status === "VALID" ? "EMR_DATA_PROCESSING" : "",
+          consentVersion: status === "VALID" ? "1.0" : "",
+          consentText:
+            status === "VALID"
+              ? CONSENT_TEXT
+              : status === "EXPIRED"
+                ? CONSENT_TEXT
+                : status === "DELIVERY_FAILED"
+                  ? CONSENT_TEXT
+                  : "",
+          expiresAt: status === "VALID" ? new Date(Date.now() + 72 * 3600 * 1000).toISOString() : "",
+          createdAt: new Date().toISOString(),
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Tidak dapat memuat data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [token]);
 
   if (loading) {
     return (
@@ -44,8 +92,11 @@ export function PublicConsent({ token }: { token: string }) {
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
         <Card className="w-full max-w-md p-6 text-center">
           <AlertTriangle className="mx-auto mb-4 size-12 text-danger-600" />
-          <h1 className="text-lg font-semibold text-slate-900">Kesalahan</h1>
+          <h1 className="text-lg font-semibold text-slate-900">Terjadi kesalahan</h1>
           <p className="mt-2 text-sm text-slate-500">{error ?? "Tidak dapat memuat data."}</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>
+            Muat ulang
+          </Button>
         </Card>
       </div>
     );

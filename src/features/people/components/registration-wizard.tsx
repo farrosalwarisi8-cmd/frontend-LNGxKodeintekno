@@ -18,7 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import type { CreatePersonDraft, IdentifierType, Sex, CreatedPersonResult, DuplicateCheckResult } from "../api/people.types";
-import { peopleRepository } from "../api/people.repository";
+import { patientService } from "@/lib/services/patient.service";
 import { useDraft, EMPTY_DRAFT } from "../hooks/use-draft";
 import { useOnlineStatus } from "../hooks/use-online-status";
 import { Button } from "@/shared/components/design-system/button";
@@ -121,7 +121,7 @@ export function RegistrationWizard() {
   const checkDuplicate = async () => {
     if (!formData.identifierValue) return;
     try {
-      const result = await peopleRepository.duplicateCheck({
+      const result = await patientService.duplicateCheck({
         identifierType: formData.identifierType,
         identifierValue: formData.identifierValue,
         fullName: formData.fullName,
@@ -154,7 +154,7 @@ export function RegistrationWizard() {
 
     setSubmitting(true);
     try {
-      const result = await peopleRepository.createPerson({
+      const result = await patientService.create({
         ...formData,
         documentIds: uploadedFiles.map((f) => f.id),
       });
@@ -177,7 +177,16 @@ export function RegistrationWizard() {
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        const result = await peopleRepository.uploadDocument(file);
+        const formData = new FormData();
+        formData.append("file", file);
+        const token = localStorage.getItem("kodein_token");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1"}/documents/upload`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: formData,
+        });
+        if (!res.ok) throw new Error("Upload dokumen gagal.");
+        const result = await res.json();
         setUploadedFiles((prev) => [...prev, { id: result.documentId, name: result.name, size: result.size, tamperCheck: result.tamperCheck }]);
       }
     } catch (err) {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Person } from "../api/people.types";
-import { peopleRepository } from "../api/people.repository";
+import { patientService } from "@/lib/services/patient.service";
 
 interface UsePersonResult {
   data: Person | null;
@@ -22,7 +22,7 @@ export function usePerson(patientId: string): UsePersonResult {
   const fetchPerson = useCallback(async () => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const person = await peopleRepository.getPerson(patientId);
+      const person = await patientService.getProfile(patientId);
       if (mountedRef.current) {
         setState({ data: person, loading: false, error: null });
       }
