@@ -106,9 +106,11 @@ const NAV_ITEMS = [
 ];
 
 function useOnline() {
-  const [online, setOnline] = useState(true);
+  // Nilai awal dibaca saat inisialisasi state (bukan di dalam effect)
+  const [online, setOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
   useEffect(() => {
-    setOnline(navigator.onLine);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
     window.addEventListener("online", on);

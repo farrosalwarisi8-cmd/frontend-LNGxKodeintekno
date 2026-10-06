@@ -11,17 +11,8 @@ import { Badge } from "@/shared/components/design-system/badge";
 import { Activity, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
-  { username: "admin", password: "admin", label: "Admin Sistem" },
-  { username: "dokter", password: "dokter", label: "Dokter OH" },
-  { username: "klinik", password: "klinik", label: "Perawat" },
-  { username: "hr", password: "hr", label: "HR/PIC" },
-  { username: "manajemen", password: "manajemen", label: "Manajemen" },
-  { username: "pekerja", password: "pekerja", label: "Pekerja" },
-  { username: "dokter-klinik", password: "dokter", label: "Dokter Klinik" },
-  { username: "apoteker", password: "apoteker", label: "Apoteker" },
-  { username: "lab", password: "lab", label: "Analis Lab" },
-  { username: "admin-klinik", password: "klinik", label: "Admin Klinik" },
-  { username: "hse", password: "hse", label: "HSE" },
+  { username: "admin", password: "AdminLNG2026!", label: "Admin Sistem", role: "admin" },
+  { username: "dr.hendra", password: "AdminLNG2026!", label: "Dokter Sp.Oh", role: "dokter-oh" },
 ];
 
 const MAX_ATTEMPTS = 5;
@@ -40,6 +31,7 @@ export default function LoginPage() {
   const [mfaUserId, setMfaUserId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [isLocked, setIsLocked] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [lockoutTimer, setLockoutTimer] = useState(0);
 
   const attemptsRef = useRef(0);
@@ -67,7 +59,7 @@ export default function LoginPage() {
     lockoutRef.current = interval;
   }, []);
 
-  const doLogin = (u: string, p: string) => {
+  const doLogin = async (u: string, p: string) => {
     if (isLocked) {
       setError(`Akun terkunci. Coba lagi dalam ${lockoutTimer} detik.`);
       return;
@@ -78,7 +70,10 @@ export default function LoginPage() {
       return;
     }
 
-    const result = login(u, p);
+    setIsSubmitting(true);
+    const result = await login(u, p);
+    setIsSubmitting(false);
+
     if (result.ok) {
       const from = searchParams.get("from");
       router.push(from || "/dashboard");
@@ -91,27 +86,32 @@ export default function LoginPage() {
       if (remaining <= 0) {
         handleLockout();
       } else {
-        setError(`Username atau password salah. Sisa percobaan: ${remaining}`);
+        setError(
+          `${result.error ?? "Username atau password salah."} Sisa percobaan: ${remaining}`
+        );
       }
     }
   };
 
-  const doVerifyMfa = () => {
+  const doVerifyMfa = async () => {
     if (!/^\d{6}$/.test(mfaCode)) {
       setError("Kode MFA harus 6 digit angka.");
       return;
     }
 
-    if (mfaUserId && verifyMfa(mfaUserId, mfaCode)) {
+    if (!mfaUserId) return;
+    const result = await verifyMfa(mfaUserId, mfaCode);
+    if (result.ok) {
       const from = searchParams.get("from");
       router.push(from || "/dashboard");
     } else {
-      setError("Kode MFA salah.");
+      setError(result.error ?? "Kode MFA salah.");
     }
   };
 
   if (mfaUserId) {
-    const mfaUser = users.find((u) => u.id === mfaUserId);
+    const mfaUser =
+      users.find((u) => u.id === mfaUserId) ?? users.find((u) => u.username === username);
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
         <div className="mb-8 flex flex-col items-center gap-2">
@@ -128,7 +128,7 @@ export default function LoginPage() {
           <CardHeader>
             <CardTitle>Two-Factor Authentication</CardTitle>
             <CardDescription>
-              Akun: {mfaUser?.name} ({mfaUser?.username})
+              Akun: {mfaUser?.name ?? username} ({mfaUser?.username ?? username})
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -207,8 +207,8 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            <Button className="w-full" onClick={() => doLogin(username, password)} disabled={isLocked}>
-              <ShieldCheck className="size-4" /> Masuk
+            <Button className="w-full" onClick={() => doLogin(username, password)} disabled={isLocked || isSubmitting}>
+              <ShieldCheck className="size-4" /> {isSubmitting ? "Memeriksa..." : "Masuk"}
             </Button>
           </CardContent>
         </Card>
@@ -216,22 +216,22 @@ export default function LoginPage() {
         <Card>
           <CardHeader>
             <CardTitle>Akun Demo</CardTitle>
-            <CardDescription>Klik untuk login cepat dengan role berbeda.</CardDescription>
+            <CardDescription>
+              Akun seed backend (password: AdminLNG2026!). Klik untuk login cepat.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
             {DEMO_ACCOUNTS.map((acc) => {
-              const user = users.find((u) => u.username === acc.username);
-              if (!user) return null;
-              const roleMeta = ROLES[user.role];
+              const roleMeta = ROLES[acc.role as keyof typeof ROLES];
               return (
                 <button
                   key={acc.username}
                   onClick={() => doLogin(acc.username, acc.password)}
-                  disabled={isLocked}
+                  disabled={isLocked || isSubmitting}
                   className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
                 >
                   <div className="flex flex-col">
-                    <span className="font-medium">{user.name}</span>
+                    <span className="font-medium">{acc.label}</span>
                     <span className="text-xs text-slate-500">@{acc.username}</span>
                   </div>
                   <Badge variant="outline" className={roleMeta.color}>

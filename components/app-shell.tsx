@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStore, useCurrentUser } from "@/lib/store";
+import { syncNotifications } from "@/lib/remote-sync";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppTopbar } from "@/components/app-topbar";
 import { ScopeSelector } from "@/components/scope-selector";
@@ -20,6 +21,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/login");
     }
   }, [hasHydrated, user, router]);
+
+  // Modul 6 — ambil notifikasi in-app pengguna dari backend saat shell dimuat
+  useEffect(() => {
+    syncNotifications().catch(() => {
+      /* backend tidak tersedia -> UI tetap jalan tanpa notifikasi */
+    });
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setOnline(true);

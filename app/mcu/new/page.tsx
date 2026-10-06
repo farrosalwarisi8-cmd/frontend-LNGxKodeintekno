@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import {
+  mapMcuTypeToBackend,
+  syncMcu,
+  syncPatients,
+  useSyncedModules,
+} from "@/lib/remote-sync";
+import { mcuService } from "@/lib/services/mcu.service";
 import { MCU_TYPES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Button } from "@/shared/components/design-system/button";
@@ -101,9 +108,11 @@ function classifySpirometry(fev1Percent: number): { category: string; color: str
 export default function MCUNewPage() {
   const router = useRouter();
   const employees = useStore((s) => s.employees);
-  const createMCU = useStore((s) => s.createMCU);
-  const updateMCUResult = useStore((s) => s.updateMCUResult);
-  const submitMCU = useStore((s) => s.submitMCU);
+
+  // Modul 4 — daftar pekerja (Modul 2) untuk memilih subjek MCU
+  const { loading: loadingPatients, error: patientsError, refetch } = useSyncedModules(() =>
+    syncPatients(1, 100)
+  );
 
   const [currentStep, setCurrentStep] = useState(1);
   const [employeeId, setEmployeeId] = useState("");
@@ -165,21 +174,31 @@ export default function MCUNewPage() {
     return true;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitting(true);
     setError("");
     try {
-      const mcuId = createMCU({ employeeId, type: mcuType as any, examDate, facility });
-      updateMCUResult(mcuId, {
-        bloodPressure: `${systolic}/${diastolic}`,
-        heartRate,
-        heightCm,
-        weightKg,
-        vision,
-        hearing,
-        notes: `BMI: ${bmi.value.toFixed(1)} (${bmi.category}), BP: ${bp.category}, Framingham: ${framingham}%, ASCVD: ${ascvd}%`,
+      // 1. Buat siklus MCU di backend: POST /api/v1/mcu/cycles
+      const cycle = await mcuService.create(
+        employeeId,
+        mapMcuTypeToBackend(mcuType),
+        examDate
+      );
+
+      // 2. Jalankan dynamic clinical calculation engine:
+      //    POST /api/v1/mcu/cycles/:id/calculate
+      await mcuService.calculate(cycle.id, {
+        parameters: {
+          weightKg: Number(weightKg),
+          heightCm: Number(heightCm),
+          systolicBp: Number(systolic),
+          diastolicBp: Number(diastolic),
+        },
       });
-      submitMCU(mcuId);
+
+      // 3. Sinkronkan daftar MCU terbaru dari backend
+      await syncMcu(1, 100);
+
       router.push("/mcu");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Terjadi kesalahan.");
@@ -233,9 +252,17 @@ export default function MCUNewPage() {
               label="Pekerja"
               value={employeeId}
               onChange={(e) => setEmployeeId(e.target.value)}
-              placeholder="Pilih pekerja"
+              placeholder={loadingPatients ? "Memuat pekerja..." : "Pilih pekerja"}
               options={employees.map((e) => ({ value: e.id, label: `${e.fullName} (${e.employeeId})` }))}
             />
+            {patientsError && (
+              <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+                Gagal memuat daftar pekerja: {patientsError}{" "}
+                <button className="underline" onClick={refetch}>
+                  Coba lagi
+                </button>
+              </div>
+            )}
             {selectedEmployee && (
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <Avatar name={selectedEmployee.fullName} />

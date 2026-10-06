@@ -10,10 +10,14 @@ import { Avatar } from "@/shared/components/design-system/avatar";
 import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
+import { daService } from "@/lib/services/da.service";
 import { FlaskConical, Plus, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 
 interface DATest {
   id: string;
+  backendId?: string;
+  backendSampleId?: string;
   employeeId: string;
   testDate: string;
   sampleType: string;
@@ -52,6 +56,12 @@ const INITIAL_DA_TESTS: DATest[] = [
 export default function DAPage() {
   const employees = useStore((s) => s.employees);
   const [tests, setTests] = useState<DATest[]>(INITIAL_DA_TESTS);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  // Modul 10 — daftar pekerja (pasien) dari backend untuk pendaftaran tes
+  useSyncedModules(() => syncPatients(1, 100));
+
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<{
     employeeId: string;
@@ -69,24 +79,80 @@ export default function DAPage() {
     chainOfCustody: "",
   });
 
-  const handleSubmit = () => {
-    const newTest: DATest = {
-      id: `da${Date.now()}`,
-      ...formData,
-      doctorName: "dr. Siti Rahayu",
-      status: "PENDING",
-    };
-    setTests((prev) => [newTest, ...prev]);
-    setShowModal(false);
-    setFormData({ employeeId: "", testDate: "", sampleType: "Urine", result: "NEGATIVE", confirmationTest: false, chainOfCustody: "" });
+  /**
+   * Pendaftaran tes D&A di backend:
+   *   POST /da/tests -> POST /da/samples (spesimen + barcode)
+   */
+  const handleSubmit = async () => {
+    if (!formData.employeeId) {
+      setMsg("Pilih pekerja terlebih dahulu.");
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const daTest = await daService.createTest(formData.employeeId, "RANDOM_INSPECTION");
+      const sample = await daService.createSample(
+        daTest.id,
+        `SMP-${new Date().getFullYear()}-LNG-${String(Date.now()).slice(-4)}`,
+        (formData.sampleType || "Urine").toUpperCase()
+      );
+      const newTest: DATest = {
+        id: `da${Date.now()}`,
+        backendId: daTest.id,
+        backendSampleId: sample.id,
+        ...formData,
+        doctorName: "dr. Siti Rahayu",
+        status: "PENDING",
+      };
+      setTests((prev) => [newTest, ...prev]);
+      setShowModal(false);
+      setFormData({ employeeId: "", testDate: "", sampleType: "Urine", result: "NEGATIVE", confirmationTest: false, chainOfCustody: "" });
+      setMsg("Tes D&A terdaftar di backend.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Gagal mendaftarkan tes ke backend.");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleVerify = (id: string) => {
-    setTests((prev) => prev.map((t) => (t.id === id ? { ...t, status: "VERIFIED" } : t)));
+  /** Input hasil uji: POST /api/v1/da/tests/:id/results */
+  const handleVerify = async (localId: string) => {
+    const test = tests.find((t) => t.id === localId);
+    if (!test?.backendId) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await daService.submitResults(
+        test.backendId,
+        test.result === "POSITIVE" ? "NON_NEGATIVE" : "NEGATIVE",
+        test.confirmationTest ? (test.result === "POSITIVE" ? "NON_NEGATIVE" : "NEGATIVE") : undefined,
+        test.confirmationTest
+      );
+      setTests((prev) => prev.map((t) => (t.id === localId ? { ...t, status: "VERIFIED" } : t)));
+      setMsg("Hasil uji tersimpan di backend.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Gagal menyimpan hasil uji.");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleCertify = (id: string) => {
-    setTests((prev) => prev.map((t) => (t.id === id ? { ...t, status: "CERTIFIED" } : t)));
+  /** Terbitkan sertifikat: POST /api/v1/da/tests/:id/certificate */
+  const handleCertify = async (localId: string) => {
+    const test = tests.find((t) => t.id === localId);
+    if (!test?.backendId) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      await daService.issueCertificate(test.backendId);
+      setTests((prev) => prev.map((t) => (t.id === localId ? { ...t, status: "CERTIFIED" } : t)));
+      setMsg("Sertifikat D&A diterbitkan oleh backend.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Gagal menerbitkan sertifikat.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -101,6 +167,10 @@ export default function DAPage() {
           Tes Baru
         </Button>
       </div>
+
+      {msg && (
+        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{msg}</div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
@@ -166,10 +236,10 @@ export default function DAPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {test.status === "PENDING" && (
-                    <Button size="sm" variant="outline" onClick={() => handleVerify(test.id)}>Verify</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleVerify(test.id)} disabled={busy || !test.backendId || test.status !== "PENDING"}>Verify</Button>
                   )}
                   {test.status === "VERIFIED" && (
-                    <Button size="sm" onClick={() => handleCertify(test.id)}>Certify</Button>
+                    <Button size="sm" onClick={() => handleCertify(test.id)} disabled={busy || !test.backendId || test.status !== "VERIFIED"}>Certify</Button>
                   )}
                 </div>
               </div>
@@ -227,7 +297,7 @@ export default function DAPage() {
           <Input label="Chain of Custody" value={formData.chainOfCustody} onChange={(e) => setFormData((f) => ({ ...f, chainOfCustody: e.target.value }))} placeholder="Catatan chain of custody" />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Button onClick={handleSubmit}>Simpan</Button>
+            <Button onClick={handleSubmit} loading={busy} disabled={busy}>Simpan</Button>
           </div>
         </div>
       </Modal>

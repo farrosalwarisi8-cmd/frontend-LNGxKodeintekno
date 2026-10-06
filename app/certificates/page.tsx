@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
+import { documentService } from "@/lib/services/document.service";
 import { CERT_STATUS } from "@/lib/constants";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -21,6 +23,45 @@ export default function CertificatesPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Modul 9 — data MCU & pekerja dari backend untuk menerbitkan sertifikat
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await syncPatients(1, 100);
+    await syncMcu(1, 100);
+  });
+
+  /**
+   * Menerbitkan sertifikat:
+   *  1. POST /api/v1/documents/render-pdf  -> dokumen + QR token
+   *  2. POST /api/v1/signatures/request     -> permintaan tanda tangan PSrE
+   */
+  const handleIssue = async (mcuId: string) => {
+    const localId = issueCertificate(mcuId);
+    if (!localId) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const mcu = mcus.find((m) => m.id === mcuId);
+      const doc = await documentService.renderPdf(
+        "FTW_CERTIFICATE",
+        mcuId,
+        `Sertifikat Kelaikan Kerja ${mcu?.mcuNumber ?? mcuId}`
+      );
+      await documentService.requestSignature(doc.documentId, "CERTIFIED_PSRE");
+      useStore.setState((s) => ({
+        certificates: s.certificates.map((c) =>
+          c.id === localId ? { ...c, qrToken: doc.qrToken } : c
+        ),
+      }));
+      setMsg(`Sertifikat dibuat di backend (QR: ${doc.qrToken.slice(0, 12)}...)`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Gagal membuat dokumen di backend.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const filtered = certificates.filter((c) => {
     const emp = employees.find((e) => e.id === c.employeeId);
@@ -38,6 +79,19 @@ export default function CertificatesPage() {
         <h1 className="text-2xl font-semibold text-slate-900">Sertifikat Kesehatan</h1>
         <p className="text-sm text-slate-500">Sertifikat kesehatan kerja dengan QR verification</p>
       </div>
+
+      {error && (
+        <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+          Gagal memuat data dari backend: {error}{" "}
+          <button className="underline" onClick={refetch}>Coba lagi</button>
+        </div>
+      )}
+      {msg && (
+        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{msg}</div>
+      )}
+      {loading && !error && (
+        <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+      )}
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -71,7 +125,7 @@ export default function CertificatesPage() {
                     <p className="text-sm font-medium text-slate-900">{emp?.fullName}</p>
                     <p className="text-xs text-slate-500">{mcu.mcuNumber} · {mcu.decision}</p>
                   </div>
-                  <Button size="sm" onClick={() => issueCertificate(mcu.id)}>
+                  <Button size="sm" onClick={() => handleIssue(mcu.id)} loading={busy} disabled={busy}>
                     <Plus className="size-3.5" />
                     Terbitkan
                   </Button>

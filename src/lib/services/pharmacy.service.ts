@@ -1,42 +1,88 @@
 import { apiClient } from "@/lib/api-client";
 
-export interface StockBatch {
+/**
+ * Modul 5 — Farmasi & FEFO Inventory Engine.
+ * Endpoint backend (Domain 6):
+ *   GET  /api/v1/pharmacy/inventory?siteId=
+ *   GET  /api/v1/pharmacy/prescriptions/pending?siteId=
+ *   POST /api/v1/pharmacy/dispensing/recommend-batches
+ *   POST /api/v1/pharmacy/dispensing
+ *   POST /api/v1/pharmacy/returns
+ */
+
+export interface BackendInventoryItem {
   id: string;
-  medicationId: string;
-  medicationName: string;
-  batchNumber: string;
-  quantity: number;
-  expiresAt: string;
-  siteId: string;
+  medicationCode: string;
+  genericName: string;
+  strength?: string;
+  dosageForm?: string;
+  isControlled?: boolean;
+  siteName: string;
+  currentStock: number;
+  minimumStock: number;
+  isLowStock: boolean;
+  activeBatchesCount: number;
+  nearestExpiryDate?: string | null;
 }
 
-export interface Dispensing {
+export interface BackendPrescriptionItem {
   id: string;
-  prescriptionId: string;
-  patientName: string;
-  items: Array<{
-    medicationId: string;
-    medicationName: string;
+  medication_id?: string;
+  quantity?: number;
+  dosage?: string | null;
+  medication?: {
+    id?: string;
+    code?: string;
+    generic_name?: string;
+    strength?: string;
+  };
+}
+
+export interface BackendPrescription {
+  id: string;
+  encounter_id?: string | null;
+  status?: string;
+  prescribed_at?: string;
+  encounter?: {
+    id?: string;
+    patient_id?: string;
+    patient?: { id?: string; full_name?: string; medical_record_no?: string };
+  };
+  items?: BackendPrescriptionItem[];
+}
+
+export interface FefoRecommendation {
+  medicationId: string;
+  siteId: string;
+  requiredQuantity: number;
+  isFullyAllocatable: boolean;
+  shortfall: number;
+  recommendedBatches: Array<{
     batchId: string;
-    quantity: number;
+    batchNo: string;
+    expiryDate: string;
+    available: number;
+    allocated: number;
   }>;
-  status: "PENDING" | "DISPENSED" | "RETURNED";
-  createdAt: string;
 }
 
 export const pharmacyService = {
-  async getInventory(siteId?: string): Promise<StockBatch[]> {
+  async getInventory(siteId?: string): Promise<BackendInventoryItem[]> {
     const qs = siteId ? `?siteId=${siteId}` : "";
-    return apiClient.get<StockBatch[]>(`/pharmacy/inventory${qs}`);
+    return apiClient.get<BackendInventoryItem[]>(`/pharmacy/inventory${qs}`);
   },
 
-  async getPendingPrescriptions(siteId?: string): Promise<Dispensing[]> {
+  async getPendingPrescriptions(siteId?: string): Promise<BackendPrescription[]> {
     const qs = siteId ? `?siteId=${siteId}` : "";
-    return apiClient.get<Dispensing[]>(`/pharmacy/prescriptions/pending${qs}`);
+    return apiClient.get<BackendPrescription[]>(`/pharmacy/prescriptions/pending${qs}`);
   },
 
-  async recommendBatches(medicationId: string, siteId: string, requiredQuantity: number) {
-    return apiClient.post("/pharmacy/dispensing/recommend-batches", {
+  async recommendBatches(
+    medicationId: string,
+    siteId: string,
+    requiredQuantity: number
+  ): Promise<FefoRecommendation> {
+    return apiClient.post<FefoRecommendation>("/pharmacy/dispensing/recommend-batches", {
       medicationId,
       siteId,
       requiredQuantity,
@@ -46,7 +92,7 @@ export const pharmacyService = {
   async dispense(
     prescriptionId: string,
     allocations: Array<{ stockBatchId: string; quantity: number }>
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ id?: string; prescription_id?: string }> {
     return apiClient.post("/pharmacy/dispensing", { prescriptionId, allocations });
   },
 
@@ -55,7 +101,12 @@ export const pharmacyService = {
     stockBatchId: string,
     quantity: number,
     reason: string
-  ): Promise<{ success: boolean }> {
-    return apiClient.post("/pharmacy/returns", { dispensingId, stockBatchId, quantity, reason });
+  ): Promise<unknown> {
+    return apiClient.post("/pharmacy/returns", {
+      dispensingId,
+      stockBatchId,
+      quantity,
+      reason,
+    });
   },
 };

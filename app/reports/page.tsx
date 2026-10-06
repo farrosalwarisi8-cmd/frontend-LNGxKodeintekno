@@ -1,6 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useStore } from "@/lib/store";
+import {
+  syncMcu,
+  syncPatients,
+  syncQueues,
+  useSyncedModules,
+} from "@/lib/remote-sync";
+import {
+  reportingService,
+  type ReportDefinition,
+  type TopDiseaseItem,
+} from "@/lib/services/reporting.service";
+import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -14,6 +27,44 @@ export default function ReportsPage() {
   const workHealthStatus = useStore((s) => s.workHealthStatus);
   const dispensings = useStore((s) => s.dispensings);
   const diagnoses = useStore((s) => s.diagnoses);
+
+  const [topDiseases, setTopDiseases] = useState<TopDiseaseItem[]>([]);
+  const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+
+  // Modul 8 — data laporan & analitik dari backend
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await Promise.all([syncPatients(1, 100), syncMcu(1, 100), syncQueues()]);
+    const [analytics, defs] = await Promise.all([
+      reportingService.topDiseases({}).catch(() => null),
+      reportingService.getDefinitions().catch(() => []),
+    ]);
+    setTopDiseases(analytics ? analytics.topDiseases ?? analytics.top10Morbidity ?? [] : []);
+    setDefinitions(defs);
+  });
+
+  const handleExport = async () => {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const def = definitions[0];
+      if (!def) throw new Error("Tidak ada definisi laporan di backend.");
+      const run = await reportingService.runReport(def.id, "PDF", {
+        startDate: `${new Date().getFullYear()}-01-01`,
+        endDate: new Date().toISOString().slice(0, 10),
+      });
+      const download = await reportingService.downloadExport(run.exportId);
+      setExportMsg(`Laporan ${run.format} dibuat (${run.status}).`);
+      if (download?.downloadUrl) {
+        window.open(download.downloadUrl, "_blank", "noopener");
+      }
+    } catch (e) {
+      setExportMsg(e instanceof Error ? e.message : "Ekspor laporan gagal.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter((e) => e.status === "Active").length;
@@ -32,6 +83,14 @@ export default function ReportsPage() {
     count: visits.filter((v) => v.diagnosisIds?.includes(d.id)).length,
   })).sort((a, b) => b.count - a.count).slice(0, 10);
 
+  const topRows = topDiseases.length > 0
+    ? topDiseases.map((t, i) => ({
+        key: t.icd10 ?? t.code ?? String(i),
+        label: `${t.icd10 ?? t.code ?? "-"} — ${t.name ?? t.disease ?? ""}`,
+        count: t.caseCount ?? t.count ?? 0,
+      }))
+    : diagnosisCounts.map((d) => ({ key: d.id, label: `${d.code} — ${d.description}`, count: d.count }));
+
   const mcuByType = ["Pre-Employment", "Periodic", "Return to Work", "Special"].map((type) => ({
     type,
     count: mcus.filter((m) => m.type === type).length,
@@ -44,11 +103,17 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Laporan & Analitik</h1>
           <p className="text-sm text-slate-500">Dashboard reporting per role</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting || loading}>
           <Download className="size-4" />
           Ekspor PDF
         </Button>
       </div>
+
+      {exportMsg && (
+        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{exportMsg}</div>
+      )}
+
+      {error && <ErrorState title="Gagal memuat data laporan" message={error} onRetry={refetch} />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -156,12 +221,15 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {diagnosisCounts.map((d) => (
-                <div key={d.id} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">{d.code} — {d.description}</span>
+              {topRows.map((d) => (
+                <div key={d.key} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">{d.label}</span>
                   <Badge variant="info">{d.count}</Badge>
                 </div>
               ))}
+              {topRows.length === 0 && (
+                <p className="text-sm text-slate-400">Belum ada data diagnosis.</p>
+              )}
             </div>
           </CardContent>
         </Card>

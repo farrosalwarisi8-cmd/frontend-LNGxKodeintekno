@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { MCU_STATUS, MCU_TYPES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -11,12 +12,20 @@ import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { Search, Plus, Activity, ChevronRight } from "lucide-react";
 
 export default function MCUPage() {
   const mcus = useStore((s) => s.mcus);
   const employees = useStore((s) => s.employees);
+
+  // Modul 4 — sinkron siklus MCU dari backend (GET /mcu/cycles)
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await syncPatients(1, 100);
+    await syncMcu(1, 100);
+  });
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -80,13 +89,23 @@ export default function MCUPage() {
 
       <p className="text-sm text-slate-500">{filtered.length} MCU ditemukan</p>
 
-      {filtered.length === 0 ? (
+      {error && <ErrorState title="Gagal memuat data MCU" message={error} onRetry={refetch} />}
+
+      {loading && !error && (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      )}
+
+      {!loading && !error && filtered.length === 0 ? (
         <EmptyState
           icon={Activity}
           title="Tidak ada MCU ditemukan"
           description="Coba ubah kata kunci pencarian atau filter Anda."
         />
-      ) : (
+      ) : !loading && !error ? (
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
             <table className="w-full">
@@ -166,7 +185,7 @@ export default function MCUPage() {
             })}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

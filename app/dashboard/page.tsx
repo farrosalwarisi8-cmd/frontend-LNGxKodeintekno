@@ -1,6 +1,13 @@
 "use client";
 
 import { useStore, useCurrentUser } from "@/lib/store";
+import {
+  syncInventory,
+  syncMcu,
+  syncPatients,
+  syncQueues,
+  useSyncedModules,
+} from "@/lib/remote-sync";
 import { ROLES, MCU_STATUS, HEALTH_STATUS, VISIT_STATUS, EMPLOYEE_STATUS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -33,6 +40,16 @@ export default function DashboardPage() {
   const auditLogs = useStore((s) => s.auditLogs);
   const stockBatches = useStore((s) => s.stockBatches);
   const medicines = useStore((s) => s.medicines);
+
+  // Dashboard — tarik ringkasan semua modul inti dari backend
+  useSyncedModules(async () => {
+    await Promise.all([
+      syncPatients(1, 100),
+      syncMcu(1, 100),
+      syncQueues(),
+      syncInventory(),
+    ]);
+  });
 
   if (!user) return null;
 

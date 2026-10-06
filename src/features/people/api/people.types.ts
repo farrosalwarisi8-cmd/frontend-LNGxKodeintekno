@@ -143,6 +143,10 @@ export interface PersonListItem {
   employmentStatus: EmploymentStatus;
   consentStatus: ConsentStatus;
   updatedAt: string;
+  /** Tambahan field opsional dari response backend (privacy-safe) */
+  sex?: "M" | "F";
+  birthDate?: string;
+  maskedIdentifier?: string | null;
 }
 
 export interface CreatePersonDraft {

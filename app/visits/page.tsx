@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { syncQueues, useSyncedModules } from "@/lib/remote-sync";
 import { VISIT_STATUS } from "@/lib/constants";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -11,6 +12,8 @@ import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { Search, Plus, ClipboardList, ChevronRight } from "lucide-react";
 
@@ -18,6 +21,9 @@ export default function VisitsPage() {
   const visits = useStore((s) => s.visits);
   const employees = useStore((s) => s.employees);
   const locations = useStore((s) => s.locations);
+
+  // Modul 3 — sinkron antrean/kunjungan dari backend (GET /clinic/queues)
+  const { loading, error, refetch } = useSyncedModules(() => syncQueues());
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -81,13 +87,25 @@ export default function VisitsPage() {
 
       <p className="text-sm text-slate-500">{filtered.length} kunjungan ditemukan</p>
 
-      {filtered.length === 0 ? (
+      {error && (
+        <ErrorState title="Gagal memuat data kunjungan" message={error} onRetry={refetch} />
+      )}
+
+      {loading && !error && (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      )}
+
+      {!loading && !error && filtered.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
           title="Tidak ada kunjungan ditemukan"
           description="Coba ubah kata kunci pencarian atau filter Anda."
         />
-      ) : (
+      ) : !loading && !error ? (
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
             <table className="w-full">
@@ -164,7 +182,7 @@ export default function VisitsPage() {
             })}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

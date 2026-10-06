@@ -1,87 +1,146 @@
 "use client";
 
-import { useState } from "react";
-import { useStore } from "@/lib/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { useMemo, useState } from "react";
+import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
 import { Modal } from "@/shared/components/design-system/modal";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
+import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
+import { resolveScope } from "@/lib/services/reference.service";
+import {
+  pharmacyService,
+  type BackendPrescription,
+  type BackendPrescriptionItem,
+} from "@/lib/services/pharmacy.service";
 import { Pill, Search, CheckCircle, AlertTriangle } from "lucide-react";
 
+interface PendingRx {
+  id: string;
+  visitNumber: string;
+  patientName: string;
+  mrn: string;
+  prescribedAt: string;
+  items: BackendPrescriptionItem[];
+}
+
 export default function DispensePage() {
-  const visits = useStore((s) => s.visits);
-  const employees = useStore((s) => s.employees);
-  const medicines = useStore((s) => s.medicines);
-  const stockBatches = useStore((s) => s.stockBatches);
-  const dispense = useStore((s) => s.dispense);
-
+  const [prescriptions, setPrescriptions] = useState<PendingRx[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
+  const [selectedRx, setSelectedRx] = useState<PendingRx | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [dispenseItems, setDispenseItems] = useState<{ medicineId: string; batchId: string; quantity: number }[]>([]);
-  const [currentMedicine, setCurrentMedicine] = useState("");
-  const [currentBatch, setCurrentBatch] = useState("");
-  const [currentQuantity, setCurrentQuantity] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
-  const pendingVisits = visits.filter((v) => v.status === "Awaiting Pharmacy" || v.status === "In Consultation");
+  const load = async () => {
+    const rows = await pharmacyService.getPendingPrescriptions();
+    const mapped: PendingRx[] = rows.map((p) => ({
+      id: p.id,
+      visitNumber: `RX-${p.id.slice(0, 8).toUpperCase()}`,
+      patientName: p.encounter?.patient?.full_name ?? "Pasien",
+      mrn: p.encounter?.patient?.medical_record_no ?? "",
+      prescribedAt: p.prescribed_at ?? "",
+      items: p.items ?? [],
+    }));
+    setPrescriptions(mapped);
+    await syncInventory();
+  };
 
-  const filtered = pendingVisits.filter((v) => {
-    const emp = employees.find((e) => e.id === v.employeeId);
+  const { loading, error, refetch } = useSyncedModules(load);
+
+  const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return !q || v.visitNumber.toLowerCase().includes(q) || emp?.fullName.toLowerCase().includes(q);
-  });
+    return prescriptions.filter(
+      (p) => !q || p.visitNumber.toLowerCase().includes(q) || p.patientName.toLowerCase().includes(q)
+    );
+  }, [prescriptions, search]);
 
-  const visit = visits.find((v) => v.id === selectedVisit);
-  const visitEmployee = visit ? employees.find((e) => e.id === visit.employeeId) : null;
-
-  const openDispense = (visitId: string) => {
-    setSelectedVisit(visitId);
-    setDispenseItems([]);
+  const openDispense = (rx: PendingRx) => {
+    setSelectedRx(rx);
+    setQuantities(Object.fromEntries(rx.items.map((i) => [i.id, i.quantity ?? 1])));
+    setMessage(null);
     setShowModal(true);
   };
 
-  const addItem = () => {
-    if (!currentMedicine || !currentBatch || !currentQuantity) return;
-    setDispenseItems((prev) => [...prev, { medicineId: currentMedicine, batchId: currentBatch, quantity: parseInt(currentQuantity) }]);
-    setCurrentMedicine("");
-    setCurrentBatch("");
-    setCurrentQuantity("");
-  };
+  /**
+   * Alur dispensing backend:
+   *  1. POST /api/v1/pharmacy/dispensing/recommend-batches (engine FEFO per obat)
+   *  2. POST /api/v1/pharmacy/dispensing (transaksi atomik + pessimistic lock)
+   */
+  const handleDispense = async () => {
+    if (!selectedRx) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const scope = await resolveScope();
+      const byBatch = new Map<string, number>();
 
-  const removeItem = (index: number) => {
-    setDispenseItems((prev) => prev.filter((_, i) => i !== index));
-  };
+      for (const item of selectedRx.items) {
+        const medicationId = item.medication_id;
+        if (!medicationId) continue;
+        const qty = quantities[item.id] ?? item.quantity ?? 0;
+        if (qty <= 0) continue;
 
-  const handleDispense = () => {
-    if (!selectedVisit || dispenseItems.length === 0) return;
-    const result = dispense(selectedVisit, dispenseItems);
-    if (result.ok) {
-      setShowModal(false);
+        const rec = await pharmacyService.recommendBatches(
+          medicationId,
+          scope.siteId,
+          qty
+        );
+        if (!rec.isFullyAllocatable) {
+          throw new Error(
+            `Stok ${item.medication?.generic_name ?? "obat"} tidak mencukupi (kurang ${rec.shortfall}).`
+          );
+        }
+        for (const batch of rec.recommendedBatches) {
+          byBatch.set(batch.batchId, (byBatch.get(batch.batchId) ?? 0) + batch.allocated);
+        }
+      }
+
+      if (byBatch.size === 0) {
+        throw new Error("Tidak ada item obat untuk dispense.");
+      }
+
+      const allocations = Array.from(byBatch.entries()).map(([stockBatchId, quantity]) => ({
+        stockBatchId,
+        quantity,
+      }));
+
+      await pharmacyService.dispense(selectedRx.id, allocations);
+
+      setMessage({ type: "ok", text: "Dispensing berhasil diproses oleh backend." });
+      setPrescriptions((prev) => prev.filter((p) => p.id !== selectedRx.id));
+      setTimeout(() => {
+        setShowModal(false);
+        refetch();
+      }, 900);
+    } catch (e) {
+      setMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : "Dispensing gagal.",
+      });
+    } finally {
+      setBusy(false);
     }
-  };
-
-  const getFEFOBatches = (medicineId: string) => {
-    return stockBatches
-      .filter((b) => b.medicineId === medicineId && b.quantity > 0)
-      .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
   };
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Dispensing Obat</h1>
-        <p className="text-sm text-slate-500">FEFO dispensing untuk kunjunggan selesai konsultasi</p>
+        <p className="text-sm text-slate-500">
+          FEFO dispensing dari resep aktif backend (GET /pharmacy/prescriptions/pending)
+        </p>
       </div>
 
       <Card className="p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
-            placeholder="Cari kunjungan..."
+            placeholder="Cari resep / pasien..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -89,108 +148,114 @@ export default function DispensePage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} kunjunggan menunggu dispensing</p>
+      <p className="text-sm text-slate-500">{filtered.length} resep menunggu dispensing</p>
 
-      {filtered.length === 0 ? (
-        <Card className="p-8 text-center">
-          <CheckCircle className="mx-auto mb-3 size-8 text-success-600" />
-          <p className="text-sm text-slate-500">Tidak ada kunjunggan yang menunggu dispensing.</p>
-        </Card>
-      ) : (
+      {error && <ErrorState title="Gagal memuat resep dari backend" message={error} onRetry={refetch} />}
+
+      {loading && !error && (
         <div className="space-y-3">
-          {filtered.map((v) => {
-            const emp = employees.find((e) => e.id === v.employeeId);
-            return (
-              <Card key={v.id} className="p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={emp?.fullName ?? "?"} />
-                    <div>
-                      <p className="font-medium text-slate-900">{emp?.fullName}</p>
-                      <p className="text-xs text-slate-500">
-                        {v.visitNumber} · {formatDate(v.date)}
-                      </p>
-                      <p className="text-xs text-slate-500">Keluhan: {v.chiefComplaint}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="warning">{v.status}</Badge>
-                    <Button size="sm" onClick={() => openDispense(v.id)}>
-                      <Pill className="size-3.5" />
-                      Dispense
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
         </div>
       )}
+
+      {!loading && !error && filtered.length === 0 ? (
+        <Card className="p-8 text-center">
+          <CheckCircle className="mx-auto mb-3 size-8 text-success-600" />
+          <p className="text-sm text-slate-500">Tidak ada resep yang menunggu dispensing.</p>
+        </Card>
+      ) : !loading && !error ? (
+        <div className="space-y-3">
+          {filtered.map((rx) => (
+            <Card key={rx.id} className="p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                    <Pill className="size-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">{rx.patientName}</p>
+                    <p className="text-xs text-slate-500">
+                      {rx.visitNumber} · {rx.mrn || "—"} ·{" "}
+                      {rx.prescribedAt ? formatDate(rx.prescribedAt) : ""}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {rx.items.length} item obat
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="warning">Menunggu</Badge>
+                  <Button size="sm" onClick={() => openDispense(rx)}>
+                    <Pill className="size-3.5" />
+                    Dispense
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : null}
 
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
         title="Dispensing Obat (FEFO)"
-        description={visit ? `${visit.visitNumber} — ${visitEmployee?.fullName}` : ""}
+        description={selectedRx ? `${selectedRx.visitNumber} — ${selectedRx.patientName}` : ""}
         size="lg"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Select
-              label="Obat"
-              value={currentMedicine}
-              onChange={(e) => {
-                setCurrentMedicine(e.target.value);
-                setCurrentBatch("");
-              }}
-              placeholder="Pilih obat"
-              options={medicines.map((m) => ({ value: m.id, label: m.name }))}
-            />
-            <Select
-              label="Batch (FEFO)"
-              value={currentBatch}
-              onChange={(e) => setCurrentBatch(e.target.value)}
-              placeholder="Pilih batch"
-              options={getFEFOBatches(currentMedicine).map((b) => ({
-                value: b.id,
-                label: `${b.batchNumber} (Exp: ${formatDate(b.expiresAt)}, Stok: ${b.quantity})`,
-              }))}
-            />
-            <Input
-              label="Jumlah"
-              type="number"
-              value={currentQuantity}
-              onChange={(e) => setCurrentQuantity(e.target.value)}
-              placeholder="10"
-            />
+          <div className="space-y-2">
+            {selectedRx?.items.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900">
+                    {item.medication?.generic_name ?? item.medication_id}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {item.medication?.strength ?? ""} {item.dosage ?? ""}
+                  </p>
+                </div>
+                <Input
+                  label=""
+                  type="number"
+                  className="w-24"
+                  value={String(quantities[item.id] ?? item.quantity ?? 1)}
+                  onChange={(e) =>
+                    setQuantities((prev) => ({ ...prev, [item.id]: Number(e.target.value) }))
+                  }
+                />
+              </div>
+            ))}
           </div>
-          <Button variant="outline" size="sm" onClick={addItem} disabled={!currentMedicine || !currentBatch || !currentQuantity}>
-            Tambah Item
-          </Button>
 
-          {dispenseItems.length > 0 && (
-            <div className="space-y-2">
-              {dispenseItems.map((item, index) => {
-                const med = medicines.find((m) => m.id === item.medicineId);
-                const batch = stockBatches.find((b) => b.id === item.batchId);
-                return (
-                  <div key={index} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{med?.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {batch?.batchNumber} · {item.quantity} {med?.unit}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>Hapus</Button>
-                  </div>
-                );
-              })}
+          <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+            Batch dipilih otomatis oleh engine FEFO backend (tanggal kadaluarsa terdekat).
+          </div>
+
+          {message && (
+            <div
+              className={`rounded-xl p-3 text-sm ${
+                message.type === "ok"
+                  ? "bg-success-50 text-success-700"
+                  : "bg-danger-50 text-danger-700"
+              }`}
+            >
+              {message.type === "error" && (
+                <AlertTriangle className="mr-1 inline size-4 align-[-2px]" />
+              )}
+              {message.text}
             </div>
           )}
 
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Button onClick={handleDispense} disabled={dispenseItems.length === 0}>
+            <Button variant="ghost" onClick={() => setShowModal(false)} disabled={busy}>
+              Batal
+            </Button>
+            <Button onClick={handleDispense} loading={busy} disabled={busy}>
               <CheckCircle className="size-4" />
               Proses Dispensing
             </Button>

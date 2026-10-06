@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import {
+  syncMasterData,
+  syncPatients,
+  syncQueues,
+  useSyncedModules,
+} from "@/lib/remote-sync";
+import { encounterService } from "@/lib/services/encounter.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -17,6 +24,15 @@ export default function MedicalRecordsPage() {
   const employees = useStore((s) => s.employees);
   const diagnoses = useStore((s) => s.diagnoses);
   const updateVisit = useStore((s) => s.updateVisit);
+
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  // Rekam medis — data pasien, kunjungan, dan katalog ICD-10 dari backend
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await syncPatients(1, 100);
+    await syncQueues();
+    await syncMasterData();
+  });
 
   const [search, setSearch] = useState("");
   const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
@@ -53,8 +69,28 @@ export default function MedicalRecordsPage() {
     setShowModal(true);
   };
 
-  const handleSaveSOAP = () => {
+  const handleSaveSOAP = async () => {
     if (!selectedVisit) return;
+    setSaveMsg(null);
+    const primaryCode = diagnoses.find((d) => d.id === selectedDiagnoses[0])?.code;
+
+    try {
+      // PUT /api/v1/clinic/encounters/:id/soap
+      await encounterService.saveSoap(selectedVisit, {
+        subjective: soapData.subjective || undefined,
+        objective: soapData.objective || undefined,
+        assessment: diagnosisNote || undefined,
+        plan: treatment || undefined,
+        primaryIcd10: primaryCode,
+      });
+    } catch (e) {
+      setSaveMsg(
+        e instanceof Error
+          ? e.message
+          : "SOAP tidak tersimpan di backend (kunjungan mungkin berasal dari antrean)."
+      );
+    }
+
     updateVisit(selectedVisit, {
       chiefComplaint: soapData.subjective,
       initialExam: soapData.objective,
@@ -73,6 +109,19 @@ export default function MedicalRecordsPage() {
         <h1 className="text-2xl font-semibold text-slate-900">Rekam Medis</h1>
         <p className="text-sm text-slate-500">SOAP notes dan diagnosis ICD-10</p>
       </div>
+
+      {error && (
+        <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+          Gagal memuat data: {error}{" "}
+          <button className="underline" onClick={refetch}>Coba lagi</button>
+        </div>
+      )}
+      {saveMsg && (
+        <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700">{saveMsg}</div>
+      )}
+      {loading && !error && (
+        <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+      )}
 
       <Card className="p-4">
         <div className="relative">

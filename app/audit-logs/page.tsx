@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { syncAuditLogs, useSyncedModules } from "@/lib/remote-sync";
+import { iamService } from "@/lib/services/iam.service";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Input } from "@/shared/components/design-system/input";
+import { Button } from "@/shared/components/design-system/button";
 import { Select } from "@/shared/components/design-system/select";
 import { formatDateTime } from "@/lib/format";
 import { Search, History, ShieldCheck } from "lucide-react";
@@ -13,6 +18,28 @@ export default function AuditLogsPage() {
   const auditLogs = useStore((s) => s.auditLogs);
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("");
+  const [chainResult, setChainResult] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  // Modul 7 — audit trail dari backend (GET /iam/audit-logs)
+  const { loading, error, refetch } = useSyncedModules(() => syncAuditLogs(1, 100));
+
+  const handleVerifyChain = async () => {
+    setVerifying(true);
+    setChainResult(null);
+    try {
+      const res = await iamService.verifyChain();
+      setChainResult(
+        res.isValid
+          ? "Rantai hash SHA-256 VALID — seluruh event audit tidak dimanipulasi."
+          : `Rantai hash RUSAK pada index ${res.brokenAtIndex ?? "-"} (event ${res.brokenEntryId ?? "-"}).`
+      );
+    } catch (e) {
+      setChainResult(e instanceof Error ? e.message : "Verifikasi gagal.");
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const actions = [...new Set(auditLogs.map((l) => l.action))];
 
@@ -50,7 +77,25 @@ export default function AuditLogsPage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} log entries</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">{filtered.length} log entries</p>
+        <Button size="sm" variant="outline" onClick={handleVerifyChain} loading={verifying}>
+          Verifikasi Rantai Hash
+        </Button>
+      </div>
+
+      {chainResult && (
+        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">{chainResult}</div>
+      )}
+
+      {error && <ErrorState title="Gagal memuat audit log" message={error} onRetry={refetch} />}
+
+      {loading && !error && (
+        <div className="space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      )}
 
       <Card>
         <CardHeader>

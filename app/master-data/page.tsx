@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import {
+  syncInventory,
+  syncMasterData,
+  syncPatients,
+  useSyncedModules,
+} from "@/lib/remote-sync";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -12,6 +18,14 @@ import { Database, Plus, Pill, Stethoscope, Building2, MapPin } from "lucide-rea
 export default function MasterDataPage() {
   const diagnoses = useStore((s) => s.diagnoses);
   const medicines = useStore((s) => s.medicines);
+
+  // Modul 11 — master data dari backend: ICD-10 (/clinic/icd10/search)
+  // dan inventaris obat (/pharmacy/inventory)
+  useSyncedModules(async () => {
+    await syncMasterData();
+    await syncInventory();
+    await syncPatients(1, 100);
+  });
   const companies = useStore((s) => s.companies);
   const departments = useStore((s) => s.departments);
   const locations = useStore((s) => s.locations);

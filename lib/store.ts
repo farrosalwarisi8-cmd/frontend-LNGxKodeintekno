@@ -43,6 +43,13 @@ import {
   WORK_HEALTH_STATUS,
 } from "@/lib/seed"
 import { uid, today } from "@/lib/format"
+import {
+  authService,
+  toSessionUser,
+  ROLE_TITLES,
+  type BackendUser,
+  type SessionUser,
+} from "@/lib/services/auth.service"
 
 type Diagnosis = (typeof DIAGNOSES)[number]
 
@@ -77,8 +84,11 @@ interface AppState {
   notifications: AppNotification[]
   auditLogs: AuditLog[]
 
-  login: (username: string, password: string) => { ok: boolean; mfaRequired?: boolean; userId?: string }
-  verifyMfa: (userId: string, code: string) => boolean
+  login: (
+    username: string,
+    password: string
+  ) => Promise<{ ok: boolean; mfaRequired?: boolean; userId?: string; error?: string }>
+  verifyMfa: (userId: string, code: string) => Promise<{ ok: boolean; error?: string }>
   logout: () => void
   setOrgScope: (scope: OrgScope) => void
   setOnline: (v: boolean) => void
@@ -113,8 +123,65 @@ interface AppState {
   markAllNotificationsRead: () => void
 }
 
+/**
+ * Middleware Next.js memvalidasi sesi lewat cookie `kodein-klinik-store`
+ * berisi `{ state: { currentUserId } }` — cookie ini ditulis saat login berhasil
+ * dan dihapus saat logout.
+ */
+function writeSessionCookie(userId: string | null) {
+  if (typeof document === "undefined") return
+  if (!userId) {
+    document.cookie = "kodein-klinik-store=; path=/; max-age=0; SameSite=Lax"
+    return
+  }
+  const value = JSON.stringify({ state: { currentUserId: userId } })
+  document.cookie = `kodein-klinik-store=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 12}; SameSite=Lax`
+}
+
+function buildStoreUser(existing: User | undefined, su: SessionUser): User {
+  return {
+    id: su.id,
+    username: su.username,
+    password: existing?.password ?? "",
+    name: existing?.name ?? su.username,
+    role: su.role as Role,
+    title: existing?.title ?? ROLE_TITLES[su.role] ?? su.role,
+    locationId: existing?.locationId,
+    employeeId: existing?.employeeId,
+    mfaEnabled: false,
+    preferredLanguage: existing?.preferredLanguage ?? "id",
+  }
+}
+
 function resolveUser(state: { users: User[]; currentUserId: string | null }): User | null {
   return state.users.find((u) => u.id === state.currentUserId) ?? null
+}
+
+/**
+ * Menetapkan sesi login hasil autentikasi backend ke dalam store:
+ * user hasil mapping role backend, sesi, dan cookie untuk middleware.
+ */
+function commitSession(
+  set: (updater: (s: AppState) => Partial<AppState>) => void,
+  backendUser: BackendUser
+) {
+  const su = toSessionUser(backendUser)
+  const now = new Date().toISOString()
+  set((s) => {
+    const existing =
+      s.users.find((u) => u.id === su.id) ?? s.users.find((u) => u.username === su.username)
+    const storeUser = buildStoreUser(existing, su)
+    const users = [
+      storeUser,
+      ...s.users.filter((u) => u.id !== su.id && u.username !== su.username),
+    ]
+    return {
+      currentUserId: su.id,
+      session: { userId: su.id, loginAt: now, lastActivity: now, mfaVerified: true },
+      users,
+    }
+  })
+  writeSessionCookie(su.id)
 }
 
 function pushAudit(
@@ -170,37 +237,44 @@ export const useStore = create<AppState>()(
       notifications: NOTIFICATIONS,
       auditLogs: AUDIT_LOGS,
 
-      login: (username, password) => {
-        const user = get().users.find(
-          (u) => u.username === username && u.password === password
-        )
-        if (!user) return { ok: false }
-        if (user.mfaEnabled) {
-          return { ok: false, mfaRequired: true, userId: user.id }
+      // ---- Modul 1: Autentikasi (terhubung ke backend POST /api/v1/auth/*) ----
+      login: async (username, password) => {
+        try {
+          const res = await authService.login(username, password)
+          if (res.mfaRequired && res.userId) {
+            return { ok: false, mfaRequired: true, userId: res.userId }
+          }
+          if (res.accessToken && res.user) {
+            commitSession(set, res.user)
+            return { ok: true }
+          }
+          return { ok: false, error: res.message ?? "Login gagal. Periksa kembali kredensial Anda." }
+        } catch (e) {
+          return {
+            ok: false,
+            error: e instanceof Error ? e.message : "Login gagal. Periksa kembali kredensial Anda.",
+          }
         }
-        const now = new Date().toISOString()
-        set({
-          currentUserId: user.id,
-          session: { userId: user.id, loginAt: now, lastActivity: now, mfaVerified: true },
-        })
-        return { ok: true }
       },
 
-      verifyMfa: (userId, code) => {
-        const user = get().users.find((u) => u.id === userId)
-        if (!user) return false
-        if (code === "123456" || code === user.mfaSecret) {
-          const now = new Date().toISOString()
-          set({
-            currentUserId: userId,
-            session: { userId, loginAt: now, lastActivity: now, mfaVerified: true },
-          })
-          return true
+      verifyMfa: async (userId, code) => {
+        try {
+          const res = await authService.verifyMfa(userId, code)
+          if (res.accessToken && res.user) {
+            commitSession(set, res.user)
+            return { ok: true }
+          }
+          return { ok: false, error: "Verifikasi MFA gagal." }
+        } catch (e) {
+          return { ok: false, error: e instanceof Error ? e.message : "Kode MFA salah." }
         }
-        return false
       },
 
-      logout: () => set({ currentUserId: null, session: null }),
+      logout: () => {
+        authService.logout()
+        writeSessionCookie(null)
+        set({ currentUserId: null, session: null })
+      },
 
       setOrgScope: (scope) => set({ orgScope: scope }),
 

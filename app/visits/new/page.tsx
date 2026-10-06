@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
+import { encounterService } from "@/lib/services/encounter.service";
+import type { ClinicVisit } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
@@ -23,7 +26,10 @@ export default function VisitNewPage() {
   const router = useRouter();
   const employees = useStore((s) => s.employees);
   const locations = useStore((s) => s.locations);
-  const registerVisit = useStore((s) => s.registerVisit);
+  // Daftar pasien dari backend (Modul 2) dibutuhkan untuk memilih pasien
+  const { loading: loadingPatients, error: patientsError, refetch } = useSyncedModules(() =>
+    syncPatients(1, 100)
+  );
 
   const [currentStep, setCurrentStep] = useState(1);
   const [employeeId, setEmployeeId] = useState("");
@@ -35,7 +41,9 @@ export default function VisitNewPage() {
   const [heartRate, setHeartRate] = useState("");
   const [temperature, setTemperature] = useState("");
   const [weight, setWeight] = useState("");
+  const [height, setHeight] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const selectedEmployee = employees.find((e) => e.id === employeeId);
   const selectedLocation = locations.find((l) => l.id === locationId);
@@ -44,17 +52,59 @@ export default function VisitNewPage() {
     if (currentStep === 1) return !!employeeId;
     if (currentStep === 2) return !!locationId;
     if (currentStep === 3) return !!chiefComplaint;
-    if (currentStep === 4) return !!systolic && !!diastolic && !!heartRate;
+    if (currentStep === 4)
+      return !!systolic && !!diastolic && !!heartRate && !!weight && !!height;
     return true;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError("");
     try {
-      const visitId = registerVisit({ employeeId, locationId, chiefComplaint });
+      // Buka kunjungan klinis di backend: POST /api/v1/clinic/encounters
+      const encounter = await encounterService.openEncounter(employeeId);
+
+      // Catat TTV: PUT /api/v1/clinic/encounters/:id/vitals (BMI dihitung backend)
+      await encounterService.recordVitals(encounter.id, {
+        heightCm: Number(height),
+        weightKg: Number(weight),
+        systolicBp: Number(systolic),
+        diastolicBp: Number(diastolic),
+        pulse: Number(heartRate),
+        temperature: temperature ? Number(temperature) : undefined,
+      });
+
+      // Simpan draf SOAP (keluhan = subjective, pemeriksaan awal = objective)
+      await encounterService.saveSoap(encounter.id, {
+        subjective: chiefComplaint,
+        objective: initialExam || undefined,
+      });
+
+      const visit: ClinicVisit = {
+        id: encounter.id,
+        visitNumber: `ENC-${encounter.id.slice(0, 8).toUpperCase()}`,
+        queueNumber: useStore.getState().visits.length + 1,
+        employeeId,
+        locationId,
+        date: new Date().toISOString().slice(0, 10),
+        time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+        chiefComplaint,
+        initialExam,
+        diagnosisIds: [],
+        diagnosisNote: "",
+        treatment: "",
+        doctorNote: "",
+        status: "Registered",
+        createdAt: new Date().toISOString(),
+      };
+      useStore.setState((s) => ({ visits: [visit, ...s.visits] }));
+
       router.push("/visits");
     } catch (e) {
       setSubmitting(false);
+      setSubmitError(
+        e instanceof Error ? e.message : "Gagal menyimpan kunjungan ke backend."
+      );
     }
   };
 
@@ -104,9 +154,22 @@ export default function VisitNewPage() {
               label="Pasien"
               value={employeeId}
               onChange={(e) => setEmployeeId(e.target.value)}
-              placeholder="Pilih pasien"
+              placeholder={loadingPatients ? "Memuat pasien..." : "Pilih pasien"}
               options={employees.map((e) => ({ value: e.id, label: `${e.fullName} (${e.employeeId})` }))}
             />
+            {patientsError && (
+              <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+                Gagal memuat daftar pasien: {patientsError}{" "}
+                <button className="underline" onClick={refetch}>
+                  Coba lagi
+                </button>
+              </div>
+            )}
+            {!loadingPatients && !patientsError && employees.length === 0 && (
+              <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700">
+                Belum ada pasien terdaftar. Daftarkan pekerja melalui menu People terlebih dahulu.
+              </div>
+            )}
             {selectedEmployee && (
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <Avatar name={selectedEmployee.fullName} />
@@ -172,7 +235,10 @@ export default function VisitNewPage() {
               <Input label="Heart Rate (bpm)" type="number" value={heartRate} onChange={(e) => setHeartRate(e.target.value)} placeholder="72" />
               <Input label="Suhu (°C)" type="number" value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="36.5" />
             </div>
-            <Input label="Berat Badan (kg)" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="65" />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Tinggi Badan (cm)" type="number" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="170" />
+              <Input label="Berat Badan (kg)" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="65" />
+            </div>
           </div>
         )}
 
@@ -187,8 +253,14 @@ export default function VisitNewPage() {
                 <p><span className="font-medium text-slate-600">Keluhan:</span> {chiefComplaint}</p>
                 <p><span className="font-medium text-slate-600">TD:</span> {systolic}/{diastolic} mmHg</p>
                 <p><span className="font-medium text-slate-600">HR:</span> {heartRate} bpm</p>
+                <p><span className="font-medium text-slate-600">BB/TB:</span> {weight} kg / {height} cm</p>
               </div>
             </div>
+            {submitError && (
+              <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+                {submitError}
+              </div>
+            )}
           </div>
         )}
 

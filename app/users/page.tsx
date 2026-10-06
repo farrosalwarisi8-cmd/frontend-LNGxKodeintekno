@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { syncUsers, useSyncedModules } from "@/lib/remote-sync";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { ROLES } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -15,6 +18,9 @@ import { Search, Plus, ShieldCheck, KeyRound, Users } from "lucide-react";
 
 export default function UsersPage() {
   const users = useStore((s) => s.users);
+
+  // Modul 7 — daftar akun dari backend (GET /iam/users)
+  const { loading, error, refetch } = useSyncedModules(() => syncUsers(1, 100));
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -61,6 +67,15 @@ export default function UsersPage() {
       </Card>
 
       <p className="text-sm text-slate-500">{filtered.length} user</p>
+
+      {error && <ErrorState title="Gagal memuat daftar user" message={error} onRetry={refetch} />}
+
+      {loading && !error && (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      )}
 
       <div className="space-y-3">
         {filtered.map((user) => {

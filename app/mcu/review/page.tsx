@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import {
+  mapHealthToFtw,
+  syncMcu,
+  syncPatients,
+  useSyncedModules,
+} from "@/lib/remote-sync";
+import { mcuService, type FtwStatus } from "@/lib/services/mcu.service";
+import type { HealthStatus } from "@/lib/types";
 import { MCU_STATUS, HEALTH_STATUS, HEALTH_STATUS_OPTIONS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -10,6 +18,7 @@ import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Modal } from "@/shared/components/design-system/modal";
+import { ErrorState } from "@/shared/components/design-system/error-state";
 import { formatDate } from "@/lib/format";
 import { Search, CheckCircle, XCircle, Clock, FileText } from "lucide-react";
 
@@ -19,6 +28,15 @@ export default function MCUReviewPage() {
   const approveMCU = useStore((s) => s.approveMCU);
   const rejectMCU = useStore((s) => s.rejectMCU);
   const requestRevision = useStore((s) => s.requestRevision);
+
+  // Modul 4 — sinkron data MCU & pekerja dari backend
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await syncPatients(1, 100);
+    await syncMcu(1, 100);
+  });
+
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -41,7 +59,7 @@ export default function MCUReviewPage() {
       m.mcuNumber.toLowerCase().includes(q) ||
       emp?.fullName.toLowerCase().includes(q);
     const matchStatus = !statusFilter || m.status === statusFilter;
-    return matchSearch && matchStatus && (m.status === "Submitted" || m.status === "Resubmitted" || m.status === "Under Review");
+    return matchSearch && matchStatus && m.status !== "Approved" && m.status !== "Rejected";
   });
 
   const mcu = mcus.find((m) => m.id === selectedMCU);
@@ -60,16 +78,40 @@ export default function MCUReviewPage() {
     setShowModal(true);
   };
 
-  const handleAction = () => {
-    if (!selectedMCU) return;
-    if (modalType === "approve") {
-      approveMCU(selectedMCU, decision as any, note, { validFrom, validUntil, restriction, recommendation, reviewDate });
-    } else if (modalType === "reject") {
-      rejectMCU(selectedMCU, note);
-    } else {
-      requestRevision(selectedMCU, note);
+  const handleAction = async () => {
+    if (!selectedMCU || actionBusy) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      if (modalType === "approve") {
+        if (!decision) throw new Error("Pilih keputusan kelaikan kerja terlebih dahulu.");
+        if (decision === "Fit with Restriction" && (!restriction || !reviewDate)) {
+          throw new Error("Restriksi dan tanggal review wajib diisi untuk keputusan Fit with Restriction.");
+        }
+        // POST /api/v1/mcu/cycles/:id/ftw-assessment
+        await mcuService.assessFtw(
+          selectedMCU,
+          mapHealthToFtw(decision),
+          note || undefined,
+          restriction && reviewDate
+            ? { description: restriction, reviewDate }
+            : undefined
+        );
+        approveMCU(selectedMCU, decision as HealthStatus, note, { validFrom, validUntil, restriction, recommendation, reviewDate });
+      } else if (modalType === "reject") {
+        await mcuService.assessFtw(selectedMCU, "UNFIT", note || undefined);
+        rejectMCU(selectedMCU, note);
+      } else {
+        // Endpoint backend tidak memiliki alur "minta revisi" -> tetap lokal
+        requestRevision(selectedMCU, note);
+      }
+      await syncMcu(1, 100);
+      setShowModal(false);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Gagal menyimpan keputusan.");
+    } finally {
+      setActionBusy(false);
     }
-    setShowModal(false);
   };
 
   return (
@@ -101,7 +143,15 @@ export default function MCUReviewPage() {
 
       <p className="text-sm text-slate-500">{pendingMCUs.length} MCU menunggu review</p>
 
-      {pendingMCUs.length === 0 ? (
+      {error && <ErrorState title="Gagal memuat data MCU" message={error} onRetry={refetch} />}
+
+      {loading && !error && (
+        <Card className="p-8 text-center">
+          <p className="text-sm text-slate-500">Memuat data MCU dari backend...</p>
+        </Card>
+      )}
+
+      {!loading && !error && pendingMCUs.length === 0 ? (
         <Card className="p-8 text-center">
           <CheckCircle className="mx-auto mb-3 size-8 text-success-600" />
           <p className="text-sm text-slate-500">Tidak ada MCU yang menunggu review.</p>
@@ -181,12 +231,16 @@ export default function MCUReviewPage() {
             </>
           )}
           <Input label="Catatan" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Catatan review..." />
+          {actionError && (
+            <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{actionError}</div>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
             <Button
               variant={modalType === "reject" ? "danger" : modalType === "revision" ? "outline" : "primary"}
               onClick={handleAction}
-              disabled={modalType === "approve" ? !decision : !note}
+              loading={actionBusy}
+              disabled={actionBusy || (modalType === "approve" ? !decision : !note)}
             >
               {modalType === "approve" ? "Approve" : modalType === "reject" ? "Tolak" : "Minta Revisi"}
             </Button>

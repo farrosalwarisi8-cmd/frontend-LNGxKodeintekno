@@ -1,7 +1,9 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import { syncQueues, useSyncedModules } from "@/lib/remote-sync";
 import { VISIT_STATUS } from "@/lib/constants";
+import type { VisitStatus } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Avatar } from "@/shared/components/design-system/avatar";
@@ -15,11 +17,14 @@ export default function QueuePage() {
   const locations = useStore((s) => s.locations);
   const updateVisit = useStore((s) => s.updateVisit);
 
+  // Modul 3 — antrean klinik real-time dari backend
+  const { loading, error, refetch } = useSyncedModules(() => syncQueues());
+
   const todayVisits = visits.filter((v) => v.status !== "Completed" && v.status !== "Referred");
   const sorted = [...todayVisits].sort((a, b) => a.queueNumber - b.queueNumber);
 
-  const handleStatusChange = (visitId: string, status: string) => {
-    updateVisit(visitId, { status: status as any });
+  const handleStatusChange = (visitId: string, status: VisitStatus) => {
+    updateVisit(visitId, { status });
   };
 
   return (
@@ -65,7 +70,24 @@ export default function QueuePage() {
         </Card>
       </div>
 
-      {sorted.length === 0 ? (
+      {error && (
+        <Card className="border-danger-100 bg-danger-50/40 p-6 text-center">
+          <p className="text-sm font-medium text-danger-700">Gagal memuat antrean dari backend.</p>
+          <p className="mt-1 text-xs text-danger-600">{error}</p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={refetch}>
+            Coba lagi
+          </Button>
+        </Card>
+      )}
+
+      {loading && !error && (
+        <div className="space-y-3">
+          <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+        </div>
+      )}
+
+      {!loading && !error && sorted.length === 0 ? (
         <Card className="p-8 text-center">
           <ListOrdered className="mx-auto mb-3 size-8 text-slate-300" />
           <p className="text-sm text-slate-500">Tidak ada antrean saat ini.</p>

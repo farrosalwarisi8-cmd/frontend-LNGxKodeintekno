@@ -1,27 +1,93 @@
-import { apiClient, setToken, clearToken } from "@/lib/api-client";
+import { apiClient, setToken, clearToken, setRefreshToken } from "@/lib/api-client";
+
+/**
+ * Modul 1 — IAM / Autentikasi.
+ * Endpoint mengikuti backend (Domain 1: IAM):
+ *   POST /api/v1/auth/login
+ *   POST /api/v1/auth/mfa/verify
+ *   POST /api/v1/auth/refresh
+ */
+
+/** Role backend (kode RBAC) -> role frontend (lib/types Role). */
+export const BACKEND_ROLE_MAP: Record<string, string> = {
+  SYSTEM_ADMIN: "admin",
+  DOCTOR_OH: "dokter-oh",
+  DOCTOR_CLINIC: "dokter-klinik",
+  NURSE: "perawat",
+  PHARMACIST: "apoteker",
+  LAB_ANALYST: "lab",
+  RADIOLOGIST: "lab",
+  HR_ADMIN: "hr",
+  HSE_OFFICER: "hse",
+  HSE_MANAGER: "hse",
+  MANAGEMENT: "manajemen",
+};
+
+/** Nama tampilan peran (dipakai untuk title user pada sidebar/topbar). */
+export const ROLE_TITLES: Record<string, string> = {
+  admin: "System Administrator",
+  "dokter-oh": "Dokter Spesialis Okupasi",
+  "dokter-klinik": "Dokter Klinik",
+  perawat: "Perawat Klinik",
+  apoteker: "Apoteker",
+  lab: "Analis Lab / Radiolog",
+  "admin-klinik": "Admin Klinik",
+  hr: "HR Officer",
+  hse: "HSE Officer",
+  manajemen: "Management",
+  pekerja: "Pekerja",
+};
+
+export function mapBackendRole(roles: string[] = []): string {
+  for (const r of roles) {
+    if (BACKEND_ROLE_MAP[r]) return BACKEND_ROLE_MAP[r];
+  }
+  // Role tidak dikenal: batasi akses UI ke modul paling rendah (least privilege)
+  return "pekerja";
+}
+
+/** Bentuk `user` pada response login backend. */
+export interface BackendUser {
+  id: string;
+  username: string;
+  email?: string;
+  roles?: string[];
+  isMedicalRole?: boolean;
+}
+
+export interface SessionUser {
+  id: string;
+  username: string;
+  name: string;
+  role: string;
+  isMedicalRole: boolean;
+}
 
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    id: string;
-    username: string;
-    name: string;
-    role: string;
-    isMedicalRole: boolean;
-  };
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  user?: BackendUser;
   mfaRequired?: boolean;
+  userId?: string;
+  mfaMethod?: string;
+  message?: string;
 }
 
 export interface MfaVerifyResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    id: string;
-    username: string;
-    name: string;
-    role: string;
-    isMedicalRole: boolean;
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  user?: BackendUser;
+}
+
+export function toSessionUser(user: BackendUser): SessionUser {
+  return {
+    id: user.id,
+    username: user.username,
+    name: user.username,
+    role: mapBackendRole(user.roles ?? []),
+    isMedicalRole: user.isMedicalRole ?? false,
   };
 }
 
@@ -30,6 +96,7 @@ export const authService = {
     const res = await apiClient.post<LoginResponse>("/auth/login", { username, password });
     if (res.accessToken) {
       setToken(res.accessToken);
+      if (res.refreshToken) setRefreshToken(res.refreshToken);
     }
     return res;
   },
@@ -38,6 +105,7 @@ export const authService = {
     const res = await apiClient.post<MfaVerifyResponse>("/auth/mfa/verify", { userId, totpCode });
     if (res.accessToken) {
       setToken(res.accessToken);
+      if (res.refreshToken) setRefreshToken(res.refreshToken);
     }
     return res;
   },

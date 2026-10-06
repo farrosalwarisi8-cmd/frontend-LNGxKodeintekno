@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
+import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -17,6 +20,9 @@ export default function MedicinePage() {
   const stockBatches = useStore((s) => s.stockBatches);
   const locations = useStore((s) => s.locations);
   const receiveStock = useStore((s) => s.receiveStock);
+
+  // Modul 5 — sinkron inventaris FEFO dari backend (GET /pharmacy/inventory)
+  const { loading, error, refetch } = useSyncedModules(() => syncInventory());
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -88,9 +94,19 @@ export default function MedicinePage() {
 
       <p className="text-sm text-slate-500">{filtered.length} obat ditemukan</p>
 
-      {filtered.length === 0 ? (
+      {error && <ErrorState title="Gagal memuat inventaris" message={error} onRetry={refetch} />}
+
+      {loading && !error && (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      )}
+
+      {!loading && !error && filtered.length === 0 ? (
         <EmptyState icon={Pill} title="Tidak ada obat ditemukan" description="Coba ubah kata kunci pencarian." />
-      ) : (
+      ) : !loading && !error ? (
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
             <table className="w-full">
@@ -164,7 +180,7 @@ export default function MedicinePage() {
             })}
           </div>
         </>
-      )}
+      ) : null}
 
       {showReceiveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

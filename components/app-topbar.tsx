@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Search, WifiOff, Globe } from "lucide-react";
 import { useStore, useCurrentUser } from "@/lib/store";
+import { notificationService } from "@/lib/services/notification.service";
 import { ROLES, LANGUAGES } from "@/lib/constants";
 import { NAV } from "@/lib/rbac";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,20 @@ export function AppTopbar() {
   const markRead = useStore((s) => s.markNotificationRead);
   const isOnline = useStore((s) => s.isOnline);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Modul 6 — tandai sudah dibaca ke backend (PUT /notifications/:id/read)
+  const handleMarkRead = (id: string) => {
+    markRead(id);
+    notificationService.markAsRead(id).catch(() => undefined);
+  };
+
+  const handleMarkAllRead = () => {
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    markAllRead();
+    unreadIds.forEach((id) => {
+      notificationService.markAsRead(id).catch(() => undefined);
+    });
+  };
 
   if (!user) return null;
   const nav = NAV[user.role] ?? [];
@@ -117,7 +132,7 @@ export function AppTopbar() {
               <DropdownMenuLabel className="flex items-center justify-between">
                 Notifikasi
                 {unread > 0 && (
-                  <Button variant="ghost" size="xs" onClick={markAllRead}>
+                  <Button variant="ghost" size="xs" onClick={handleMarkAllRead}>
                     Tandai dibaca
                   </Button>
                 )}
@@ -137,7 +152,7 @@ export function AppTopbar() {
                     key={n.id}
                     className="flex-col items-start"
                     onClick={() => {
-                      markRead(n.id);
+                      handleMarkRead(n.id);
                       if (n.link) router.push(n.link);
                     }}
                   >

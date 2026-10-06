@@ -1,4 +1,3 @@
-import { apiClient } from "@/lib/api-client";
 import type {
   ConsentStatus,
   CreatePersonDraft,
@@ -11,78 +10,42 @@ import type {
   PersonListItem,
   PeopleService,
 } from "./people.types";
+import { patientService } from "@/lib/services/patient.service";
 
+/**
+ * Repository Modul 2 (Registrasi Pekerja, MRN, Consent).
+ * Seluruh implementasi didelegasikan ke `patientService` sehingga hanya ada
+ * satu tempat pemetaan response backend -> tipe frontend.
+ */
 export const peopleRepository: PeopleService = {
-  async listPeople(params: ListPeopleParams): Promise<Paginated<PersonListItem>> {
-    const query = new URLSearchParams();
-    if (params.search) query.set("search", params.search);
-    if (params.page) query.set("page", String(params.page));
-    if (params.pageSize) query.set("limit", String(params.pageSize));
-
-    const qs = query.toString();
-    return apiClient.get<Paginated<PersonListItem>>(`/patients${qs ? `?${qs}` : ""}`);
+  listPeople(params: ListPeopleParams): Promise<Paginated<PersonListItem>> {
+    return patientService.list(params);
   },
 
-  async getPerson(patientId: string): Promise<Person> {
-    return apiClient.get<Person>(`/patients/${patientId}/profile`);
+  getPerson(patientId: string): Promise<Person> {
+    return patientService.getProfile(patientId);
   },
 
-  async duplicateCheck(input: DuplicateCheckInput): Promise<DuplicateCheckResult> {
-    const result = await apiClient.get<Paginated<PersonListItem>>(
-      `/patients?search=${encodeURIComponent(input.identifierValue)}&limit=1`
-    );
-    const existing = result.data[0];
-    if (!existing) {
-      return { isDuplicate: false, severity: "NONE", message: "Identifier tersedia." };
-    }
-    return {
-      isDuplicate: true,
-      severity: existing.employmentStatus === "ACTIVE" ? "BLOCK" : "WARNING",
-      message:
-        existing.employmentStatus === "ACTIVE"
-          ? "Identifier ini sudah terdaftar sebagai pekerja aktif. Periksa kembali data atau buka profil yang sudah ada."
-          : "Identifier terdeteksi sudah digunakan. Record yang sama ditemukan dalam scope Anda.",
-      existingPerson: {
-        id: existing.id,
-        fullName: existing.fullName,
-        mrn: existing.mrn,
-        employeeNo: existing.employeeNo,
-        employmentStatus: existing.employmentStatus,
-      },
-    };
+  duplicateCheck(input: DuplicateCheckInput): Promise<DuplicateCheckResult> {
+    return patientService.duplicateCheck(input);
   },
 
-  async createPerson(input: CreatePersonDraft): Promise<CreatedPersonResult> {
-    return apiClient.post<CreatedPersonResult>("/patients", {
-      employeeNo: input.employeeNo,
-      fullName: input.fullName,
-      birthDate: input.birthDate,
-      sex: input.sex === "MALE" ? "M" : "F",
-      email: input.email,
-      phone: input.phone,
-      organizationId: input.organizationId,
-      orgUnitId: input.orgUnitId,
-      siteId: input.siteId,
-      jobTaskId: input.jobTaskId,
-      identifierType: input.identifierType,
-      identifierValue: input.identifierValue,
-    });
+  createPerson(input: CreatePersonDraft): Promise<CreatedPersonResult> {
+    return patientService.create(input);
   },
 
   async resendConsent(patientId: string): Promise<{ success: boolean; message: string }> {
-    return apiClient.post<{ success: boolean; message: string }>("/consents/send", {
-      patientId,
-      consentType: "DATA_PROCESSING",
-    });
+    const res = await patientService.sendConsent(patientId, "DATA_PROCESSING");
+    return { success: res.success, message: res.message ?? "Permintaan consent dikirim ulang." };
   },
 
-  async decideConsent(
+  decideConsent(
     token: string,
     decision: "APPROVED" | "REJECTED"
   ): Promise<{ success: boolean; status: ConsentStatus }> {
-    return apiClient.post<{ success: boolean; status: ConsentStatus }>(
-      "/public/consents/verify",
-      { token, action: decision === "APPROVED" ? "AGREED" : "DECLINED" }
+    return patientService.verifyConsent(
+      token,
+      decision === "APPROVED" ? "AGREED" : "DECLINED"
     );
   },
 };
