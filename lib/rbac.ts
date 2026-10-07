@@ -4,6 +4,8 @@ export type NavItem = {
   title: string
   href: string
   icon: string
+  /** Item tanpa halaman — ditampilkan disabled, bukan diarahkan ke route lain. */
+  disabled?: boolean
 }
 
 export const NAV: Record<Role, NavItem[]> = {
@@ -50,9 +52,9 @@ export const NAV: Record<Role, NavItem[]> = {
   ],
   lab: [
     { title: "Dashboard", href: "/dashboard", icon: "layout-dashboard" },
-    { title: "Lab Orders", href: "/mcu", icon: "activity" },
-    { title: "Lab Results", href: "/mcu", icon: "file-text" },
-    { title: "Radiology", href: "/mcu", icon: "activity" },
+    { title: "Lab Orders", href: "/lab", icon: "activity", disabled: true },
+    { title: "Lab Results", href: "/lab", icon: "file-text", disabled: true },
+    { title: "Radiology", href: "/lab", icon: "activity", disabled: true },
   ],
   "admin-klinik": [
     { title: "Dashboard", href: "/dashboard", icon: "layout-dashboard" },

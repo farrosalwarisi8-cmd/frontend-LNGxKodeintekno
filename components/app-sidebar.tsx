@@ -69,6 +69,20 @@ export function AppSidebar() {
           const active =
             pathname === item.href ||
             (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          if (item.disabled) {
+            return (
+              <span
+                key={item.href}
+                aria-disabled="true"
+                className="flex cursor-not-allowed items-center gap-2 px-2.5 py-2 text-sm font-medium text-muted-foreground/60"
+                title="Segera hadir"
+              >
+                <Icon className="size-4" />
+                {item.title}
+                <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px]">Segera hadir</span>
+              </span>
+            );
+          }
           return (
             <Link
               key={item.href}

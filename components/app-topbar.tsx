@@ -89,8 +89,8 @@ export function AppTopbar() {
               <CommandInput placeholder="Cari pasien, MCU, kunjungan..." />
               <CommandList>
                 <CommandEmpty>Tidak ada hasil.</CommandEmpty>
-                <CommandGroup heading="Menu">
-                  {nav.map((item) => (
+              <CommandGroup heading="Menu">
+                {nav.filter((item) => !item.disabled).map((item) => (
                     <CommandItem
                       key={item.href}
                       onSelect={() => {

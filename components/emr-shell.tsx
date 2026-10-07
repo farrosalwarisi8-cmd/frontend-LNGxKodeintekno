@@ -37,6 +37,10 @@ import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { ROLES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { getNavigation, isNavActive } from "@/lib/navigation";
+import { INITIAL_ONLINE, onlineStateFromEvent } from "@/lib/online";
+import { Breadcrumb } from "@/components/breadcrumb";
+import { NotificationBell } from "@/components/notification-bell";
 
 const ROLE_LABELS: Record<DemoRole, string> = {
   ADMIN_CLINIC: "Admin Klinik",
@@ -82,37 +86,18 @@ const ICON_MAP: Record<string, LucideIcon> = {
   globe: Globe,
 };
 
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: "layout-dashboard" },
-  { href: "/demo", label: "Demo", icon: "flask" },
-  { href: "/people", label: "People", icon: "users" },
-  { href: "/employees", label: "Pekerja", icon: "users" },
-  { href: "/mcu", label: "MCU", icon: "activity" },
-  { href: "/mcu/review", label: "Review MCU", icon: "stethoscope" },
-  { href: "/visits", label: "Kunjungan", icon: "clipboard-list" },
-  { href: "/visits/queue", label: "Antrean", icon: "list-ordered" },
-  { href: "/medical-records", label: "Rekam Medis", icon: "file-text" },
-  { href: "/medicine", label: "Farmasi", icon: "pill" },
-  { href: "/medicine/dispense", label: "Dispensing", icon: "pill" },
-  { href: "/certificates", label: "Sertifikat", icon: "badge-check" },
-  { href: "/reports", label: "Laporan", icon: "bar-chart" },
-  { href: "/health-status", label: "Status Kesehatan", icon: "heart-pulse" },
-  { href: "/waiver", label: "Waiver", icon: "shield-check" },
-  { href: "/da", label: "D&A", icon: "flask" },
-  { href: "/emergency", label: "Emergency", icon: "alert-triangle" },
-  { href: "/users", label: "User", icon: "users" },
-  { href: "/master-data", label: "Master Data", icon: "database" },
-  { href: "/audit-logs", label: "Audit Log", icon: "history" },
-];
+// Navigasi terpusat di `@/lib/navigation` (label, icon, permission, active route).
 
 function useOnline() {
-  // Nilai awal dibaca saat inisialisasi state (bukan di dalam effect)
-  const [online, setOnline] = useState(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine
-  );
+  // Nilai awal HARUS sama di server dan client (INITIAL_ONLINE = true) agar
+  // tidak terjadi hydration mismatch; status sesungguhnya disinkronkan
+  // setelah mount lewat navigator.onLine + event online/offline.
+  const [online, setOnline] = useState(INITIAL_ONLINE);
   useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
+    const update = () => setOnline(navigator.onLine);
+    update();
+    const on = () => setOnline(onlineStateFromEvent("online"));
+    const off = () => setOnline(onlineStateFromEvent("offline"));
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
     return () => {
@@ -135,6 +120,8 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const user = useCurrentUser();
   const logout = useStore((s) => s.logout);
   const notifications = useStore((s) => s.notifications);
+  // Satu sumber navigasi: difilter per permission role (lihat @/lib/navigation).
+  const nav = getNavigation(user?.role ?? null);
 
   const unreadCount = user ? notifications.filter((n) => n.userId === user.id && !n.read).length : 0;
 
@@ -155,7 +142,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             </div>
             <button
               onClick={() => setDemoBannerVisible(false)}
-              className="shrink-0 rounded p-0.5 text-warning-600 hover:bg-warning-100"
+              className="flex size-11 shrink-0 items-center justify-center rounded-lg text-warning-600 hover:bg-warning-100"
               aria-label="Tutup banner demo"
             >
               <X className="size-3.5" aria-hidden="true" />
@@ -189,10 +176,26 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-            {NAV_ITEMS.map((item) => {
+          <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Navigasi utama">
+            {nav.map((item) => {
               const Icon = ICON_MAP[item.icon] ?? Activity;
-              const active = pathname === item.href || (item.href !== "/demo" && pathname.startsWith(item.href));
+              const active = isNavActive(pathname, item.href, item.end);
+              if (item.disabled) {
+                return (
+                  <span
+                    key={item.href}
+                    aria-disabled="true"
+                    className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300"
+                    title="Segera hadir"
+                  >
+                    <Icon className="size-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{item.label}</span>
+                    <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-400">
+                      Segera hadir
+                    </span>
+                  </span>
+                );
+              }
               return (
                 <Link
                   key={item.href}
@@ -222,7 +225,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           )}
 
           <div className="border-t border-slate-100 px-4 py-3">
-            <p className="text-[10px] text-slate-400">Frontend-only demo · No backend</p>
+            <p className="text-[10px] text-slate-400">Kodein Klinik · EMR Demo</p>
           </div>
         </aside>
 
@@ -241,15 +244,22 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   <span className="hidden sm:inline">Offline</span>
                 </div>
               )}
+              <NotificationBell />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                className="flex size-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
                 aria-label="Menu"
+                aria-expanded={mobileMenuOpen}
               >
                 <Menu className="size-5" />
               </button>
             </div>
           </header>
+
+          {/* Breadcrumb compact di mobile */}
+          <div className="border-b border-slate-100 bg-white px-4 py-2 lg:hidden">
+            <Breadcrumb />
+          </div>
 
           {mobileMenuOpen && (
             <div className="fixed inset-0 z-40 lg:hidden">
@@ -261,10 +271,23 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                     <X className="size-5" />
                   </button>
                 </div>
-                <nav className="space-y-1">
-                  {NAV_ITEMS.map((item) => {
+                <nav className="space-y-1" aria-label="Navigasi mobile">
+                  {nav.map((item) => {
                     const Icon = ICON_MAP[item.icon] ?? Activity;
-                    const active = pathname === item.href || (item.href !== "/demo" && pathname.startsWith(item.href));
+                    const active = isNavActive(pathname, item.href, item.end);
+                    if (item.disabled) {
+                      return (
+                        <span
+                          key={item.href}
+                          aria-disabled="true"
+                          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300"
+                        >
+                          <Icon className="size-4" />
+                          {item.label}
+                          <span className="ml-auto text-[10px] text-slate-400">Segera hadir</span>
+                        </span>
+                      );
+                    }
                     return (
                       <Link
                         key={item.href}
@@ -274,6 +297,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                           "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                           active ? "bg-primary-50 text-primary-700" : "text-slate-600 hover:bg-slate-100"
                         )}
+                        aria-current={active ? "page" : undefined}
                       >
                         <Icon className="size-4" />
                         {item.label}
@@ -284,6 +308,64 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           )}
+
+          {/* Topbar desktop: breadcrumb + offline + notifikasi + user menu */}
+          <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 lg:flex">
+            <Breadcrumb />
+            <div className="flex items-center gap-2">
+              {!isOnline && (
+                <div
+                  role="status"
+                  className="flex items-center gap-1.5 rounded-full bg-warning-50 px-2.5 py-1 text-xs text-warning-700"
+                >
+                  <WifiOff className="size-3.5" aria-hidden="true" />
+                  <span>Offline</span>
+                </div>
+              )}
+              <NotificationBell />
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={userMenuOpen}
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-100"
+                >
+                  <span className="flex size-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                    {(user?.name ?? "?").charAt(0).toUpperCase()}
+                  </span>
+                  <span className="hidden text-left xl:block">
+                    <span className="block text-xs font-semibold leading-tight text-slate-900">{user?.name}</span>
+                    <span className="block text-[10px] leading-tight text-slate-500">{user?.title}</span>
+                  </span>
+                  <ChevronRight className="size-3.5 rotate-90 text-slate-400" aria-hidden="true" />
+                </button>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                      <Link
+                        href="/my/profile"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        <User className="size-4" aria-hidden="true" /> Profil Saya
+                      </Link>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        <LogOut className="size-4" aria-hidden="true" /> Keluar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </header>
 
           <main className="flex-1 overflow-y-auto px-4 py-5 pb-24 md:px-6 lg:pb-6">
             <div className="mx-auto max-w-6xl">
@@ -304,7 +386,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           { href: "/medicine", label: "Farmasi", icon: Pill },
         ].map((item) => {
           const Icon = item.icon;
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const active = isNavActive(pathname, item.href);
           return (
             <Link
               key={item.href}
