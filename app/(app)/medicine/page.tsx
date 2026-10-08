@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
@@ -66,10 +68,12 @@ export default function MedicinePage() {
           <h1 className="text-2xl font-semibold text-slate-900">Farmasi</h1>
           <p className="text-sm text-slate-500">Stok obat dan batch management</p>
         </div>
-        <Button onClick={() => setShowReceiveModal(true)}>
-          <Plus className="size-4" />
-          Terima Stok
-        </Button>
+        <Can action="pharmacy.receive-stock">
+          <Button onClick={() => setShowReceiveModal(true)}>
+            <Plus className="size-4" />
+            Terima Stok
+          </Button>
+        </Can>
       </div>
 
       <Card className="p-4">
@@ -222,7 +226,9 @@ export default function MedicinePage() {
               />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setShowReceiveModal(false)}>Batal</Button>
-                <Button onClick={handleReceive}>Terima</Button>
+                <Can action="pharmacy.receive-stock">
+                  <Button onClick={handleReceive}>Terima</Button>
+                </Can>
               </div>
             </div>
           </div>

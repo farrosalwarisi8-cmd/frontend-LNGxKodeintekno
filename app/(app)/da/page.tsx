@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -162,10 +164,12 @@ export default function DAPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Drug & Alcohol Test</h1>
           <p className="text-sm text-slate-500">Kelola tes D&A dengan chain of custody</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="size-4" />
-          Tes Baru
-        </Button>
+        <Can action="da.manage">
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="size-4" />
+            Tes Baru
+          </Button>
+        </Can>
       </div>
 
       {msg && (
@@ -235,12 +239,14 @@ export default function DAPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {test.status === "PENDING" && (
-                    <Button size="sm" variant="outline" onClick={() => handleVerify(test.id)} disabled={busy || !test.backendId || test.status !== "PENDING"}>Verify</Button>
-                  )}
-                  {test.status === "VERIFIED" && (
-                    <Button size="sm" onClick={() => handleCertify(test.id)} disabled={busy || !test.backendId || test.status !== "VERIFIED"}>Certify</Button>
-                  )}
+                  <Can action="da.manage">
+                    {test.status === "PENDING" && (
+                      <Button size="sm" variant="outline" onClick={() => handleVerify(test.id)} disabled={busy || !test.backendId || test.status !== "PENDING"}>Verify</Button>
+                    )}
+                    {test.status === "VERIFIED" && (
+                      <Button size="sm" onClick={() => handleCertify(test.id)} disabled={busy || !test.backendId || test.status !== "VERIFIED"}>Certify</Button>
+                    )}
+                  </Can>
                 </div>
               </div>
               {test.result === "POSITIVE" && (
@@ -297,7 +303,9 @@ export default function DAPage() {
           <Input label="Chain of Custody" value={formData.chainOfCustody} onChange={(e) => setFormData((f) => ({ ...f, chainOfCustody: e.target.value }))} placeholder="Catatan chain of custody" />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Button onClick={handleSubmit} loading={busy} disabled={busy}>Simpan</Button>
+            <Can action="da.manage">
+              <Button onClick={handleSubmit} loading={busy} disabled={busy}>Simpan</Button>
+            </Can>
           </div>
         </div>
       </Modal>

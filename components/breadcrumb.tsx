@@ -33,7 +33,7 @@ export function Breadcrumb({ className }: { className?: string }) {
               <span
                 aria-current={isLast ? "page" : undefined}
                 className={cn(
-                  "truncate",
+                  "truncate py-1",
                   isLast ? "font-medium text-slate-900" : "text-slate-500"
                 )}
               >
@@ -42,7 +42,7 @@ export function Breadcrumb({ className }: { className?: string }) {
             ) : (
               <Link
                 href={item.href}
-                className="truncate text-slate-500 transition-colors hover:text-slate-900"
+                className="truncate py-1 text-slate-500 transition-colors hover:text-slate-900"
               >
                 {item.label}
               </Link>

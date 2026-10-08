@@ -254,35 +254,52 @@ export function RegistrationWizard() {
         <p className="text-sm text-slate-500">Lengkapi data pekerja dalam 5 langkah mudah.</p>
       </div>
 
-      <div className="mb-6 flex items-center justify-between">
-        {STEPS.map((s, index) => {
-          const Icon = s.icon;
-          const isActive = currentStep === s.id;
-          const isCompleted = currentStep > s.id;
-          return (
-            <div key={s.id} className="flex flex-1 items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`flex size-10 items-center justify-center rounded-full border-2 transition-colors ${
-                    isCompleted
-                      ? "border-primary-600 bg-primary-600 text-white"
-                      : isActive
-                        ? "border-primary-600 bg-white text-primary-600"
-                        : "border-slate-200 bg-white text-slate-400"
-                  }`}
-                >
-                  {isCompleted ? <Check className="size-4" /> : <Icon className="size-4" />}
+      <div className="mb-6">
+        {/* items-start: semua lingkaran sejajar walau label baris 2 punya tinggi berbeda */}
+        <div className="flex items-start justify-between">
+          {STEPS.map((s, index) => {
+            const Icon = s.icon;
+            const isActive = currentStep === s.id;
+            const isCompleted = currentStep > s.id;
+            return (
+              <div key={s.id} className="flex min-w-0 flex-1 items-start">
+                <div className="flex min-w-0 flex-col items-center">
+                  <div
+                    className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors sm:size-10 ${
+                      isCompleted
+                        ? "border-primary-600 bg-primary-600 text-white"
+                        : isActive
+                          ? "border-primary-600 bg-white text-primary-600"
+                          : "border-slate-200 bg-white text-slate-400"
+                    }`}
+                    aria-current={isActive ? "step" : undefined}
+                  >
+                    {isCompleted ? <Check className="size-4" /> : <Icon className="size-4" />}
+                  </div>
+                  {/* Label hanya di layar >= sm; di mobile cukup indikator + keterangan di bawah. */}
+                  <span
+                    className={`mt-1 hidden max-w-24 text-center text-xs font-medium leading-tight sm:block ${
+                      isActive ? "text-primary-600" : "text-slate-400"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
                 </div>
-                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-slate-400"}`}>
-                  {s.label}
-                </span>
+                {index < STEPS.length - 1 && (
+                  <div
+                    className={`mx-1.5 mt-4 h-0.5 min-w-2 flex-1 sm:mx-3 sm:mt-5 ${
+                      currentStep > s.id ? "bg-primary-600" : "bg-slate-200"
+                    }`}
+                  />
+                )}
               </div>
-              {index < STEPS.length - 1 && (
-                <div className={`mx-2 h-0.5 flex-1 ${currentStep > s.id ? "bg-primary-600" : "bg-slate-200"}`} />
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        <p className="mt-2 text-center text-xs font-medium text-slate-500 sm:hidden">
+          Langkah {currentStep} dari {STEPS.length} ·{" "}
+          <span className="text-primary-700">{STEPS.find((s) => s.id === currentStep)?.label}</span>
+        </p>
       </div>
 
       {!isOnline && (
@@ -584,21 +601,23 @@ export function RegistrationWizard() {
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+        {/* Mobile: tombol ditumpuk full-width (tidak melebar ke luar layar); desktop: satu baris. */}
+        <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             variant="ghost"
             onClick={handleBack}
             disabled={currentStep === 1}
+            className="w-full justify-center sm:w-auto"
           >
             <ChevronLeft className="size-4" />
             Kembali
           </Button>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleSaveDraft}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button variant="outline" onClick={handleSaveDraft} className="w-full justify-center sm:w-auto">
               Simpan draft
             </Button>
             {currentStep < 5 ? (
-              <Button onClick={handleNext}>
+              <Button onClick={handleNext} className="w-full justify-center sm:w-auto">
                 Lanjut
                 <ChevronRight className="size-4" />
               </Button>
@@ -607,6 +626,7 @@ export function RegistrationWizard() {
                 onClick={handleSubmit}
                 loading={submitting}
                 disabled={!isOnline}
+                className="w-full justify-center sm:w-auto"
               >
                 <ShieldCheck className="size-4" />
                 Simpan & kirim consent

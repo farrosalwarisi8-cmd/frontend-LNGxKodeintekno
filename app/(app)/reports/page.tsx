@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
@@ -14,6 +16,7 @@ import {
   type TopDiseaseItem,
 } from "@/lib/services/reporting.service";
 import { ErrorState } from "@/shared/components/design-system/error-state";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -83,13 +86,21 @@ export default function ReportsPage() {
     count: visits.filter((v) => v.diagnosisIds?.includes(d.id)).length,
   })).sort((a, b) => b.count - a.count).slice(0, 10);
 
-  const topRows = topDiseases.length > 0
-    ? topDiseases.map((t, i) => ({
-        key: t.icd10 ?? t.code ?? String(i),
-        label: `${t.icd10 ?? t.code ?? "-"} — ${t.name ?? t.disease ?? ""}`,
-        count: t.caseCount ?? t.count ?? 0,
-      }))
-    : diagnosisCounts.map((d) => ({ key: d.id, label: `${d.code} — ${d.description}`, count: d.count }));
+  // Backend bisa mengirim entri analitik tanpa kode/nama (mis. agregat kosong).
+  // Baris tanpa label dibuang agar tabel tidak menampilkan "- —" dengan angka 0.
+  const topRows = (
+    topDiseases.length > 0
+      ? topDiseases.map((t, i) => {
+          const code = (t.icd10 ?? t.code ?? "").trim();
+          const name = (t.name ?? t.disease ?? "").trim();
+          return {
+            key: code || name || String(i),
+            label: [code, name].filter(Boolean).join(" — "),
+            count: t.caseCount ?? t.count ?? 0,
+          };
+        })
+      : diagnosisCounts.map((d) => ({ key: d.id, label: `${d.code} — ${d.description}`, count: d.count }))
+  ).filter((row) => row.label.length > 0);
 
   const mcuByType = ["Pre-Employment", "Periodic", "Return to Work", "Special"].map((type) => ({
     type,
@@ -103,10 +114,12 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Laporan & Analitik</h1>
           <p className="text-sm text-slate-500">Dashboard reporting per role</p>
         </div>
-        <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting || loading}>
-          <Download className="size-4" />
-          Ekspor PDF
-        </Button>
+        <Can action="reports.export">
+          <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting || loading}>
+            <Download className="size-4" />
+            Ekspor PDF
+          </Button>
+        </Can>
       </div>
 
       {exportMsg && (
@@ -220,17 +233,24 @@ export default function ReportsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {topRows.map((d) => (
-                <div key={d.key} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">{d.label}</span>
-                  <Badge variant="info">{d.count}</Badge>
-                </div>
-              ))}
-              {topRows.length === 0 && (
-                <p className="text-sm text-slate-400">Belum ada data diagnosis.</p>
-              )}
-            </div>
+            {topRows.length === 0 ? (
+              <EmptyState
+                icon={TrendingUp}
+                title="Belum ada data diagnosis"
+                description="Data akan muncul setelah ada kunjungan dengan diagnosis ICD-10."
+              />
+            ) : (
+              <div className="space-y-2">
+                {topRows.map((d) => (
+                  <div key={d.key} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate text-slate-600" title={d.label}>
+                      {d.label}
+                    </span>
+                    <Badge variant="info">{d.count}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

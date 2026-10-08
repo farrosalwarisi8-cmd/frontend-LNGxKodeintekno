@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
@@ -87,10 +89,12 @@ export default function WaiverPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Waiver Visitor</h1>
           <p className="text-sm text-slate-500">Kelola waiver untuk visitor tanpa MCU</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="size-4" />
-          Buat Waiver
-        </Button>
+        <Can action="waiver.decide">
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="size-4" />
+            Buat Waiver
+          </Button>
+        </Can>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -144,10 +148,10 @@ export default function WaiverPage() {
                   {waiver.status}
                 </Badge>
                 {waiver.status === "PENDING" && (
-                  <>
+                  <Can action="waiver.decide">
                     <Button size="sm" variant="outline" onClick={() => handleDecision(waiver.id, "REJECTED")}>Tolak</Button>
                     <Button size="sm" onClick={() => handleDecision(waiver.id, "APPROVED")}>Approve</Button>
-                  </>
+                  </Can>
                 )}
               </div>
             </div>
@@ -191,7 +195,9 @@ export default function WaiverPage() {
           />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Button onClick={handleSubmit}>Simpan</Button>
+            <Can action="waiver.decide">
+              <Button onClick={handleSubmit}>Simpan</Button>
+            </Can>
           </div>
         </div>
       </Modal>

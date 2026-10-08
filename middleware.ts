@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-const PUBLIC_PATHS = ["/login", "/public", "/verify", "/demo"];
+import { isPublicPath, normalizePath } from "./lib/public-paths";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const normalizedPathname = pathname.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+  const normalizedPathname = normalizePath(pathname);
 
-  const isPublicPath = PUBLIC_PATHS.some(
-    (path) => normalizedPathname === path || normalizedPathname.startsWith(`${path}/`)
-  );
-
-  if (isPublicPath) {
+  if (isPublicPath(normalizedPathname)) {
     return NextResponse.next();
   }
 

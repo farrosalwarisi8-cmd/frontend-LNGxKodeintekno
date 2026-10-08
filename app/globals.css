@@ -109,4 +109,31 @@
   .focus-ring {
     @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500;
   }
+
+  /*
+   * Scrollbar tipis & netral untuk area yang memang bisa di-scroll
+   * (navigasi sidebar, konten utama, panel). Tanpa ini, scrollbar OS
+   * tampil sebagai batang gelap yang mengganggu di dalam kartu putih.
+   */
+  .scrollbar-subtle {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
+  .scrollbar-subtle::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-thumb {
+    background-color: var(--color-slate-300);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-slate-400);
+    background-clip: content-box;
+  }
 }

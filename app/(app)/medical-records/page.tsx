@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
@@ -165,10 +167,12 @@ export default function MedicalRecordsPage() {
                   <Badge variant={v.status === "Completed" ? "success" : "warning"}>
                     {v.status}
                   </Badge>
-                  <Button size="sm" variant="outline" onClick={() => openSOAP(v.id)}>
-                    <FileText className="size-3.5" />
-                    SOAP
-                  </Button>
+                  <Can action="visits.edit-soap">
+                    <Button size="sm" variant="outline" onClick={() => openSOAP(v.id)}>
+                      <FileText className="size-3.5" />
+                      SOAP
+                    </Button>
+                  </Can>
                 </div>
               </div>
             </Card>
@@ -251,7 +255,9 @@ export default function MedicalRecordsPage() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Button onClick={handleSaveSOAP}>Simpan SOAP</Button>
+            <Can action="visits.edit-soap">
+              <Button onClick={handleSaveSOAP}>Simpan SOAP</Button>
+            </Can>
           </div>
         </div>
       </Modal>

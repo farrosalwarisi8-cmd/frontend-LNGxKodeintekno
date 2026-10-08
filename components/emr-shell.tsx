@@ -32,12 +32,12 @@ import {
   Stethoscope,
   type LucideIcon,
 } from "lucide-react";
-import { useDemoRole } from "@/features/people/hooks/use-demo-role";
+import { useDemoMode } from "@/lib/demo-role";
 import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { ROLES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { getNavigation, isNavActive } from "@/lib/navigation";
+import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive } from "@/lib/navigation";
 import { INITIAL_ONLINE, onlineStateFromEvent } from "@/lib/online";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { NotificationBell } from "@/components/notification-bell";
@@ -109,19 +109,30 @@ function useOnline() {
 }
 
 export function EmrShell({ children }: { children: React.ReactNode }) {
-  const { role } = useDemoRole();
+  const { enabled: demoEnabled, demoRole, role } = useDemoMode();
   const pathname = usePathname();
   const router = useRouter();
   const isOnline = useOnline();
   const [demoBannerVisible, setDemoBannerVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const RoleIcon = ROLE_ICONS[role];
   const user = useCurrentUser();
   const logout = useStore((s) => s.logout);
   const notifications = useStore((s) => s.notifications);
-  // Satu sumber navigasi: difilter per permission role (lihat @/lib/navigation).
-  const nav = getNavigation(user?.role ?? null);
+
+  // Badge profil mengikuti role efektif: demo role saat demo mode aktif,
+  // selain itu role session.
+  const RoleIcon = demoEnabled ? ROLE_ICONS[demoRole] : ShieldCheck;
+  const roleLabel = demoEnabled
+    ? ROLE_LABELS[demoRole]
+    : user?.title || (role ? ROLES[role]?.label : "") || "—";
+  const badgeClass = demoEnabled ? ROLE_COLORS[demoRole] : "bg-slate-100 text-slate-600";
+
+  // Satu sumber navigasi: difilter per permission role efektif
+  // (lihat @/lib/navigation). Sidebar dan bottom navigation memakai filter yang sama.
+  const nav = getNavigation(role);
+  const bottomNav = getBottomNavigation(role);
+  const hasMoreNav = getOverflowNavigation(role).length > 0;
 
   const unreadCount = user ? notifications.filter((n) => n.userId === user.id && !n.read).length : 0;
 
@@ -132,7 +143,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      {demoBannerVisible && (
+      {demoEnabled && demoBannerVisible && (
         <div className="relative z-50 border-b border-warning-200 bg-warning-50 px-4 py-2">
           <div className="mx-auto flex max-w-screen-xl items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs text-warning-700">
@@ -152,7 +163,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex" aria-label="Navigasi utama">
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex" aria-label="Navigasi utama">
           <div className="flex h-14 items-center gap-2.5 border-b border-slate-100 px-5">
             <div className="flex size-8 items-center justify-center rounded-xl bg-primary-600">
               <Activity className="size-4 text-white" aria-hidden="true" />
@@ -164,19 +175,23 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="border-b border-slate-100 px-4 py-3">
-            <div className={cn("flex items-center gap-2 rounded-xl p-2.5", ROLE_COLORS[role])}>
+            <div className={cn("flex items-center gap-2 rounded-xl p-2.5", badgeClass)}>
               <RoleIcon className="size-4 shrink-0" aria-hidden="true" />
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold">{ROLE_LABELS[role]}</p>
-                <p className="text-[10px] opacity-70">Demo role aktif</p>
+                <p className="truncate text-xs font-semibold">{roleLabel}</p>
+                <p className="text-[10px] opacity-70">{demoEnabled ? "Demo role aktif" : "Peran sesi"}</p>
               </div>
-              <Link href="/demo" className="ml-auto shrink-0 rounded p-0.5 opacity-60 hover:opacity-100" aria-label="Ubah demo role">
-                <ChevronRight className="size-3" aria-hidden="true" />
+              <Link
+                href="/demo"
+                className="ml-auto -my-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:bg-black/5 hover:opacity-100"
+                aria-label="Ubah demo role"
+              >
+                <ChevronRight className="size-4" aria-hidden="true" />
               </Link>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Navigasi utama">
+          <nav className="scrollbar-subtle flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Navigasi utama">
             {nav.map((item) => {
               const Icon = ICON_MAP[item.icon] ?? Activity;
               const active = isNavActive(pathname, item.href, item.end);
@@ -189,9 +204,9 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                     title="Segera hadir"
                   >
                     <Icon className="size-4 shrink-0" aria-hidden="true" />
-                    <span className="truncate">{item.label}</span>
-                    <span className="ml-auto rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-400">
-                      Segera hadir
+                    <span className="min-w-0 truncate">{item.label}</span>
+                    <span className="ml-auto shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-normal text-slate-400">
+                      Segera
                     </span>
                   </span>
                 );
@@ -264,7 +279,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           {mobileMenuOpen && (
             <div className="fixed inset-0 z-40 lg:hidden">
               <div className="fixed inset-0 bg-black/40" onClick={() => setMobileMenuOpen(false)} />
-              <div className="fixed right-0 top-0 h-full w-72 overflow-y-auto bg-white p-4 shadow-xl">
+              <div className="scrollbar-subtle fixed right-0 top-0 h-full w-72 overflow-y-auto bg-white p-4 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-semibold text-slate-900">Menu</span>
                   <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
@@ -367,7 +382,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto px-4 py-5 pb-24 md:px-6 lg:pb-6">
+          <main className="scrollbar-subtle flex-1 overflow-y-auto px-4 py-5 pb-24 md:px-6 lg:pb-6">
             <div className="mx-auto max-w-6xl">
               {children}
             </div>
@@ -376,17 +391,12 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-slate-200 bg-white lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
         aria-label="Navigasi bawah"
       >
-        {[
-          { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-          { href: "/mcu", label: "MCU", icon: Activity },
-          { href: "/visits", label: "Kunjungan", icon: ClipboardList },
-          { href: "/medicine", label: "Farmasi", icon: Pill },
-        ].map((item) => {
-          const Icon = item.icon;
-          const active = isNavActive(pathname, item.href);
+        {bottomNav.map((item) => {
+          const Icon = ICON_MAP[item.icon] ?? Activity;
+          const active = isNavActive(pathname, item.href, item.end);
           return (
             <Link
               key={item.href}
@@ -402,14 +412,16 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-slate-400 hover:text-slate-700"
-          aria-label="Menu lainnya"
-        >
-          <MoreHorizontal className="size-5" aria-hidden="true" />
-          <span>Lainnya</span>
-        </button>
+        {hasMoreNav && (
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-slate-400 hover:text-slate-700"
+            aria-label="Menu lainnya"
+          >
+            <MoreHorizontal className="size-5" aria-hidden="true" />
+            <span>Lainnya</span>
+          </button>
+        )}
       </nav>
     </div>
   );

@@ -4,8 +4,18 @@ import { useStore, useCurrentUser } from "@/lib/store";
 import { MCU_STATUS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { formatDate } from "@/lib/format";
 import { Activity, HeartPulse, Calendar } from "lucide-react";
+
+function PageTitle() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-slate-900">MCU Saya</h1>
+      <p className="text-sm text-slate-500">Riwayat Medical Check-Up</p>
+    </div>
+  );
+}
 
 export default function MyMCUPage() {
   const user = useCurrentUser();
@@ -18,10 +28,14 @@ export default function MyMCUPage() {
   const employee = employees.find((e) => e.employeeId === user.employeeId);
   if (!employee) {
     return (
-      <Card className="p-8 text-center">
-        <Activity className="mx-auto mb-3 size-8 text-slate-300" />
-        <p className="text-sm text-slate-500">Data MCU tidak ditemukan.</p>
-      </Card>
+      <div className="space-y-4">
+        <PageTitle />
+        <EmptyState
+          icon={Activity}
+          title="Data MCU tidak ditemukan"
+          description="Akun Anda belum tertaut ke data pekerja, sehingga riwayat MCU belum bisa ditampilkan."
+        />
+      </div>
     );
   }
 
@@ -30,10 +44,7 @@ export default function MyMCUPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">MCU Saya</h1>
-        <p className="text-sm text-slate-500">Riwayat Medical Check-Up</p>
-      </div>
+      <PageTitle />
 
       {myHealthStatus.length > 0 && (
         <Card className="border-success-200 bg-success-50/50">
@@ -68,10 +79,11 @@ export default function MyMCUPage() {
 
       <div className="space-y-3">
         {myMCUs.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Activity className="mx-auto mb-3 size-8 text-slate-300" />
-            <p className="text-sm text-slate-500">Belum ada riwayat MCU.</p>
-          </Card>
+          <EmptyState
+            icon={Activity}
+            title="Belum ada riwayat MCU"
+            description="Riwayat Medical Check-Up Anda akan tampil di sini setelah pemeriksaan pertama selesai."
+          />
         ) : (
           myMCUs.map((mcu) => {
             const statusMeta = MCU_STATUS[mcu.status];

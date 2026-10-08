@@ -808,9 +808,17 @@ export const useStore = create<AppState>()(
   )
 )
 
+/**
+ * User aktif dari store.
+ *
+ * Dibaca lewat SATU selector agar `currentUserId` dan `users` selalu berasal
+ * dari snapshot store yang sama. Versi lama memakai dua `useStore` terpisah —
+ * saat rehidrasi belum selesai, `currentUserId` bisa masih `null` sementara
+ * `users` sudah terisi (atau sebaliknya), sehingga guard sempat menganggap
+ * pengguna belum login dan melempar ke /login saat halaman di-refresh.
+ */
 export function useCurrentUser(): User | null {
-  const currentUserId = useStore((s) => s.currentUserId)
-  return useStore((s) => s.users.find((u) => u.id === currentUserId) ?? null)
+  return useStore((s) => (s.currentUserId ? s.users.find((u) => u.id === s.currentUserId) ?? null : null))
 }
 
 export function useCurrentRole(): Role | null {

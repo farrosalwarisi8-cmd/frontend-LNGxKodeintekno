@@ -1,4 +1,4 @@
-import { can } from "../../lib/rbac";
+import { can, type Permission } from "../../lib/rbac";
 import type { Role } from "../../lib/types";
 
 /**
@@ -16,7 +16,7 @@ export interface NavigationItem {
   /** Nama ikon lucide yang dipetakan di shell (string agar lib ini bebas React). */
   icon: string;
   /** Aksi permission sesuai `can()` di lib/rbac. */
-  permission?: string;
+  permission?: Permission;
   /** Item tanpa halaman (mis. Lab & Radiologi) — tampil disabled. */
   disabled?: boolean;
   /** Aktif hanya jika pathname persis sama (mis. /dashboard). */
@@ -26,25 +26,25 @@ export interface NavigationItem {
 export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "layout-dashboard", end: true },
   { label: "Demo", href: "/demo", icon: "flask" },
-  { label: "People", href: "/people", icon: "users" },
-  { label: "Pekerja", href: "/employees", icon: "users" },
-  { label: "MCU & FTW", href: "/mcu", icon: "activity" },
+  { label: "People", href: "/people", icon: "users", permission: "manage-employees" },
+  { label: "Pekerja", href: "/employees", icon: "users", permission: "manage-employees" },
+  { label: "MCU & FTW", href: "/mcu", icon: "activity", permission: "view-mcu" },
   { label: "Review MCU", href: "/mcu/review", icon: "stethoscope", permission: "review-mcu" },
-  { label: "Kunjungan", href: "/visits", icon: "clipboard-list" },
+  { label: "Kunjungan", href: "/visits", icon: "clipboard-list", permission: "view-visits" },
   { label: "Registrasi Kunjungan", href: "/visits/new", icon: "user-plus", permission: "register-patient" },
-  { label: "Antrean", href: "/visits/queue", icon: "list-ordered" },
-  { label: "Rekam Medis", href: "/medical-records", icon: "file-text" },
-  { label: "Farmasi", href: "/medicine", icon: "pill" },
+  { label: "Antrean", href: "/visits/queue", icon: "list-ordered", permission: "view-visits" },
+  { label: "Rekam Medis", href: "/medical-records", icon: "file-text", permission: "view-clinical-notes" },
+  { label: "Farmasi", href: "/medicine", icon: "pill", permission: "manage-stock" },
   { label: "Dispensing", href: "/medicine/dispense", icon: "pill", permission: "dispense-medicine" },
-  { label: "Sertifikat", href: "/certificates", icon: "badge-check" },
-  { label: "Laporan", href: "/reports", icon: "bar-chart" },
-  { label: "Status Kesehatan", href: "/health-status", icon: "heart-pulse" },
-  { label: "Waiver", href: "/waiver", icon: "shield-check" },
-  { label: "D&A", href: "/da", icon: "flask" },
-  { label: "Emergency", href: "/emergency", icon: "alert-triangle" },
+  { label: "Sertifikat", href: "/certificates", icon: "badge-check", permission: "issue-certificate" },
+  { label: "Laporan", href: "/reports", icon: "bar-chart", permission: "view-reports" },
+  { label: "Status Kesehatan", href: "/health-status", icon: "heart-pulse", permission: "view-health-status" },
+  { label: "Waiver", href: "/waiver", icon: "shield-check", permission: "manage-hse" },
+  { label: "D&A", href: "/da", icon: "flask", permission: "manage-hse" },
+  { label: "Emergency", href: "/emergency", icon: "alert-triangle", permission: "view-emergency" },
   { label: "User", href: "/users", icon: "users", permission: "manage-users" },
-  { label: "Master Data", href: "/master-data", icon: "database" },
-  { label: "Audit Log", href: "/audit-logs", icon: "history" },
+  { label: "Master Data", href: "/master-data", icon: "database", permission: "manage-master-data" },
+  { label: "Audit Log", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
   // Halaman Lab & Radiologi belum ada — tampil disabled, jangan diarahkan ke /mcu.
   { label: "Lab & Radiologi", href: "/lab", icon: "flask", disabled: true },
 ];
@@ -101,15 +101,58 @@ function humanize(segment: string): string {
 
 /**
  * Menyaring navigasi berdasarkan role (permission `can()` di lib/rbac).
- * - `role=null` (demo publik / belum login) → semua item tampil.
- * - Item `disabled` selalu tampil (sebagai menu nonaktif “Segera hadir”).
+ * - `role=null` (belum/tidak login) → tidak ada item.
+ * - Item `disabled` selalu tampil (sebagai menu nonaktif "Segera hadir").
  */
 export function getNavigation(role: Role | null | undefined): NavigationItem[] {
-  if (!role) return NAVIGATION_ITEMS;
+  if (!role) return [];
   return NAVIGATION_ITEMS.filter((i) => {
     if (!i.permission) return true;
     return can(role, i.permission);
   });
+}
+
+/**
+ * Mobile bottom navigation.
+ *
+ * Memakai registry permission yang SAMA dengan sidebar & route guard —
+ * tidak ada mapping permission kedua. Item difilter dari `NAVIGATION_ITEMS`
+ * supaya urutan dan permission tidak pernah menyimpang dari sidebar.
+ */
+export const BOTTOM_NAV_ITEMS: NavigationItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: "layout-dashboard", permission: "view-dashboard", end: true },
+  { label: "MCU", href: "/mcu", icon: "activity", permission: "view-mcu" },
+  { label: "Kunjungan", href: "/visits", icon: "clipboard-list", permission: "view-visits" },
+  { label: "Farmasi", href: "/medicine", icon: "pill", permission: "manage-stock" },
+];
+
+const BOTTOM_NAV_HREFS = new Set(BOTTOM_NAV_ITEMS.map((i) => i.href));
+// Label ringkas khusus bottom bar ("MCU & FTW" → "MCU") — hanya presentasi;
+// permission tetap berasal dari NAVIGATION_ITEMS/getNavigation().
+const BOTTOM_NAV_LABELS = new Map(BOTTOM_NAV_ITEMS.map((i) => [i.href, i.label]));
+
+/** Item bottom navigation yang boleh diakses role (maksimal sepanjang daftar). */
+export function getBottomNavigation(role: Role | null | undefined): NavigationItem[] {
+  return getNavigation(role)
+    .filter((i) => BOTTOM_NAV_HREFS.has(i.href))
+    .map((i) => ({ ...i, label: BOTTOM_NAV_LABELS.get(i.href) ?? i.label }));
+}
+
+/** Item yang TIDAK ditampilkan di bottom navigation (dipakai tombol "Lainnya"). */
+export function getOverflowNavigation(role: Role | null | undefined): NavigationItem[] {
+  return getNavigation(role).filter((i) => !BOTTOM_NAV_HREFS.has(i.href));
+}
+
+/**
+ * Redirect setelah login: hanya menerima path internal, selain itu /dashboard.
+ * Blokir redirect eksternal (protocol-relative, absolute URL).
+ */
+export function resolveLoginRedirect(from: string | null | undefined): string {
+  if (!from) return "/dashboard";
+  if (!from.startsWith("/") || from.startsWith("//") || from.startsWith("/\\")) {
+    return "/dashboard";
+  }
+  return from;
 }
 
 /**
@@ -155,13 +198,4 @@ export function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
     }
   }
   return items;
-}
-
-/** Redirect setelah login: hanya menerima path internal, selain itu /dashboard. */
-export function resolveLoginRedirect(from: string | null | undefined): string {
-  if (!from) return "/dashboard";
-  if (!from.startsWith("/") || from.startsWith("//") || from.startsWith("/\\")) {
-    return "/dashboard";
-  }
-  return from;
 }

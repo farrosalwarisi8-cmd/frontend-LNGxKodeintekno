@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { syncUsers, useSyncedModules } from "@/lib/remote-sync";
@@ -40,10 +42,12 @@ export default function UsersPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Manajemen User</h1>
           <p className="text-sm text-slate-500">Kelola akun user dan role</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="size-4" />
-          Tambah User
-        </Button>
+        <Can action="users.manage">
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="size-4" />
+            Tambah User
+          </Button>
+        </Can>
       </div>
 
       <Card className="p-4">
@@ -102,8 +106,10 @@ export default function UsersPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">Edit</Button>
-                  <Button variant="ghost" size="sm">Reset Password</Button>
+                  <Can action="users.manage">
+                    <Button variant="outline" size="sm">Edit</Button>
+                    <Button variant="ghost" size="sm">Reset Password</Button>
+                  </Can>
                 </div>
               </div>
             </Card>
@@ -135,7 +141,9 @@ export default function UsersPage() {
           </label>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Button onClick={() => setShowModal(false)}>Simpan</Button>
+            <Can action="users.manage">
+              <Button onClick={() => setShowModal(false)}>Simpan</Button>
+            </Can>
           </div>
         </div>
       </Modal>

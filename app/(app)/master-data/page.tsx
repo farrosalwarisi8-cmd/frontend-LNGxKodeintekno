@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
@@ -47,14 +49,14 @@ export default function MasterDataPage() {
         <p className="text-sm text-slate-500">Kelola data master sistem</p>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
                 activeTab === tab.id
                   ? "bg-primary-600 text-white"
                   : "bg-white text-slate-600 hover:bg-slate-50"
@@ -75,10 +77,12 @@ export default function MasterDataPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Diagnosis ICD-10</CardTitle>
-              <Button size="sm">
-                <Plus className="size-3.5" />
-                Tambah
-              </Button>
+              <Can action="master-data.edit">
+                <Button size="sm">
+                  <Plus className="size-3.5" />
+                  Tambah
+                </Button>
+              </Can>
             </div>
           </CardHeader>
           <CardContent>
@@ -102,10 +106,12 @@ export default function MasterDataPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Obat</CardTitle>
-              <Button size="sm">
-                <Plus className="size-3.5" />
-                Tambah
-              </Button>
+              <Can action="master-data.edit">
+                <Button size="sm">
+                  <Plus className="size-3.5" />
+                  Tambah
+                </Button>
+              </Can>
             </div>
           </CardHeader>
           <CardContent>
@@ -129,10 +135,12 @@ export default function MasterDataPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Perusahaan</CardTitle>
-              <Button size="sm">
-                <Plus className="size-3.5" />
-                Tambah
-              </Button>
+              <Can action="master-data.edit">
+                <Button size="sm">
+                  <Plus className="size-3.5" />
+                  Tambah
+                </Button>
+              </Can>
             </div>
           </CardHeader>
           <CardContent>
@@ -153,10 +161,12 @@ export default function MasterDataPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Departemen</CardTitle>
-              <Button size="sm">
-                <Plus className="size-3.5" />
-                Tambah
-              </Button>
+              <Can action="master-data.edit">
+                <Button size="sm">
+                  <Plus className="size-3.5" />
+                  Tambah
+                </Button>
+              </Can>
             </div>
           </CardHeader>
           <CardContent>
@@ -183,10 +193,12 @@ export default function MasterDataPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Lokasi Kerja</CardTitle>
-              <Button size="sm">
-                <Plus className="size-3.5" />
-                Tambah
-              </Button>
+              <Can action="master-data.edit">
+                <Button size="sm">
+                  <Plus className="size-3.5" />
+                  Tambah
+                </Button>
+              </Can>
             </div>
           </CardHeader>
           <CardContent>

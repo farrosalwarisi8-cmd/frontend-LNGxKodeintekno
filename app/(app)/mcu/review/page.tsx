@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
@@ -192,10 +194,12 @@ export default function MCUReviewPage() {
                       <XCircle className="size-3.5" />
                       Tolak
                     </Button>
-                    <Button size="sm" onClick={() => openModal(mcu.id, "approve")}>
-                      <CheckCircle className="size-3.5" />
-                      Approve
-                    </Button>
+                    <Can action="mcu.approve">
+                      <Button size="sm" onClick={() => openModal(mcu.id, "approve")}>
+                        <CheckCircle className="size-3.5" />
+                        Approve
+                      </Button>
+                    </Can>
                   </div>
                 </div>
               </Card>
@@ -236,14 +240,16 @@ export default function MCUReviewPage() {
           )}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Button
-              variant={modalType === "reject" ? "danger" : modalType === "revision" ? "outline" : "primary"}
-              onClick={handleAction}
-              loading={actionBusy}
-              disabled={actionBusy || (modalType === "approve" ? !decision : !note)}
-            >
-              {modalType === "approve" ? "Approve" : modalType === "reject" ? "Tolak" : "Minta Revisi"}
-            </Button>
+            <Can action={modalType === "approve" ? "mcu.approve" : "mcu.review"}>
+              <Button
+                variant={modalType === "reject" ? "danger" : modalType === "revision" ? "outline" : "primary"}
+                onClick={handleAction}
+                loading={actionBusy}
+                disabled={actionBusy || (modalType === "approve" ? !decision : !note)}
+              >
+                {modalType === "approve" ? "Approve" : modalType === "reject" ? "Tolak" : "Minta Revisi"}
+              </Button>
+            </Can>
           </div>
         </div>
       </Modal>

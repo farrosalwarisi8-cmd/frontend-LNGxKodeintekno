@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
@@ -50,12 +52,15 @@ export default function EmployeesPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Pekerja</h1>
           <p className="text-sm text-slate-500">Kelola data pekerja dan employment</p>
         </div>
-        <Link href="/employees/new">
-          <Button>
-            <Plus className="size-4" />
-            Tambah Pekerja
-          </Button>
-        </Link>
+        <Can action="people.create">
+          {/* /employees/new tidak ada — registrasi pekerja memakai wizard /people/new */}
+          <Link href="/people/new">
+            <Button>
+              <Plus className="size-4" />
+              Tambah Pekerja
+            </Button>
+          </Link>
+        </Can>
       </div>
 
       <Card className="p-4">

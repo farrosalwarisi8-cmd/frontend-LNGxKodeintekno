@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
@@ -275,10 +277,12 @@ export default function VisitNewPage() {
               <ChevronRight className="size-4" />
             </Button>
           ) : (
-            <Button onClick={handleSubmit} loading={submitting}>
-              <Check className="size-4" />
-              Submit Kunjungan
-            </Button>
+            <Can action="visits.create">
+              <Button onClick={handleSubmit} loading={submitting}>
+                <Check className="size-4" />
+                Submit Kunjungan
+              </Button>
+            </Can>
           )}
         </div>
       </Card>

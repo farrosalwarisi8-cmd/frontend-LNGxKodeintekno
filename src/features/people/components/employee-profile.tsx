@@ -12,8 +12,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { usePerson } from "../hooks/use-person";
-import { useDemoRole } from "../hooks/use-demo-role";
-import { getPermissions } from "@/shared/permissions/permissions";
+import { Can, useCan } from "@/components/can";
 import { Button } from "@/shared/components/design-system/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge, ConsentStatusBadge, EmploymentStatusBadge } from "@/shared/components/design-system/badge";
@@ -29,8 +28,7 @@ type Tab = "overview" | "identity" | "consent" | "documents" | "activity";
 
 export function EmployeeProfile({ patientId }: { patientId: string }) {
   const { data: person, loading, error, refetch } = usePerson(patientId);
-  const { role } = useDemoRole();
-  const permissions = getPermissions(role);
+  const can = useCan();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
 
@@ -52,7 +50,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
     { id: "identity", label: "Identity & Employment" },
     { id: "consent", label: "Consent" },
     { id: "documents", label: "Documents" },
-    ...(permissions.canViewActivity ? [{ id: "activity" as Tab, label: "Activity" }] : []),
+    ...(can("people.edit") ? [{ id: "activity" as Tab, label: "Activity" }] : []),
   ];
 
   return (
@@ -82,12 +80,14 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {permissions.canResendConsent && person.consent && (
-              <Button variant="outline" size="sm" onClick={() => setShowEmailPreview(true)}>
-                <RefreshCw className="size-3.5" />
-                Resend consent
-              </Button>
-            )}
+            <Can action="people.send-consent">
+              {person.consent && (
+                <Button variant="outline" size="sm" onClick={() => setShowEmailPreview(true)}>
+                  <RefreshCw className="size-3.5" />
+                  Resend consent
+                </Button>
+              )}
+            </Can>
           </div>
         </div>
       </Card>
@@ -319,7 +319,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
         </Card>
       )}
 
-      {activeTab === "activity" && permissions.canViewActivity && (
+      {activeTab === "activity" && can("people.edit") && (
         <Card>
           <CardHeader>
             <CardTitle>Activity Log</CardTitle>

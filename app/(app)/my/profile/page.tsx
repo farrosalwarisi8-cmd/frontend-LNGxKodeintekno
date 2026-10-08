@@ -3,9 +3,19 @@
 import { useStore, useCurrentUser } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { formatDate } from "@/lib/format";
 import { UserRound, Building2, Phone, Mail, Calendar, FileText, HeartPulse } from "lucide-react";
+
+function PageTitle() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-slate-900">Profil Saya</h1>
+      <p className="text-sm text-slate-500">Informasi data diri dan employment</p>
+    </div>
+  );
+}
 
 export default function MyProfilePage() {
   const user = useCurrentUser();
@@ -19,10 +29,14 @@ export default function MyProfilePage() {
   const employee = employees.find((e) => e.employeeId === user.employeeId);
   if (!employee) {
     return (
-      <Card className="p-8 text-center">
-        <UserRound className="mx-auto mb-3 size-8 text-slate-300" />
-        <p className="text-sm text-slate-500">Data pekerja tidak ditemukan.</p>
-      </Card>
+      <div className="space-y-4">
+        <PageTitle />
+        <EmptyState
+          icon={UserRound}
+          title="Data pekerja tidak ditemukan"
+          description="Akun Anda belum tertaut ke data pekerja. Hubungi admin klinik atau HR untuk menautkannya."
+        />
+      </div>
     );
   }
 
@@ -32,10 +46,7 @@ export default function MyProfilePage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Profil Saya</h1>
-        <p className="text-sm text-slate-500">Informasi data diri dan employment</p>
-      </div>
+      <PageTitle />
 
       <Card className="p-6">
         <div className="flex items-center gap-4">

@@ -4,9 +4,19 @@ import { useStore, useCurrentUser } from "@/lib/store";
 import { CERT_STATUS } from "@/lib/constants";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { formatDate } from "@/lib/format";
 import { BadgeCheck, QrCode } from "lucide-react";
 import Link from "next/link";
+
+function PageTitle() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-slate-900">Sertifikat Saya</h1>
+      <p className="text-sm text-slate-500">Sertifikat kesehatan kerja</p>
+    </div>
+  );
+}
 
 export default function MyCertificatesPage() {
   const user = useCurrentUser();
@@ -18,10 +28,14 @@ export default function MyCertificatesPage() {
   const employee = employees.find((e) => e.employeeId === user.employeeId);
   if (!employee) {
     return (
-      <Card className="p-8 text-center">
-        <BadgeCheck className="mx-auto mb-3 size-8 text-slate-300" />
-        <p className="text-sm text-slate-500">Sertifikat tidak ditemukan.</p>
-      </Card>
+      <div className="space-y-4">
+        <PageTitle />
+        <EmptyState
+          icon={BadgeCheck}
+          title="Sertifikat tidak ditemukan"
+          description="Akun Anda belum tertaut ke data pekerja, sehingga sertifikat belum bisa ditampilkan."
+        />
+      </div>
     );
   }
 
@@ -29,16 +43,14 @@ export default function MyCertificatesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Sertifikat Saya</h1>
-        <p className="text-sm text-slate-500">Sertifikat kesehatan kerja</p>
-      </div>
+      <PageTitle />
 
       {myCerts.length === 0 ? (
-        <Card className="p-8 text-center">
-          <BadgeCheck className="mx-auto mb-3 size-8 text-slate-300" />
-          <p className="text-sm text-slate-500">Belum ada sertifikat.</p>
-        </Card>
+        <EmptyState
+          icon={BadgeCheck}
+          title="Belum ada sertifikat"
+          description="Sertifikat kesehatan kerja Anda akan tampil di sini setelah diterbitkan dokter."
+        />
       ) : (
         <div className="space-y-3">
           {myCerts.map((cert) => {

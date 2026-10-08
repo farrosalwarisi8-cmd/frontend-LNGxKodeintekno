@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
@@ -49,12 +51,14 @@ export default function VisitsPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Kunjungan Klinik</h1>
           <p className="text-sm text-slate-500">Kelola kunjungan pasien dan antrean</p>
         </div>
-        <Link href="/visits/new">
-          <Button>
-            <Plus className="size-4" />
-            Kunjungan Baru
-          </Button>
-        </Link>
+        <Can action="visits.create">
+          <Link href="/visits/new">
+            <Button>
+              <Plus className="size-4" />
+              Kunjungan Baru
+            </Button>
+          </Link>
+        </Can>
       </div>
 
       <Card className="p-4">

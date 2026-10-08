@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
@@ -51,12 +53,14 @@ export default function MCUPage() {
           <h1 className="text-2xl font-semibold text-slate-900">Medical Check-Up</h1>
           <p className="text-sm text-slate-500">Kelola MCU pekerja dan kalkulasi klinis</p>
         </div>
-        <Link href="/mcu/new">
-          <Button>
-            <Plus className="size-4" />
-            Buat MCU
-          </Button>
-        </Link>
+        <Can action="mcu.create">
+          <Link href="/mcu/new">
+            <Button>
+              <Plus className="size-4" />
+              Buat MCU
+            </Button>
+          </Link>
+        </Can>
       </div>
 
       <Card className="p-4">

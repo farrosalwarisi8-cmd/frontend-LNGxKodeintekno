@@ -1,5 +1,7 @@
 "use client";
 
+import { Can, useCan } from "@/components/can";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
@@ -20,6 +22,7 @@ export default function CertificatesPage() {
   const mcus = useStore((s) => s.mcus);
   const issueCertificate = useStore((s) => s.issueCertificate);
   const revokeCertificate = useStore((s) => s.revokeCertificate);
+  const can = useCan();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -38,6 +41,12 @@ export default function CertificatesPage() {
    *  2. POST /api/v1/signatures/request     -> permintaan tanda tangan PSrE
    */
   const handleIssue = async (mcuId: string) => {
+    // Alur ini meminta tanda tangan PSrE ke backend — dijaga permission yang
+    // sama seperti tombolnya (pertahanan berlapis, bukan hanya sembunyikan CTA).
+    if (!can("documents.request-signature")) {
+      setMsg("Anda tidak memiliki izin untuk meminta tanda tangan dokumen.");
+      return;
+    }
     const localId = issueCertificate(mcuId);
     if (!localId) return;
     setBusy(true);
@@ -125,10 +134,12 @@ export default function CertificatesPage() {
                     <p className="text-sm font-medium text-slate-900">{emp?.fullName}</p>
                     <p className="text-xs text-slate-500">{mcu.mcuNumber} · {mcu.decision}</p>
                   </div>
-                  <Button size="sm" onClick={() => handleIssue(mcu.id)} loading={busy} disabled={busy}>
-                    <Plus className="size-3.5" />
-                    Terbitkan
-                  </Button>
+                  <Can action="certificates.issue">
+                    <Button size="sm" onClick={() => handleIssue(mcu.id)} loading={busy} disabled={busy}>
+                      <Plus className="size-3.5" />
+                      Terbitkan
+                    </Button>
+                  </Can>
                 </div>
               );
             })}
@@ -171,9 +182,11 @@ export default function CertificatesPage() {
                     </Button>
                   </Link>
                   {cert.status === "valid" && (
-                    <Button variant="danger" size="sm" onClick={() => revokeCertificate(cert.id)}>
-                      Cabut
-                    </Button>
+                    <Can action="certificates.revoke">
+                      <Button variant="danger" size="sm" onClick={() => revokeCertificate(cert.id)}>
+                        Cabut
+                      </Button>
+                    </Can>
                   )}
                 </div>
               </div>

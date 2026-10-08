@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useMemo, useState } from "react";
 import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -186,10 +188,12 @@ export default function DispensePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="warning">Menunggu</Badge>
-                  <Button size="sm" onClick={() => openDispense(rx)}>
-                    <Pill className="size-3.5" />
-                    Dispense
-                  </Button>
+                  <Can action="pharmacy.dispense">
+                    <Button size="sm" onClick={() => openDispense(rx)}>
+                      <Pill className="size-3.5" />
+                      Dispense
+                    </Button>
+                  </Can>
                 </div>
               </div>
             </Card>
@@ -255,10 +259,12 @@ export default function DispensePage() {
             <Button variant="ghost" onClick={() => setShowModal(false)} disabled={busy}>
               Batal
             </Button>
-            <Button onClick={handleDispense} loading={busy} disabled={busy}>
-              <CheckCircle className="size-4" />
-              Proses Dispensing
-            </Button>
+            <Can action="pharmacy.dispense">
+              <Button onClick={handleDispense} loading={busy} disabled={busy}>
+                <CheckCircle className="size-4" />
+                Proses Dispensing
+              </Button>
+            </Can>
           </div>
         </div>
       </Modal>

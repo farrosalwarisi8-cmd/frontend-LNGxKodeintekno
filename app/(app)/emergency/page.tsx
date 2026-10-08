@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -67,10 +69,12 @@ export default function EmergencyPage() {
             {isOnline ? <Wifi className="size-4" /> : <WifiOff className="size-4" />}
             {isOnline ? "Online" : "Offline"}
           </Button>
-          <Button onClick={() => setShowModal(true)}>
-            <Plus className="size-4" />
-            Catatan Darurat
-          </Button>
+          <Can action="emergency.create">
+            <Button onClick={() => setShowModal(true)}>
+              <Plus className="size-4" />
+              Catatan Darurat
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -178,7 +182,9 @@ export default function EmergencyPage() {
               />
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-                <Button onClick={handleSubmit}>Simpan</Button>
+                <Can action="emergency.create">
+                  <Button onClick={handleSubmit}>Simpan</Button>
+                </Can>
               </div>
             </div>
           </div>

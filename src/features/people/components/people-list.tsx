@@ -1,5 +1,7 @@
 "use client";
 
+import { Can } from "@/components/can";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -63,12 +65,14 @@ export function PeopleList() {
           <h1 className="text-2xl font-semibold text-slate-900">People & Medical Record</h1>
           <p className="text-sm text-slate-500">Kelola data administratif dan consent pekerja</p>
         </div>
-        <Link href="/people/new">
-          <Button>
-            <Plus className="size-4" />
-            Tambah pekerja
-          </Button>
-        </Link>
+        <Can action="people.create">
+          <Link href="/people/new">
+            <Button>
+              <Plus className="size-4" />
+              Tambah pekerja
+            </Button>
+          </Link>
+        </Can>
       </div>
 
       <Card className="p-4">
@@ -165,12 +169,14 @@ export function PeopleList() {
               : "Mulai dengan menambahkan pekerja pertama."
           }
           action={
-            <Link href="/people/new">
-              <Button variant="outline" size="sm">
-                <Plus className="size-3.5" />
-                Tambah pekerja
-              </Button>
-            </Link>
+            <Can action="people.create">
+              <Link href="/people/new">
+                <Button variant="outline" size="sm">
+                  <Plus className="size-3.5" />
+                  Tambah pekerja
+                </Button>
+              </Link>
+            </Can>
           }
         />
       ) : (
