@@ -11,9 +11,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Badge } from "@/shared/components/design-system/badge";
 import { Activity, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
 
+// Akun uji seed backend (development/staging) — satu password untuk semua role.
+const SEED_PASSWORD = "KlinikLNG2026!";
 const DEMO_ACCOUNTS = [
-  { username: "admin", password: "AdminLNG2026!", label: "Admin Sistem", role: "admin" },
-  { username: "dr.hendra", password: "AdminLNG2026!", label: "Dokter Sp.Oh", role: "dokter-oh" },
+  { username: "admin", password: SEED_PASSWORD, label: "Admin Sistem", role: "admin" },
+  { username: "dr.hendra", password: SEED_PASSWORD, label: "Dokter Sp.Oh", role: "dokter-oh" },
+  { username: "dr.klinik", password: SEED_PASSWORD, label: "Dokter Klinik", role: "dokter-klinik" },
+  { username: "perawat", password: SEED_PASSWORD, label: "Perawat", role: "perawat" },
+  { username: "apoteker", password: SEED_PASSWORD, label: "Apoteker", role: "apoteker" },
+  { username: "lab.analis", password: SEED_PASSWORD, label: "Analis Lab", role: "lab" },
+  { username: "hr.pic", password: SEED_PASSWORD, label: "HR/PIC", role: "hr" },
+  { username: "hse.officer", password: SEED_PASSWORD, label: "HSE Officer", role: "hse" },
+  { username: "hse.manager", password: SEED_PASSWORD, label: "HSE Manager", role: "hse" },
+  { username: "manajemen", password: SEED_PASSWORD, label: "Manajemen", role: "manajemen" },
 ];
 
 const MAX_ATTEMPTS = 5;
@@ -218,7 +228,7 @@ export default function LoginPageContent() {
           <CardHeader>
             <CardTitle>Akun Demo</CardTitle>
             <CardDescription>
-              Akun seed backend (password: AdminLNG2026!). Klik untuk login cepat.
+              Akun seed backend (password: KlinikLNG2026!). Klik untuk login cepat.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">

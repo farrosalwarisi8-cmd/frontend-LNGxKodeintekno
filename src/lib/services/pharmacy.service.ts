@@ -109,4 +109,51 @@ export const pharmacyService = {
       reason,
     });
   },
+
+  async getDispensingHistory(): Promise<DispensingHistoryItem[]> {
+    return apiClient.get<DispensingHistoryItem[]>("/pharmacy/dispensing/history");
+  },
 };
+
+export interface DispensingHistoryItem {
+  id: string;
+  prescription_id?: string;
+  dispensed_by?: string | null;
+  status?: string;
+  dispensed_at?: string;
+  prescription?: {
+    id: string;
+    encounter_id?: string | null;
+    status?: string;
+    encounter?: {
+      id: string;
+      patient_id?: string;
+      patient?: { id: string; full_name?: string; medical_record_no?: string };
+    } | null;
+    items?: Array<{
+      id: string;
+      medication_id?: string;
+      quantity?: number;
+      medication?: { id?: string; code?: string; generic_name?: string };
+    }>;
+  } | null;
+  dispensing_items?: Array<{
+    id: string;
+    stock_batch_id?: string;
+    quantity?: number;
+    stock_batch?: {
+      id: string;
+      batch_no?: string;
+      expiry_date?: string;
+      quantity_available?: number;
+    } | null;
+  }>;
+  medication_returns?: Array<{
+    id: string;
+    dispensing_id?: string;
+    stock_batch_id?: string;
+    quantity?: number;
+    reason?: string;
+    returned_at?: string;
+  }>;
+}

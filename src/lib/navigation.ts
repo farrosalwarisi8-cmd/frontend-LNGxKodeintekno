@@ -36,6 +36,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Rekam Medis", href: "/medical-records", icon: "file-text", permission: "view-clinical-notes" },
   { label: "Farmasi", href: "/medicine", icon: "pill", permission: "manage-stock" },
   { label: "Dispensing", href: "/medicine/dispense", icon: "pill", permission: "dispense-medicine" },
+  { label: "Retur Obat", href: "/medicine/return", icon: "pill", permission: "dispense-medicine" },
   { label: "Sertifikat", href: "/certificates", icon: "badge-check", permission: "issue-certificate" },
   { label: "Laporan", href: "/reports", icon: "bar-chart", permission: "view-reports" },
   { label: "Status Kesehatan", href: "/health-status", icon: "heart-pulse", permission: "view-health-status" },
@@ -45,8 +46,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "User", href: "/users", icon: "users", permission: "manage-users" },
   { label: "Master Data", href: "/master-data", icon: "database", permission: "manage-master-data" },
   { label: "Audit Log", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
-  // Halaman Lab & Radiologi belum ada — tampil disabled, jangan diarahkan ke /mcu.
-  { label: "Lab & Radiologi", href: "/lab", icon: "flask", disabled: true },
+  { label: "Lab & Radiologi", href: "/lab", icon: "flask", permission: "input-lab-result" },
 ];
 
 /** Label bahasa Indonesia untuk tiap route (dipakai breadcrumb). */
@@ -64,6 +64,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/medical-records": "Rekam Medis",
   "/medicine": "Farmasi",
   "/medicine/dispense": "Dispensing",
+  "/medicine/return": "Retur Obat",
   "/certificates": "Sertifikat",
   "/reports": "Laporan",
   "/health-status": "Status Kesehatan",
@@ -73,6 +74,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/users": "Pengguna",
   "/master-data": "Master Data",
   "/audit-logs": "Audit Log",
+  "/lab": "Lab & Radiologi",
   "/my": "Profil Saya",
   "/my/profile": "Profil Saya",
   "/my/mcu": "MCU Saya",

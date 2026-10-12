@@ -32,6 +32,7 @@ export const ACTION_PERMISSIONS = {
   "waiver.decide": "manage-hse",
   "da.manage": "manage-hse",
   "emergency.create": "view-emergency",
+  "input-lab-result": "input-lab-result",
 } as const satisfies Record<string, Permission>;
 
 export type ActionId = keyof typeof ACTION_PERMISSIONS;

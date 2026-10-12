@@ -5,18 +5,19 @@ import { Can } from "@/components/can";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { syncUsers, useSyncedModules } from "@/lib/remote-sync";
+import { iamService } from "@/lib/services/iam.service";
+import { backendRoleCode } from "@/lib/services/auth.service";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { ROLES } from "@/lib/constants";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Modal } from "@/shared/components/design-system/modal";
-import { formatDate } from "@/lib/format";
-import { Search, Plus, ShieldCheck, KeyRound, Users } from "lucide-react";
+import { Search, Plus, KeyRound } from "lucide-react";
 
 export default function UsersPage() {
   const users = useStore((s) => s.users);
@@ -27,6 +28,9 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [newUser, setNewUser] = useState({ username: "", password: "", name: "", role: "", title: "", mfaEnabled: false });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
@@ -34,6 +38,50 @@ export default function UsersPage() {
     const matchRole = !roleFilter || u.role === roleFilter;
     return matchSearch && matchRole;
   });
+
+  /**
+   * Simpan user BARU ke backend (POST /iam/users).
+   * Tidak ada mock success: bila backend menolak, error ditampilkan apa adanya.
+   */
+  const handleCreate = async () => {
+    setSaveError(null);
+    const roleCode = newUser.role ? backendRoleCode(newUser.role) : null;
+    if (!newUser.username || !newUser.password || !roleCode) {
+      setSaveError("Username, password, dan role wajib diisi (role admin-klinik/pekerja belum memiliki padanan role backend).");
+      return;
+    }
+    setSaving(true);
+    try {
+      await iamService.createUser({
+        username: newUser.username,
+        email: `${newUser.username}@layargas.co.id`,
+        password: newUser.password,
+        roleCode,
+      });
+      setShowModal(false);
+      setNewUser({ username: "", password: "", name: "", role: "", title: "", mfaEnabled: false });
+      await syncUsers(1, 100);
+      refetch();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Gagal menyimpan user ke backend.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Aktif/nonaktifkan akun (PATCH /iam/users/:id) — perubahan nyata di backend. */
+  const handleToggleActive = async (id: string, active: boolean) => {
+    setTogglingId(id);
+    setSaveError(null);
+    try {
+      await iamService.updateUser(id, { active });
+      await syncUsers(1, 100);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Gagal mengubah status user.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -43,7 +91,7 @@ export default function UsersPage() {
           <p className="text-sm text-slate-500">Kelola akun user dan role</p>
         </div>
         <Can action="users.manage">
-          <Button onClick={() => setShowModal(true)}>
+          <Button onClick={() => { setSaveError(null); setShowModal(true); }}>
             <Plus className="size-4" />
             Tambah User
           </Button>
@@ -71,6 +119,10 @@ export default function UsersPage() {
       </Card>
 
       <p className="text-sm text-slate-500">{filtered.length} user</p>
+
+      {saveError && (
+        <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{saveError}</div>
+      )}
 
       {error && <ErrorState title="Gagal memuat daftar user" message={error} onRetry={refetch} />}
 
@@ -107,8 +159,15 @@ export default function UsersPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Can action="users.manage">
-                    <Button variant="outline" size="sm">Edit</Button>
-                    <Button variant="ghost" size="sm">Reset Password</Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      loading={togglingId === user.id}
+                      disabled={togglingId === user.id}
+                      onClick={() => handleToggleActive(user.id, false)}
+                    >
+                      Nonaktifkan
+                    </Button>
                   </Can>
                 </div>
               </div>
@@ -124,25 +183,25 @@ export default function UsersPage() {
         size="md"
       >
         <div className="space-y-4">
-          <Input label="Nama Lengkap" value={newUser.name} onChange={(e) => setNewUser((u) => ({ ...u, name: e.target.value }))} />
+          {saveError && (
+            <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{saveError}</div>
+          )}
           <Input label="Username" value={newUser.username} onChange={(e) => setNewUser((u) => ({ ...u, username: e.target.value }))} />
+          <Input label="Email" value={newUser.username ? `${newUser.username}@layargas.co.id` : ""} onChange={() => {}} disabled />
           <Input label="Password" type="password" value={newUser.password} onChange={(e) => setNewUser((u) => ({ ...u, password: e.target.value }))} />
-          <Input label="Jabatan" value={newUser.title} onChange={(e) => setNewUser((u) => ({ ...u, title: e.target.value }))} />
           <Select
             label="Role"
             value={newUser.role}
             onChange={(e) => setNewUser((u) => ({ ...u, role: e.target.value }))}
             placeholder="Pilih role"
-            options={Object.entries(ROLES).map(([value, { label }]) => ({ value, label }))}
+            options={Object.entries(ROLES)
+              .filter(([key]) => backendRoleCode(key) !== null)
+              .map(([value, { label }]) => ({ value, label }))}
           />
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={newUser.mfaEnabled} onChange={(e) => setNewUser((u) => ({ ...u, mfaEnabled: e.target.checked }))} className="size-4 rounded border-slate-300" />
-            Wajibkan MFA
-          </label>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
+            <Button variant="ghost" onClick={() => setShowModal(false)} disabled={saving}>Batal</Button>
             <Can action="users.manage">
-              <Button onClick={() => setShowModal(false)}>Simpan</Button>
+              <Button onClick={handleCreate} loading={saving} disabled={saving}>Simpan</Button>
             </Can>
           </div>
         </div>

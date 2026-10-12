@@ -1,36 +1,64 @@
 "use client";
 
-import { Building2, MapPin } from "lucide-react";
-import { useStore } from "@/lib/store";
+import { useEffect, useState } from "react";
+import { useCurrentUser } from "@/lib/store";
+import { masterDataService, type BackendSite } from "@/lib/services/master-data.service";
 
-export function ScopeSelector() {
-  const companies = useStore((s) => s.companies);
-  const locations = useStore((s) => s.locations);
-  const orgScope = useStore((s) => s.orgScope);
-  const setOrgScope = useStore((s) => s.setOrgScope);
+interface ScopeSelectorProps {
+  onScopeChange?: (siteId: string | null) => void;
+  className?: string;
+}
+
+export function ScopeSelector({ onScopeChange, className }: ScopeSelectorProps) {
+  const currentUser = useCurrentUser();
+  const [sites, setSites] = useState<BackendSite[]>([]);
+  const [activeSiteId, setActiveSiteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const canSwitchScope =
+    currentUser?.role === "admin" ||
+    currentUser?.role === "manajemen" ||
+    currentUser?.role === "hse";
+
+  useEffect(() => {
+    if (!canSwitchScope) return;
+    // Defer agar setState tidak dipanggil sinkron di dalam effect
+    // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
+    const timer = setTimeout(() => {
+      masterDataService
+        .listSites({ active: true })
+        .then((data) => {
+          setSites(data);
+          if (data.length > 0 && !activeSiteId) {
+            setActiveSiteId(data[0].id);
+            onScopeChange?.(data[0].id);
+          }
+        })
+        .finally(() => setLoading(false));
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [canSwitchScope, activeSiteId, onScopeChange]);
+
+  if (!canSwitchScope) return null;
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <Building2 className="size-3.5" />
+    <div className={`flex items-center gap-2 ${className ?? ""}`}>
+      <span className="text-xs text-slate-500">Scope:</span>
       <select
-        value={orgScope.companyId || "all"}
-        onChange={(e) => setOrgScope({ ...orgScope, companyId: e.target.value === "all" ? "" : e.target.value })}
-        className="h-7 rounded-md border border-input bg-transparent px-2 text-xs"
+        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700"
+        value={activeSiteId ?? ""}
+        onChange={(e) => {
+          const newSiteId = e.target.value || null;
+          setActiveSiteId(newSiteId);
+          onScopeChange?.(newSiteId);
+        }}
+        disabled={loading || sites.length === 0}
       >
-        <option value="all">Semua Perusahaan</option>
-        {companies.map((c) => (
-          <option key={c.id} value={c.id}>{c.name}</option>
-        ))}
-      </select>
-      <MapPin className="size-3.5" />
-      <select
-        value={orgScope.locationId || "all"}
-        onChange={(e) => setOrgScope({ ...orgScope, locationId: e.target.value === "all" ? "" : e.target.value })}
-        className="h-7 rounded-md border border-input bg-transparent px-2 text-xs"
-      >
-        <option value="all">Semua Lokasi</option>
-        {locations.map((l) => (
-          <option key={l.id} value={l.id}>{l.name}</option>
+        {sites.length === 0 && <option value="">Tidak ada site aktif</option>}
+        {sites.map((site) => (
+          <option key={site.id} value={site.id}>
+            {site.name} ({site.code})
+          </option>
         ))}
       </select>
     </div>

@@ -77,7 +77,8 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
 
   it("Modul 1 — login admin dan menerima JWT + role", async () => {
     const { setToken, setRefreshToken } = await import("@/lib/api-client");
-    const res = await authService.login("admin", "AdminLNG2026!");
+    // Password seed disamakan untuk semua akun uji dev/staging (lihat prisma/seed.ts)
+    const res = await authService.login("admin", "KlinikLNG2026!");
     const accessToken = res.accessToken ?? "";
     const refreshToken = res.refreshToken ?? "";
     expect(accessToken).toBeTruthy();
@@ -100,6 +101,50 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
     expect(users.data.length).toBeGreaterThan(0);
     expect(users.data[0].username).toBeTruthy();
     expect(users.meta?.total).toBeGreaterThanOrEqual(users.data.length);
+  });
+
+  it("Modul 7 — buat user baru via POST /iam/users lalu nonaktifkan (Tahap 3)", async () => {
+    const stamp = Date.now();
+    const created = await iamService.createUser({
+      username: `live.uji.${stamp}`,
+      email: `live.uji.${stamp}@layargas.co.id`,
+      password: "LiveUjiTahap3!",
+      roleCode: "NURSE",
+    });
+    expect(created.id).toBeTruthy();
+    expect(created.username).toBe(`live.uji.${stamp}`);
+
+    // Duplikat harus ditolak backend (409) — bukan fake success
+    await expect(
+      iamService.createUser({
+        username: `live.uji.${stamp}`,
+        email: `live.uji.${stamp}@layargas.co.id`,
+        password: "LiveUjiTahap3!",
+        roleCode: "NURSE",
+      })
+    ).rejects.toThrow();
+
+    const updated = await iamService.updateUser(created.id, { active: false });
+    expect(updated.id).toBe(created.id);
+  });
+
+  it("Modul 11 — offline sync: register device + push idempotent (Tahap 3)", async () => {
+    const device = await apiClient.post<{ id: string }>("/sync/register-device", {
+      deviceFingerprintHash: `fp-live-${Date.now()}`,
+      siteCode: "SITE-HO-JKT",
+    });
+    expect(device.id).toBeTruthy();
+
+    const localId = `live-${Date.now()}`;
+    const batch = {
+      deviceId: device.id,
+      items: [{ localRecordId: localId, entityType: "EMERGENCY_NOTE", payload: { note: "live" } }],
+    };
+    const first = await apiClient.post<{ results: Array<{ status: string }> }>("/sync/push", batch);
+    expect(first.results[0]?.status).toBe("SYNCED");
+
+    const second = await apiClient.post<{ results: Array<{ status: string }> }>("/sync/push", batch);
+    expect(second.results[0]?.status).toBe("IDEMPOTENT_SKIPPED");
   });
 
   it("Modul 2 — registrasi pasien baru menghasilkan MRN", async () => {

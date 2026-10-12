@@ -46,7 +46,29 @@ export interface AuditChainResult {
   brokenEntryId?: string;
 }
 
+export interface CreateUserInput {
+  username: string;
+  email: string;
+  password: string;
+  roleCode: string;
+  siteCode?: string;
+}
+
+export interface UpdateUserInput {
+  active?: boolean;
+  roleCode?: string;
+  siteCode?: string;
+}
+
 export const iamService = {
+  async createUser(input: CreateUserInput): Promise<BackendUserRow> {
+    return apiClient.post<BackendUserRow>("/iam/users", input);
+  },
+
+  async updateUser(id: string, input: UpdateUserInput): Promise<BackendUserRow> {
+    return apiClient.patch<BackendUserRow>(`/iam/users/${id}`, input);
+  },
+
   async listUsers(page = 1, limit = 20) {
     const res = await apiClient.getPaged<BackendUserRow[]>(
       `/iam/users?page=${page}&limit=${limit}`

@@ -38,6 +38,28 @@ export const ROLE_TITLES: Record<string, string> = {
   pekerja: "Pekerja",
 };
 
+/**
+ *Inverse map: role frontend -> kode role backend.
+ * Dipakai oleh Manajemen User saat membuat/mengubah akun (POST/PATCH /iam/users).
+ * Role frontend tanpa padanan backend (admin-klinik, pekerja) dikembalikan null
+ * sehingga UI dapat menolak dengan pesan jelas, bukan mengirim kode palsu.
+ */
+export const FRONTEND_ROLE_TO_BACKEND: Record<string, string> = {
+  admin: "SYSTEM_ADMIN",
+  "dokter-oh": "DOCTOR_OH",
+  "dokter-klinik": "DOCTOR_CLINIC",
+  perawat: "NURSE",
+  apoteker: "PHARMACIST",
+  lab: "LAB_ANALYST",
+  hr: "HR_ADMIN",
+  hse: "HSE_OFFICER",
+  manajemen: "MANAGEMENT",
+};
+
+export function backendRoleCode(frontendRole: string): string | null {
+  return FRONTEND_ROLE_TO_BACKEND[frontendRole] ?? null;
+}
+
 export function mapBackendRole(roles: string[] = []): string {
   for (const r of roles) {
     if (BACKEND_ROLE_MAP[r]) return BACKEND_ROLE_MAP[r];

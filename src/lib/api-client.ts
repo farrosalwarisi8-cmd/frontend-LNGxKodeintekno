@@ -150,7 +150,11 @@ async function requestFull<T>(
     }
   }
 
-  if (res.status === 401) {
+  // Sesi berakhir pada request terautentikasi -> bersihkan & arahkan ke login.
+  // Endpoint /auth/* (login, MFA) dikecualikan: 401 di sana berarti kredensial
+  // salah, sehingga error harus mengalir normal ke form — bukan reload halaman
+  // yang menghapus pesan error dan mereset penghitung percobaan.
+  if (res.status === 401 && !path.startsWith("/auth/")) {
     clearToken();
     if (typeof window !== "undefined") {
       window.location.href = "/login";

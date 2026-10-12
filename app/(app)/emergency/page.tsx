@@ -3,6 +3,7 @@
 import { Can } from "@/components/can";
 
 import { useState } from "react";
+import { apiClient } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -27,12 +28,40 @@ const INITIAL_QUEUE: EmergencyRecord[] = [
   { id: "eq3", type: "prescription", description: "E-resep: Paracetamol 500mg", createdAt: "2026-09-20T11:00:00", synced: true },
 ];
 
+const DEVICE_FP_KEY = "kodein_emergency_device_fp";
+
+function deviceFingerprint(): string {
+  let fp = "";
+  try {
+    fp = localStorage.getItem(DEVICE_FP_KEY) ?? "";
+  } catch {
+    /* storage tidak tersedia */
+  }
+  if (!fp) {
+    fp = `edge-${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
+    try {
+      localStorage.setItem(DEVICE_FP_KEY, fp);
+    } catch {
+      /* ignore */
+    }
+  }
+  // Backend menyimpan hash fingerprint perangkat
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < fp.length; i++) {
+    hash ^= fp.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `fp-${(hash >>> 0).toString(16)}-${fp.length}`;
+}
+
 export default function EmergencyPage() {
   const employees = useStore((s) => s.employees);
   const [isOnline, setIsOnline] = useState(true);
   const [queue, setQueue] = useState<EmergencyRecord[]>(INITIAL_QUEUE);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<{ type: EmergencyRecord["type"]; description: string }>({ type: "registration", description: "" });
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   const pendingCount = queue.filter((q) => !q.synced).length;
 
@@ -41,16 +70,62 @@ export default function EmergencyPage() {
       id: `eq${Date.now()}`,
       ...formData,
       createdAt: new Date().toISOString(),
-      synced: isOnline,
+      synced: false,
     };
     setQueue((prev) => [newRecord, ...prev]);
     setShowModal(false);
     setFormData({ type: "registration", description: "" });
   };
 
-  const handleSync = () => {
-    setQueue((prev) => prev.map((q) => ({ ...q, synced: true })));
-    setIsOnline(true);
+  /**
+   * Sinkronisasi NYATA ke backend (Domain 11):
+   *  1. POST /api/v1/sync/register-device (idempotent per fingerprint)
+   *  2. POST /api/v1/sync/push (idempotency key = deviceId + localRecordId)
+   * Jika backend gagal, antrian tetap pending — tidak ada fake success.
+   */
+  const handleSync = async () => {
+    const pending = queue.filter((q) => !q.synced);
+    if (pending.length === 0) return;
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const device = await apiClient.post<{ id: string }>("/sync/register-device", {
+        deviceFingerprintHash: deviceFingerprint(),
+        siteCode: "SITE-HO-JKT",
+      });
+      const result = await apiClient.post<{
+        results: Array<{ localRecordId: string; status: string; message: string }>;
+      }>("/sync/push", {
+        deviceId: device.id,
+        items: pending.map((q) => ({
+          localRecordId: q.id,
+          entityType: "EMERGENCY_NOTE",
+          payload: { type: q.type, description: q.description, createdAt: q.createdAt },
+        })),
+      });
+
+      const statusById = new Map(result.results.map((r) => [r.localRecordId, r.status]));
+      setQueue((prev) =>
+        prev.map((q) =>
+          !q.synced && statusById.get(q.id) === "SYNCED" ? { ...q, synced: true } : q
+        )
+      );
+      const syncedCount = result.results.filter((r) => r.status === "SYNCED").length;
+      const skipped = result.results.filter((r) => r.status === "IDEMPOTENT_SKIPPED").length;
+      const conflicts = result.results.filter((r) => r.status === "CONFLICT").length;
+      setSyncMessage({
+        type: "ok",
+        text: `Sinkronisasi backend: ${syncedCount} synced${skipped ? `, ${skipped} sudah pernah terkirim (idempoten)` : ""}${conflicts ? `, ${conflicts} konflik perlu resolusi manual` : ""}.`,
+      });
+      setIsOnline(true);
+    } catch (e) {
+      setSyncMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : "Sinkronisasi ke backend gagal. Antrian tetap pending.",
+      });
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const toggleOnline = () => {
@@ -128,10 +203,20 @@ export default function EmergencyPage() {
         </Card>
       </div>
 
+      {syncMessage && (
+        <div
+          className={`rounded-xl p-3 text-sm ${
+            syncMessage.type === "ok" ? "bg-success-50 text-success-700" : "bg-danger-50 text-danger-700"
+          }`}
+        >
+          {syncMessage.text}
+        </div>
+      )}
+
       {pendingCount > 0 && (
-        <Button onClick={handleSync} className="w-full">
+        <Button onClick={handleSync} loading={syncing} disabled={syncing} className="w-full">
           <RefreshCw className="size-4" />
-          Sinkronkan {pendingCount} Record
+          Sinkronkan {pendingCount} Record ke Backend
         </Button>
       )}
 

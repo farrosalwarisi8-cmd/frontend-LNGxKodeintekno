@@ -2,7 +2,7 @@
 
 import { Can } from "@/components/can";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import {
   syncInventory,
@@ -15,39 +15,248 @@ import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
+import { Modal } from "@/shared/components/design-system/modal";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
+import { ApiError } from "@/lib/api-client";
+import {
+  masterDataService,
+  type BackendDepartment,
+  type BackendOrganization,
+  type BackendSite,
+} from "@/lib/services/master-data.service";
 import { Database, Plus, Pill, Stethoscope, Building2, MapPin } from "lucide-react";
+
+type TabId = "diagnoses" | "medicines" | "companies" | "departments" | "locations";
+type FormKind = "company" | "department" | "location";
 
 export default function MasterDataPage() {
   const diagnoses = useStore((s) => s.diagnoses);
   const medicines = useStore((s) => s.medicines);
 
-  // Modul 11 — master data dari backend: ICD-10 (/clinic/icd10/search)
-  // dan inventaris obat (/pharmacy/inventory)
+  // Modul 11 — master data klinis dari backend (ICD-10 + inventaris obat)
   useSyncedModules(async () => {
     await syncMasterData();
     await syncInventory();
     await syncPatients(1, 100);
   });
-  const companies = useStore((s) => s.companies);
-  const departments = useStore((s) => s.departments);
-  const locations = useStore((s) => s.locations);
 
-  const [activeTab, setActiveTab] = useState<"diagnoses" | "medicines" | "companies" | "departments" | "locations">("diagnoses");
+  // Master data organisasi/departemen/site: SUMBER UTAMA adalah API backend.
+  const [organizations, setOrganizations] = useState<BackendOrganization[]>([]);
+  const [departments, setDepartments] = useState<BackendDepartment[]>([]);
+  const [sites, setSites] = useState<BackendSite[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const tabs = [
-    { id: "diagnoses" as const, label: "Diagnosis ICD-10", icon: Stethoscope, count: diagnoses.length },
-    { id: "medicines" as const, label: "Obat", icon: Pill, count: medicines.length },
-    { id: "companies" as const, label: "Perusahaan", icon: Building2, count: companies.length },
-    { id: "departments" as const, label: "Departemen", icon: Building2, count: departments.length },
-    { id: "locations" as const, label: "Lokasi", icon: MapPin, count: locations.length },
+  const [activeTab, setActiveTab] = useState<TabId>("diagnoses");
+  const [showCreate, setShowCreate] = useState<FormKind | null>(null);
+  const [editing, setEditing] = useState<
+    | { kind: "company"; row: BackendOrganization }
+    | { kind: "department"; row: BackendDepartment }
+    | { kind: "location"; row: BackendSite }
+    | null
+  >(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    code: "",
+    name: "",
+    parentId: "",
+    siteType: "ONSHORE_PLANT",
+    address: "",
+  });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const [orgs, depts, siteRows] = await Promise.all([
+        masterDataService.listOrganizations(),
+        masterDataService.listDepartments(),
+        masterDataService.listSites(),
+      ]);
+      setOrganizations(orgs);
+      setDepartments(depts);
+      setSites(siteRows);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Gagal memuat master data dari backend.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Defer agar setState tidak dipanggil sinkron di dalam effect
+    // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
+    const timer = setTimeout(() => void load(), 0);
+    return () => clearTimeout(timer);
+  }, [load]);
+
+  const resetForm = () => {
+    setForm({ code: "", name: "", parentId: "", siteType: "ONSHORE_PLANT", address: "" });
+    setActionError(null);
+  };
+
+  const handleCreate = async () => {
+    if (!showCreate) return;
+    setActionError(null);
+    if (!form.name || (showCreate !== "location" && !form.code)) {
+      setActionError("Kode dan nama wajib diisi.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (showCreate === "company") {
+        await masterDataService.createOrganization({ code: form.code, name: form.name });
+      } else if (showCreate === "department") {
+        await masterDataService.createDepartment({
+          organizationId: form.parentId || organizations[0]?.id,
+          code: form.code,
+          name: form.name,
+        });
+      } else {
+        await masterDataService.createSite({
+          orgUnitId: form.parentId || departments[0]?.id,
+          code: form.code,
+          name: form.name,
+          siteType: form.siteType,
+          address: form.address || undefined,
+        });
+      }
+      setShowCreate(null);
+      resetForm();
+      await load();
+    } catch (e) {
+      setActionError(
+        e instanceof ApiError && e.status === 409
+          ? "Kode sudah dipakai (409 Conflict). Gunakan kode lain."
+          : e instanceof Error
+            ? e.message
+            : "Gagal menyimpan."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editing) return;
+    setActionError(null);
+    setSaving(true);
+    try {
+      if (editing.kind === "company") {
+        await masterDataService.updateOrganization(editing.row.id, { name: form.name });
+      } else if (editing.kind === "department") {
+        await masterDataService.updateDepartment(editing.row.id, { name: form.name });
+      } else {
+        await masterDataService.updateSite(editing.row.id, {
+          name: form.name,
+          siteType: form.siteType,
+          address: form.address || undefined,
+        });
+      }
+      setEditing(null);
+      resetForm();
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Gagal memperbarui.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleStatus = async (
+    kind: FormKind,
+    id: string,
+    nextActive: boolean,
+    currentActive: boolean
+  ) => {
+    if (nextActive === currentActive) return;
+    setActionError(null);
+    try {
+      if (kind === "company") {
+        await masterDataService.setOrganizationStatus(id, nextActive ? "ACTIVE" : "INACTIVE");
+      } else if (kind === "department") {
+        await masterDataService.setDepartmentStatus(id, nextActive);
+      } else {
+        await masterDataService.setSiteStatus(id, nextActive);
+      }
+      await load();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setActionError(
+          `${e.message} Konfirmasi dependency: kirim ulang dengan force. Histori tetap tersimpan.`
+        );
+      } else {
+        setActionError(e instanceof Error ? e.message : "Gagal mengubah status.");
+      }
+    }
+  };
+
+  const tabs: { id: TabId; label: string; icon: typeof Database; count: number }[] = [
+    { id: "diagnoses", label: "Diagnosis ICD-10", icon: Stethoscope, count: diagnoses.length },
+    { id: "medicines", label: "Obat", icon: Pill, count: medicines.length },
+    { id: "companies", label: "Perusahaan", icon: Building2, count: organizations.length },
+    { id: "departments", label: "Departemen", icon: Building2, count: departments.length },
+    { id: "locations", label: "Lokasi", icon: MapPin, count: sites.length },
   ];
+
+  const renderStatus = (active: boolean) => (
+    <Badge variant={active ? "success" : "default"}>{active ? "ACTIVE" : "INACTIVE"}</Badge>
+  );
+
+  const renderRowActions = (kind: FormKind, id: string, active: boolean) => (
+    <Can action="master-data.edit">
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setActionError(null);
+            const row =
+              kind === "company"
+                ? organizations.find((o) => o.id === id)
+                : kind === "department"
+                  ? departments.find((d) => d.id === id)
+                  : sites.find((s) => s.id === id);
+            if (!row) return;
+            setForm({
+              code: "code" in row ? row.code : "",
+              name: row.name,
+              parentId: "",
+              siteType: "site_type" in row ? (row.site_type ?? "ONSHORE_PLANT") : "ONSHORE_PLANT",
+              address: "address" in row ? (row.address ?? "") : "",
+            });
+            setEditing({ kind, row } as never);
+          }}
+        >
+          Edit
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => handleToggleStatus(kind, id, !active, active)}
+        >
+          {active ? "Nonaktifkan" : "Aktifkan"}
+        </Button>
+      </div>
+    </Can>
+  );
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">Master Data</h1>
-        <p className="text-sm text-slate-500">Kelola data master sistem</p>
+        <p className="text-sm text-slate-500">
+          Perusahaan, departemen, dan lokasi bersumber dari API backend sesuai permission Anda
+        </p>
       </div>
+
+      {actionError && (
+        <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+          {actionError}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => {
@@ -75,15 +284,7 @@ export default function MasterDataPage() {
       {activeTab === "diagnoses" && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Diagnosis ICD-10</CardTitle>
-              <Can action="master-data.edit">
-                <Button size="sm">
-                  <Plus className="size-3.5" />
-                  Tambah
-                </Button>
-              </Can>
-            </div>
+            <CardTitle>Diagnosis ICD-10</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -93,7 +294,7 @@ export default function MasterDataPage() {
                     <p className="text-sm font-medium text-slate-900">{d.code} — {d.description}</p>
                     <p className="text-xs text-slate-500">{d.category}</p>
                   </div>
-                  <Badge variant="info">{d.category}</Badge>
+                  <Badge variant="info">{d.category || "ICD-10"}</Badge>
                 </div>
               ))}
             </div>
@@ -104,15 +305,7 @@ export default function MasterDataPage() {
       {activeTab === "medicines" && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Obat</CardTitle>
-              <Can action="master-data.edit">
-                <Button size="sm">
-                  <Plus className="size-3.5" />
-                  Tambah
-                </Button>
-              </Can>
-            </div>
+            <CardTitle>Obat</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -130,13 +323,24 @@ export default function MasterDataPage() {
         </Card>
       )}
 
-      {activeTab === "companies" && (
+      {loading && (
+        <div className="space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      )}
+
+      {!loading && loadError && (
+        <ErrorState title="Gagal memuat master data" message={loadError} onRetry={load} />
+      )}
+
+      {!loading && !loadError && activeTab === "companies" && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Perusahaan</CardTitle>
               <Can action="master-data.edit">
-                <Button size="sm">
+                <Button size="sm" onClick={() => { resetForm(); setShowCreate("company"); }}>
                   <Plus className="size-3.5" />
                   Tambah
                 </Button>
@@ -145,10 +349,16 @@ export default function MasterDataPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {companies.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
-                  <p className="text-sm font-medium text-slate-900">{c.name}</p>
-                  <Badge variant="default">{c.id}</Badge>
+              {organizations.map((c) => (
+                <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{c.name}</p>
+                    <p className="text-xs text-slate-500">{c.code}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {renderStatus(c.status === "ACTIVE")}
+                    {renderRowActions("company", c.id, c.status === "ACTIVE")}
+                  </div>
                 </div>
               ))}
             </div>
@@ -156,13 +366,13 @@ export default function MasterDataPage() {
         </Card>
       )}
 
-      {activeTab === "departments" && (
+      {!loading && !loadError && activeTab === "departments" && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Departemen</CardTitle>
               <Can action="master-data.edit">
-                <Button size="sm">
+                <Button size="sm" onClick={() => { resetForm(); setShowCreate("department"); }}>
                   <Plus className="size-3.5" />
                   Tambah
                 </Button>
@@ -171,30 +381,32 @@ export default function MasterDataPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {departments.map((d) => {
-                const company = companies.find((c) => c.id === d.companyId);
-                return (
-                  <div key={d.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{d.name}</p>
-                      <p className="text-xs text-slate-500">{company?.name}</p>
-                    </div>
-                    <Badge variant="default">{d.id}</Badge>
+              {departments.map((d) => (
+                <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{d.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {d.code} · {d.organization?.name ?? "-"}
+                    </p>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-2">
+                    {renderStatus(d.active)}
+                    {renderRowActions("department", d.id, d.active)}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {activeTab === "locations" && (
+      {!loading && !loadError && activeTab === "locations" && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Lokasi Kerja</CardTitle>
               <Can action="master-data.edit">
-                <Button size="sm">
+                <Button size="sm" onClick={() => { resetForm(); setShowCreate("location"); }}>
                   <Plus className="size-3.5" />
                   Tambah
                 </Button>
@@ -203,22 +415,117 @@ export default function MasterDataPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {locations.map((l) => {
-                const company = companies.find((c) => c.id === l.companyId);
-                return (
-                  <div key={l.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{l.name}</p>
-                      <p className="text-xs text-slate-500">{company?.name}</p>
-                    </div>
-                    <Badge variant="default" className="capitalize">{l.type}</Badge>
+              {sites.map((l) => (
+                <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{l.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {l.code} · {l.org_unit?.organization?.name ?? "-"}
+                    </p>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="capitalize">
+                      {l.site_type?.replace(/_/g, " ").toLowerCase() ?? "-"}
+                    </Badge>
+                    {renderStatus(l.active)}
+                    {renderRowActions("location", l.id, l.active)}
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
+
+      <Modal
+        open={showCreate !== null || editing !== null}
+        onClose={() => {
+          setShowCreate(null);
+          setEditing(null);
+          resetForm();
+        }}
+        title={
+          editing
+            ? `Edit ${editing.kind === "company" ? "Perusahaan" : editing.kind === "department" ? "Departemen" : "Lokasi"}`
+            : `Tambah ${showCreate === "company" ? "Perusahaan" : showCreate === "department" ? "Departemen" : "Lokasi"}`
+        }
+        size="lg"
+      >
+        <div className="space-y-4">
+          {(showCreate === "company" || showCreate === "department" || showCreate === "location") && (
+            <Input
+              label="Kode"
+              value={form.code}
+              onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+              disabled={Boolean(editing)}
+            />
+          )}
+
+          {showCreate === "department" && !editing && (
+            <Select
+              label="Perusahaan"
+              value={form.parentId}
+              onChange={(e) => setForm((f) => ({ ...f, parentId: e.target.value }))}
+              placeholder="Pilih perusahaan"
+              options={organizations.map((o) => ({ value: o.id, label: `${o.code} — ${o.name}` }))}
+            />
+          )}
+
+          {(showCreate === "location" || editing?.kind === "location") && (
+            <>
+              <Select
+                label="Departemen"
+                value={form.parentId}
+                onChange={(e) => setForm((f) => ({ ...f, parentId: e.target.value }))}
+                placeholder="Pilih departemen"
+                options={departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` }))}
+              />
+              <Select
+                label="Tipe"
+                value={form.siteType}
+                onChange={(e) => setForm((f) => ({ ...f, siteType: e.target.value }))}
+                options={[
+                  { value: "HEAD_OFFICE", label: "Head Office" },
+                  { value: "ONSHORE_PLANT", label: "Onshore Plant" },
+                  { value: "OFFSHORE_PLATFORM", label: "Offshore Platform" },
+                  { value: "REMOTE_CLINIC", label: "Remote Clinic" },
+                ]}
+              />
+              <Input
+                label="Alamat"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              />
+            </>
+          )}
+
+          <Input
+            label="Nama"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          />
+
+          {actionError && <p className="text-xs text-danger-600">{actionError}</p>}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowCreate(null);
+                setEditing(null);
+                resetForm();
+              }}
+            >
+              Batal
+            </Button>
+            <Can action="master-data.edit">
+              <Button onClick={editing ? handleUpdate : handleCreate} disabled={saving}>
+                {saving ? "Menyimpan..." : "Simpan"}
+              </Button>
+            </Can>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

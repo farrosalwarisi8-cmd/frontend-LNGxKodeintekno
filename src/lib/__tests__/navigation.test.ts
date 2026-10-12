@@ -105,18 +105,20 @@ describe("getNavigation() — filtering per role", () => {
   });
 });
 
-describe("disabled navigation item", () => {
-  it("item tanpa halaman tetap tampil sebagai disabled untuk semua role", () => {
-    for (const role of ["admin", "hr", "pekerja", "dokter-oh"] as Role[]) {
+describe("Lab & Radiologi navigation", () => {
+  it("Lab & Radiologi tampil untuk role dengan permission input-lab-result", () => {
+    for (const role of ["admin", "dokter-oh", "lab"] as Role[]) {
       const lab = getNavigation(role).find((i) => i.href === "/lab");
       expect(lab).toBeDefined();
-      expect(lab?.disabled).toBe(true);
+      expect(lab?.disabled).toBeUndefined();
     }
   });
 
-  it("tidak ada item aktif (non-disabled) yang mengarah ke /lab", () => {
-    const active = getNavigation("admin").filter((i) => !i.disabled);
-    expect(active.some((i) => i.href === "/lab")).toBe(false);
+  it("Lab & Radiologi tidak tampil untuk role tanpa permission", () => {
+    for (const role of ["pekerja", "hr", "manajemen"] as Role[]) {
+      const lab = getNavigation(role).find((i) => i.href === "/lab");
+      expect(lab).toBeUndefined();
+    }
   });
 });
 
@@ -314,12 +316,10 @@ describe("regression navigasi (dipertahankan)", () => {
     expect(nav.some((i) => i.href === "/visits/new")).toBe(false);
   });
 
-  it("pekerja: item tanpa izin hilang, item disabled tetap tampil", () => {
+  it("pekerja: item tanpa izin hilang, Lab & Radiologi tidak tampil", () => {
     const nav = getNavigation("pekerja");
     expect(nav.some((i) => i.href === "/users")).toBe(false);
-    const lab = nav.find((i) => i.href === "/lab");
-    expect(lab).toBeDefined();
-    expect(lab?.disabled).toBe(true);
+    expect(nav.some((i) => i.href === "/lab")).toBe(false);
   });
 
   it("hr: register-patient & users hilang, employees ada", () => {
@@ -329,9 +329,11 @@ describe("regression navigasi (dipertahankan)", () => {
     expect(nav.some((i) => i.href === "/employees")).toBe(true);
   });
 
-  it("item disabled Lab tidak pernah menunjuk /mcu", () => {
-    const lab = NAVIGATION_ITEMS.find((i) => i.disabled);
-    expect(lab?.href).toBe("/lab");
+  it("Lab & Radiologi menunjuk /lab dengan permission input-lab-result", () => {
+    const lab = NAVIGATION_ITEMS.find((i) => i.href === "/lab");
+    expect(lab).toBeDefined();
+    expect(lab?.disabled).toBeUndefined();
+    expect(lab?.permission).toBe("input-lab-result");
   });
 
   it("resolveLoginRedirect: path non-internal ditolak", () => {

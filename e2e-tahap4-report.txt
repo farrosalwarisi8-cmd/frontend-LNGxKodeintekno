@@ -1,0 +1,48 @@
+
+== Tahap 4 E2E against http://localhost:3000/api/v1 ==
+
+-- Waiver end-to-end --
+  ✔ GET /waivers tanpa token -> 401
+  ✔ POST /waivers sebagai perawat -> 403
+  ✔ hse.manager (GLOBAL) melihat waiver lintas site
+  ✔ lifecycle EXPIRED dihitung dari valid_until
+  ✔ lifecycle REJECTED tersedia
+  ✔ hse.officer (SITE-OFFSHORE-01) hanya melihat waiver site-nya
+  ✔ hr.pic (ORG scope) melihat seluruh site dalam organisasi
+  ✔ create waiver berhasil (201)
+  ✔ waiver default site = site user
+  ✔ waiver baru berstatus PENDING
+  ✔ create untuk site di luar scope -> 403
+  ✔ read waiver site lain -> 404 (disamarkan)
+  ✔ role tanpa izin baca waiver -> 403
+  ✔ send consent menghasilkan devToken (non-production)
+  ✔ public verify token valid
+  ✔ public verify tidak membocorkan data klinis
+  ✔ public verify token salah -> 400
+  ✔ public approve mengubah status
+  ✔ replay approve idempotent
+  ✔ approve lalu reject -> 409 conflict
+  ✔ token one-time: valid=false setelah dipakai
+  ✔ HSE manager memutus waiver yang sudah di-approve visitor -> 409
+  ✔ revoke consent berstatus REVOKED
+  ✔ token yang direvoke ditolak
+-- Master Data --
+  ✔ GET organizations (admin) -> 200
+  ✔ organizations berisi data seed
+  ✔ GET organizations sebagai perawat -> 403
+  ✔ create organization kode duplikat -> 409
+  ✔ create organization baru -> 201
+  ✔ create department -> 201
+  ✔ create site -> 201
+  ✔ update site -> 200
+  ✔ deactivate site -> active=false
+  ✔ data inactive tetap dapat dibaca (histori)
+  ✔ data inactive tidak muncul di daftar active
+-- Site scoping: patients & mcu --
+  ✔ dr.klinik (SITE-PLANT-01) hanya melihat pasien site-nya
+  ✔ admin (GLOBAL) melihat pasien semua site
+  ✔ mcu/cycles ter-scope: site user <= GLOBAL
+  ✔ GET /notifications (owner) -> 200
+  ✔ audit chain tetap valid (SHA-256)
+
+== RESULT: 40 passed, 0 failed ==
