@@ -35,6 +35,8 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const readInFlightRef = useRef<Set<string>>(new Set());
+  const markAllInFlightRef = useRef(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Fetch sekali saat shell mount (bukan setiap ganti route) —
@@ -76,26 +78,42 @@ export function NotificationBell() {
 
   const handleMarkRead = (id: string) => {
     if (!user) return;
+    const current = useStore.getState().notifications.find((n) => n.id === id);
+    if (current?.read) return; // sudah terbaca, jangan kirim request duplikat
+    if (readInFlightRef.current.has(id)) return; // idempotensi request frontend
+    readInFlightRef.current.add(id);
+
     const before = useStore.getState().notifications;
     markReadStore(id); // optimis
     setActionError(null);
-    notificationService.markAsRead(id).catch(() => {
-      useStore.setState({ notifications: before }); // rollback
-      setActionError("Gagal menyimpan. Coba lagi.");
-    });
+    notificationService
+      .markAsRead(id)
+      .catch(() => {
+        useStore.setState({ notifications: before }); // rollback
+        setActionError("Gagal menyimpan. Coba lagi.");
+      })
+      .finally(() => {
+        readInFlightRef.current.delete(id);
+      });
   };
 
   const handleMarkAllRead = () => {
-    if (!user) return;
+    if (!user || markAllInFlightRef.current) return;
     const unreadIds = mine.filter((n) => !n.read).map((n) => n.id);
     if (unreadIds.length === 0) return;
+
+    markAllInFlightRef.current = true;
     const before = useStore.getState().notifications;
     unreadIds.forEach((id) => markReadStore(id));
     setActionError(null);
-    Promise.all(unreadIds.map((id) => notificationService.markAsRead(id))).catch(() => {
-      useStore.setState({ notifications: before }); // rollback penuh
-      setActionError("Gagal menyimpan. Coba lagi.");
-    });
+    Promise.all(unreadIds.map((id) => notificationService.markAsRead(id)))
+      .catch(() => {
+        useStore.setState({ notifications: before }); // rollback penuh
+        setActionError("Gagal menyimpan. Coba lagi.");
+      })
+      .finally(() => {
+        markAllInFlightRef.current = false;
+      });
   };
 
   if (!user) return null;
