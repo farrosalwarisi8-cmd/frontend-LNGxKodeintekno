@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -16,6 +16,8 @@ import { Can, useCan } from "@/components/can";
 import { Button } from "@/shared/components/design-system/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge, ConsentStatusBadge, EmploymentStatusBadge } from "@/shared/components/design-system/badge";
+import { notificationService } from "@/lib/services/notification.service";
+import { patientService } from "@/lib/services/patient.service";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { ErrorState } from "@/shared/components/design-system/error-state";
@@ -31,6 +33,51 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
   const can = useCan();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+
+  /**
+   * Status pengiriman consent diambil dari backend (notifikasi CONSENT_DISPATCHED).
+   * Endpoint `GET /patients/:id/profile` tidak menyertakan consent, dan tidak ada
+   * endpoint baca consent per pasien — jadi status "belum ada consent" tidak boleh
+   * disimpulkan dari ketiadaan field tersebut.
+   */
+  const [consentDispatch, setConsentDispatch] = useState<{ status: string; at?: string } | null>(null);
+  const [consentLoaded, setConsentLoaded] = useState(false);
+  const [resend, setResend] = useState<{ loading: boolean; error: string; link: string }>({
+    loading: false,
+    error: "",
+    link: "",
+  });
+
+  const loadConsentDispatch = useCallback(async () => {
+    try {
+      const notifications = await notificationService.getAll();
+      const mine = (notifications ?? [])
+        .filter((n) => n.related_type === "CONSENT_DISPATCHED" && n.patient_id === patientId)
+        .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+      setConsentDispatch(mine[0] ? { status: mine[0].status, at: mine[0].created_at } : null);
+    } catch {
+      setConsentDispatch(null);
+    } finally {
+      setConsentLoaded(true);
+    }
+  }, [patientId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadConsentDispatch();
+  }, [loadConsentDispatch]);
+
+  const handleResendConsent = async () => {
+    setResend({ loading: true, error: "", link: "" });
+    const result = await patientService.sendConsent(patientId, "DATA_PROCESSING");
+    if (result.success) {
+      setResend({ loading: false, error: "", link: result.consentLink ?? "" });
+      setShowEmailPreview(true);
+      await loadConsentDispatch();
+    } else {
+      setResend({ loading: false, error: result.deliveryError ?? "Permintaan consent gagal dikirim.", link: "" });
+    }
+  };
 
   if (loading) {
     return (
@@ -74,22 +121,33 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
                 {person.mrn} · {person.employeeNo} · {person.siteName}
               </p>
               <div className="mt-1 flex items-center gap-2">
-                <ConsentStatusBadge status={person.consent?.status ?? "PENDING"} />
+                {consentDispatch ? (
+                  consentDispatch.status === "FAILED" ? (
+                    <Badge variant="danger">Pengiriman consent gagal</Badge>
+                  ) : (
+                    <Badge variant="warning">Consent terkirim · menunggu keputusan</Badge>
+                  )
+                ) : consentLoaded ? (
+                  <Badge variant="outline">Consent belum dikirim</Badge>
+                ) : null}
                 <EmploymentStatusBadge status={person.employmentStatus} />
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Can action="people.send-consent">
-              {person.consent && (
-                <Button variant="outline" size="sm" onClick={() => setShowEmailPreview(true)}>
-                  <RefreshCw className="size-3.5" />
-                  Resend consent
-                </Button>
-              )}
+              <Button variant="outline" size="sm" loading={resend.loading} onClick={handleResendConsent}>
+                <RefreshCw className="size-3.5" />
+                Resend consent
+              </Button>
             </Can>
           </div>
         </div>
+        {resend.error && (
+          <p className="mt-3 rounded-xl bg-danger-50 p-3 text-sm text-danger-700" role="alert">
+            {resend.error}
+          </p>
+        )}
       </Card>
 
       <div className="border-b border-slate-200">
@@ -150,20 +208,31 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
                 Consent Status
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <ConsentStatusBadge status={person.consent?.status ?? "PENDING"} />
-                {person.consent && (
-                  <span className="text-sm text-slate-500">
-                    {person.consent.type} v{person.consent.version}
-                  </span>
-                )}
-              </div>
-              {person.consent?.sentAt && (
-                <p className="mt-2 text-xs text-slate-500">
-                  Dikirim: {formatDateTime(person.consent.sentAt)}
+            <CardContent className="space-y-2">
+              {consentDispatch ? (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={consentDispatch.status === "FAILED" ? "danger" : "warning"}>
+                      {consentDispatch.status === "FAILED" ? "Pengiriman gagal" : "Terkirim · menunggu keputusan"}
+                    </Badge>
+                    <span className="text-sm text-slate-500">status pengiriman: {consentDispatch.status}</span>
+                  </div>
+                  {consentDispatch.at && (
+                    <p className="text-xs text-slate-500">Dikirim: {formatDateTime(consentDispatch.at)}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  {consentLoaded
+                    ? "Belum ada permintaan consent yang tercatat di backend."
+                    : "Memuat status consent..."}
                 </p>
               )}
+              {/* Kejujuran data: keputusan consent tidak diekspos API. */}
+              <p className="text-xs text-slate-400">
+                Keputusan consent (pending/granted/expired) belum tersedia dari API — endpoint baca consent per
+                pekerja belum ada.
+              </p>
             </CardContent>
           </Card>
 
@@ -285,7 +354,28 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           ) : (
             <Card className="p-8 text-center">
               <ShieldCheck className="mx-auto mb-3 size-8 text-slate-300" />
-              <p className="text-sm text-slate-500">Belum ada consent untuk pekerja ini.</p>
+              <p className="text-sm text-slate-700">
+                {consentDispatch
+                  ? `Permintaan consent sudah dikirim (status pengiriman backend: ${consentDispatch.status}).`
+                  : "Belum ada permintaan consent yang tercatat di backend."}
+              </p>
+              <p className="mt-2 text-xs text-slate-500">
+                Rincian keputusan consent belum dapat ditampilkan: API hanya menyediakan endpoint kirim
+                (POST /consents/send) dan verifikasi publik, tanpa endpoint baca per pekerja.
+              </p>
+              <Can action="people.send-consent">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  loading={resend.loading}
+                  onClick={handleResendConsent}
+                >
+                  <RefreshCw className="size-3.5" />
+                  Kirim consent
+                </Button>
+              </Can>
+              {resend.error && <p className="mt-3 text-sm text-danger-600">{resend.error}</p>}
             </Card>
           )}
         </div>
@@ -347,12 +437,13 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
         </Card>
       )}
 
+      {/* Tautan consent hanya dari respons backend setelah permintaan dikirim. */}
       <EmailPreview
         open={showEmailPreview}
         onClose={() => setShowEmailPreview(false)}
         recipientName={person.fullName}
-        recipientEmail={person.email}
-        consentLink={person.consent ? `/public/consent/${person.consent.token}` : ""}
+        recipientEmail={maskEmail(person.email)}
+        consentLink={resend.link}
       />
     </div>
   );

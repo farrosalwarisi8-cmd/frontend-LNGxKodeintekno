@@ -33,6 +33,7 @@ export type Permission =
   | "export-reports"
   | "view-health-status"
   | "set-health-status"
+  | "acknowledge-restriction"
   | "manage-users"
   | "manage-master-data"
   | "view-audit-logs"
@@ -62,6 +63,7 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "export-reports",
   "view-health-status",
   "set-health-status",
+  "acknowledge-restriction",
   "manage-users",
   "manage-master-data",
   "view-audit-logs",
@@ -120,6 +122,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   "dokter-klinik": [
     "view-dashboard",
     "view-mcu",
+    // Backend mengizinkan DOCTOR_CLINIC pada POST /mcu/cycles (lihat
+    // API_ENDPOINTS.md + ROLE_MAPPING.md: create-mcu ✓), sehingga UI tidak boleh
+    // mengunci role ini dari route /mcu/new.
+    "create-mcu",
     "input-mcu-result",
     "view-visits",
     "edit-visit",
@@ -197,6 +203,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-reports",
     "export-reports",
     "view-health-status",
+    // Acknowledgement restriksi kerja (POST /mcu/restrictions/:id/acknowledge).
+    // Backend juga mengizinkan HR_ADMIN & SYSTEM_ADMIN, tetapi UI sengaja
+    // dipersempit ke HSE (lebih sempit dari backend = aman, bukan lebih luas).
+    "acknowledge-restriction",
     "manage-hse",
     "view-emergency",
     "view-profile",
@@ -237,6 +247,30 @@ export function canAny(role: Role, permissions: readonly Permission[]): boolean 
 export function canAll(role: Role, permissions: readonly Permission[]): boolean {
   return permissions.every((p) => can(role, p));
 }
+
+/**
+ * Permission yang bersifat *privileged action* (bukan sekadar view): role yang
+ * tidak memilikinya tidak boleh melihat tombol/CTA terkait.
+ */
+export const PRIVILEGED_PERMISSIONS: readonly Permission[] = [
+  "manage-employees",
+  "upload-document",
+  "create-mcu",
+  "review-mcu",
+  "approve-mcu",
+  "input-mcu-result",
+  "register-patient",
+  "edit-visit",
+  "manage-stock",
+  "dispense-medicine",
+  "issue-certificate",
+  "set-health-status",
+  "acknowledge-restriction",
+  "manage-users",
+  "manage-master-data",
+  "manage-hse",
+  "input-lab-result",
+];
 
 /** Semua permission yang dikenal (dipakai untuk validasi & test). */
 export function allPermissions(): readonly Permission[] {

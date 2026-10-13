@@ -19,11 +19,24 @@ function resolveAlias(source: string, importer: string | undefined): string | nu
   return null;
 }
 
+/**
+ * Gap F1-D: environment unit test ditentukan DI SINI secara deterministik,
+ * bukan diambil diam-diam dari `.env.local` developer.
+ * Isi `TEST_API_URL` (atau `E2E_API_URL`) untuk mengarahkan test ke backend lain.
+ */
+const TEST_API_URL =
+  process.env.TEST_API_URL ?? process.env.E2E_API_URL ?? "http://localhost:3000/api/v1";
+
 export default defineConfig({
   test: {
     environment: "node",
     globals: true,
     include: ["src/**/__tests__/**/*.test.ts"],
+    env: {
+      NEXT_PUBLIC_API_URL: TEST_API_URL,
+      NODE_ENV: "test",
+      NEXT_PUBLIC_ENABLE_DEMO: "false",
+    },
   },
   plugins: [
     {

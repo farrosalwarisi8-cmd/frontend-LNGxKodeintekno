@@ -48,7 +48,8 @@ export function EmailPreview({ open, onClose, recipientName, recipientEmail, con
             </div>
             <div className="flex items-center gap-2 rounded-lg bg-warning-50 p-3 text-xs text-warning-600">
               <Clock3 className="size-4 shrink-0" />
-              <span>Link berlaku sampai 72 jam.</span>
+              {/* Masa berlaku mengikuti backend (consent.PENDING expired_at = 7 hari). */}
+              <span>Link berlaku sampai 7 hari.</span>
             </div>
           </div>
         </div>

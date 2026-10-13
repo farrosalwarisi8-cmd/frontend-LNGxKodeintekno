@@ -1,128 +1,112 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ShieldCheck, CircleCheck, Clock3, AlertTriangle, XCircle, FileText } from "lucide-react";
-import type { TokenState } from "../api/people.types";
-import { useDecideConsent } from "../hooks/use-consent";
+import { useState } from "react";
+import { ShieldCheck, CircleCheck, AlertTriangle, XCircle, Clock3 } from "lucide-react";
 import { patientService } from "@/lib/services/patient.service";
+import { ApiError } from "@/lib/api-client";
+import {
+  CONSENT_DECISION_ACTIONS,
+  resolveConsentFailurePhase,
+  type ConsentDecision,
+  type ConsentPhase,
+} from "@/lib/consent-state";
 import { CONSENT_TEXT } from "../fixtures/people.fixtures";
 import { Button } from "@/shared/components/design-system/button";
 import { Card } from "@/shared/components/design-system/card";
 import { Modal } from "@/shared/components/design-system/modal";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
-import { formatDateTime } from "@/shared/utils/date";
 
-const TOKEN_STATE_CONFIG: Record<TokenState, { icon: typeof ShieldCheck; color: string; title: string; message: string }> = {
-  VALID: { icon: ShieldCheck, color: "text-primary-600", title: "Link Consent Aktif", message: "Silakan baca dan pilih persetujuan Anda." },
-  EXPIRED: { icon: Clock3, color: "text-warning-600", title: "Link Sudah Kedaluwarsa", message: "Link ini sudah tidak aktif. Minta admin mengirim link baru." },
-  USED: { icon: CircleCheck, color: "text-success-600", title: "Link Sudah Digunakan", message: "Consent sudah pernah diproses dengan link ini." },
-  REVOKED: { icon: XCircle, color: "text-danger-600", title: "Link Dicabut", message: "Link consent ini telah dicabut." },
-  INVALID: { icon: AlertTriangle, color: "text-danger-600", title: "Link Tidak Valid", message: "Link consent tidak dapat digunakan. Silakan minta link baru dari admin." },
-  DELIVERY_FAILED: { icon: AlertTriangle, color: "text-danger-600", title: "Pengiriman Gagal", message: "Email consent tidak dapat dikirim. Hubungi admin." },
-};
-
-interface ConsentData {
-  token: string;
-  state: TokenState;
-  personName: string;
-  personInitials: string;
-  consentType: string;
-  consentVersion: string;
-  consentText: string;
-  expiresAt: string;
-  createdAt: string;
-}
+/**
+ * Halaman consent publik (tanpa login).
+ *
+ * PENTING — kontrak backend:
+ * - `POST /public/consents/verify` adalah endpoint SATU-SATUNYA untuk token consent
+ *   dan bersifat MUTASI + one-time: action selain `AGREED` menandai consent
+ *   `REVOKED`. Karena itu halaman ini TIDAK boleh memanggil verify saat dimuat
+ *   (memanggil dengan action "VIEW" akan menghabiskan/memutus token hanya dengan
+ *   membuka halaman).
+ * - Backend tidak menyediakan endpoint baca untuk memeriksa token, jadi status
+ *   VALID/EXPIRED/USED hanya diketahui dari respons/error saat pekerja memutuskan.
+ * - Tidak ada data pekerja yang boleh ditampilkan di sini (hanya teks consent),
+ *   dan tidak ada tanggal/identitas yang boleh dikarang di frontend.
+ */
+type Phase = ConsentPhase;
 
 export function PublicConsent({ token }: { token: string }) {
-  const [data, setData] = useState<ConsentData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { decide, loading: deciding } = useDecideConsent();
-  const [showConfirm, setShowConfirm] = useState<"APPROVED" | "REJECTED" | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [phase, setPhase] = useState<Phase>("ready");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showConfirm, setShowConfirm] = useState<ConsentDecision | null>(null);
+  const [decision, setDecision] = useState<ConsentDecision | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const result = await patientService.verifyConsent(token, "VIEW");
-        const status = result.status as TokenState;
-        setData({
-          token,
-          state: status,
-          personName: status === "VALID" ? "Pekerja Terdaftar" : "",
-          personInitials: status === "VALID" ? "PT" : "",
-          consentType: status === "VALID" ? "EMR_DATA_PROCESSING" : "",
-          consentVersion: status === "VALID" ? "1.0" : "",
-          consentText:
-            status === "VALID"
-              ? CONSENT_TEXT
-              : status === "EXPIRED"
-                ? CONSENT_TEXT
-                : status === "DELIVERY_FAILED"
-                  ? CONSENT_TEXT
-                  : "",
-          expiresAt: status === "VALID" ? new Date(Date.now() + 72 * 3600 * 1000).toISOString() : "",
-          createdAt: new Date().toISOString(),
-        });
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Tidak dapat memuat data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [token]);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <Card className="w-full max-w-md p-6">
-          <div className="space-y-4">
-            <Skeleton className="mx-auto size-12 rounded-full" />
-            <Skeleton className="mx-auto h-6 w-3/4" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <Card className="w-full max-w-md p-6 text-center">
-          <AlertTriangle className="mx-auto mb-4 size-12 text-danger-600" />
-          <h1 className="text-lg font-semibold text-slate-900">Terjadi kesalahan</h1>
-          <p className="mt-2 text-sm text-slate-500">{error ?? "Tidak dapat memuat data."}</p>
-          <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>
-            Muat ulang
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  const stateConfig = TOKEN_STATE_CONFIG[data.state];
-  const StateIcon = stateConfig.icon;
-
-  const handleDecide = async () => {
-    if (!showConfirm) return;
+  const decide = async (value: ConsentDecision) => {
+    setShowConfirm(null);
+    setDecision(value);
+    setPhase("deciding");
+    setErrorMessage("");
     try {
-      await decide(token, showConfirm);
-      setSuccess(true);
-      setShowConfirm(null);
-    } catch {
-      // error handled by hook
+      await patientService.verifyConsent(token, CONSENT_DECISION_ACTIONS[value]);
+      setPhase("done");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Tidak dapat memproses permintaan.";
+      // Token one-time: backend menolak token yang sudah diputus / tidak dikenal.
+      setPhase(
+        e instanceof ApiError
+          ? resolveConsentFailurePhase(e.status, message)
+          : resolveConsentFailurePhase(0, message)
+      );
+      setErrorMessage(message);
     }
   };
 
-  if (success) {
+  if (phase === "done") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
         <Card className="w-full max-w-md p-8 text-center">
           <CircleCheck className="mx-auto mb-4 size-16 text-success-600" />
-          <h1 className="text-xl font-semibold text-slate-900">Persetujuan berhasil dicatat</h1>
-          <p className="mt-2 text-sm text-slate-500">Terima kasih. Anda dapat menutup halaman ini.</p>
+          <h1 className="text-xl font-semibold text-slate-900">
+            {decision === "REJECTED" ? "Penolakan berhasil dicatat" : "Persetujuan berhasil dicatat"}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Terima kasih. Keputusan Anda sudah tersimpan dan tidak dapat diubah melalui tautan ini.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (phase === "used" || phase === "invalid") {
+    const used = phase === "used";
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md p-8 text-center" role="status" aria-live="polite">
+          {used ? (
+            <CircleCheck className="mx-auto mb-4 size-12 text-success-600" />
+          ) : (
+            <XCircle className="mx-auto mb-4 size-12 text-danger-600" />
+          )}
+          <h1 className="text-lg font-semibold text-slate-900">
+            {used ? "Tautan sudah digunakan" : "Tautan tidak valid atau kedaluwarsa"}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {used
+              ? "Consent ini sudah pernah diputus sebelumnya. Untuk mengubah keputusan, minta admin mengirim tautan baru."
+              : "Tautan consent tidak dapat digunakan. Silakan minta tautan baru dari admin klinik."}
+          </p>
+          {errorMessage && <p className="mt-3 text-xs text-slate-400">{errorMessage}</p>}
+        </Card>
+      </div>
+    );
+  }
+
+  if (phase === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md p-6 text-center" role="alert">
+          <AlertTriangle className="mx-auto mb-4 size-12 text-danger-600" />
+          <h1 className="text-lg font-semibold text-slate-900">Gagal memproses permintaan</h1>
+          <p className="mt-2 text-sm text-slate-500">{errorMessage || "Terjadi kesalahan pada server."}</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => setPhase("ready")}>
+            Coba lagi
+          </Button>
         </Card>
       </div>
     );
@@ -136,56 +120,56 @@ export function PublicConsent({ token }: { token: string }) {
             <ShieldCheck className="size-6 text-primary-600" />
           </div>
           <h1 className="text-lg font-semibold text-slate-900">PT Layar Nusantara Gas</h1>
-          <p className="text-sm text-slate-500">Electronic Medical Record Consent</p>
+          <p className="text-sm text-slate-500">Persetujuan Pemrosesan Data Rekam Medis</p>
         </div>
 
         <div className="p-6">
-          <div className={`mb-4 flex items-center gap-2 rounded-xl p-3 ${data.state === "VALID" ? "bg-primary-50 text-primary-700" : "bg-danger-50 text-danger-700"}`}>
-            <StateIcon className="size-5 shrink-0" />
+          <div className="mb-4 flex items-center gap-2 rounded-xl bg-primary-50 p-3 text-primary-700">
+            <ShieldCheck className="size-5 shrink-0" />
             <div>
-              <p className="text-sm font-medium">{stateConfig.title}</p>
-              <p className="text-xs opacity-80">{stateConfig.message}</p>
+              <p className="text-sm font-medium">Tautan persetujuan Anda</p>
+              <p className="text-xs opacity-80">
+                Baca isi persetujuan berikut, lalu pilih keputusan Anda.
+              </p>
             </div>
           </div>
 
-          {data.state === "VALID" && (
-            <>
-              <div className="mb-4 space-y-2">
-                <p className="text-sm text-slate-600">
-                  <span className="font-medium">Nama:</span> {data.personName}
-                </p>
-                <p className="text-sm text-slate-600">
-                  <span className="font-medium">Tipe Consent:</span> {data.consentType}
-                </p>
-                <p className="text-sm text-slate-600">
-                  <span className="font-medium">Versi:</span> {data.consentVersion}
-                </p>
-                <p className="text-sm text-slate-600">
-                  <span className="font-medium">Berlaku hingga:</span> {formatDateTime(data.expiresAt)}
-                </p>
-              </div>
+          <div className="mb-4 flex items-center gap-2 rounded-xl bg-warning-50 p-3 text-xs text-warning-700">
+            <Clock3 className="size-4 shrink-0" />
+            <span>
+              Tautan hanya dapat dipakai satu kali. Keputusan yang sudah dikirim tidak dapat diubah dari
+              halaman ini.
+            </span>
+          </div>
 
-              <div className="mb-6 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <pre className="whitespace-pre-wrap font-sans text-sm text-slate-700">{data.consentText}</pre>
-              </div>
+          <div className="mb-6 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <pre className="whitespace-pre-wrap font-sans text-sm text-slate-700">{CONSENT_TEXT}</pre>
+          </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  variant="primary"
-                  className="flex-1"
-                  onClick={() => setShowConfirm("APPROVED")}
-                >
-                  Saya setuju
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowConfirm("REJECTED")}
-                >
-                  Saya menolak
-                </Button>
-              </div>
-            </>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button
+              variant="primary"
+              className="flex-1"
+              loading={phase === "deciding"}
+              disabled={phase === "deciding" || !token}
+              onClick={() => setShowConfirm("APPROVED")}
+            >
+              Saya setuju
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={phase === "deciding" || !token}
+              onClick={() => setShowConfirm("REJECTED")}
+            >
+              Saya menolak
+            </Button>
+          </div>
+
+          {!token && (
+            <p className="mt-3 text-sm text-danger-600" role="alert">
+              Tautan consent tidak berisi token. Silakan gunakan tautan lengkap dari email Anda.
+            </p>
           )}
         </div>
       </Card>
@@ -208,8 +192,7 @@ export function PublicConsent({ token }: { token: string }) {
           <Button
             variant={showConfirm === "APPROVED" ? "primary" : "danger"}
             className="flex-1"
-            loading={deciding}
-            onClick={handleDecide}
+            onClick={() => showConfirm && decide(showConfirm)}
           >
             {showConfirm === "APPROVED" ? "Setujui" : "Tolak consent"}
           </Button>

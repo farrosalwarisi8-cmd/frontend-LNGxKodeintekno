@@ -2,6 +2,7 @@
 
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
+import { apiUrl } from "@/lib/env";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -42,6 +43,9 @@ export default function LabRadiologyPage() {
   const [radResults, setRadResults] = useState<BackendRadiologyResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Error khusus radiologi: role tertentu (mis. LAB_ANALYST) ditolak backend pada
+  // endpoint radiologi. Kegagalan itu TIDAK boleh mengosongkan seluruh halaman.
+  const [radError, setRadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const [showLabResultModal, setShowLabResultModal] = useState(false);
@@ -68,41 +72,56 @@ export default function LabRadiologyPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const [labOrd, labRes, radOrd, radRes] = await Promise.all([
-        diagnosticService.listLabOrders(),
-        diagnosticService.listLabOrderResults(),
-        diagnosticService.listRadiologyOrders(),
-        diagnosticService.listRadiologyOrders().then(async (orders) => {
-          const results: BackendRadiologyResult[] = [];
-          for (const o of orders) {
-            if (o.status === "COMPLETED") {
-              try {
-                const r = await fetch(
-                  `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1"}/diagnostic/radiology-orders/${o.id}`,
-                  { headers: { Authorization: `Bearer ${localStorage.getItem("kodein_token") ?? ""}` } }
-                );
-                if (r.ok) {
-                  const data = await r.json();
-                  if (data.radiology_result) results.push(data.radiology_result);
-                }
-              } catch {
-                // skip
-              }
-            }
-          }
-          return results;
-        }),
-      ]);
-      setLabOrders(labOrd);
-      setLabResults(labRes);
-      setRadOrders(radOrd);
-      setRadResults(radRes);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat data diagnostic.");
-    } finally {
+    setRadError(null);
+
+    const toMessage = (e: unknown, fallback: string) =>
+      e instanceof Error ? e.message : fallback;
+
+    // Sumber diambil terpisah (allSettled) supaya 403 pada satu sumber —
+    // misalnya radiologi untuk LAB_ANALYST — tidak memblokir tab laboratorium.
+    const [labOrd, labRes, radOrd] = await Promise.allSettled([
+      diagnosticService.listLabOrders(),
+      diagnosticService.listLabOrderResults(),
+      diagnosticService.listRadiologyOrders(),
+    ]);
+
+    // Laboratorium adalah sumber utama halaman ini.
+    if (labOrd.status === "rejected" && labRes.status === "rejected") {
+      setError(toMessage(labOrd.reason, toMessage(labRes.reason, "Gagal memuat data laboratory.")));
       setLoading(false);
+      return;
     }
+    if (labOrd.status === "fulfilled") setLabOrders(labOrd.value);
+    if (labRes.status === "fulfilled") setLabResults(labRes.value);
+
+    // Radiologi bersifat opsional per-role: kegagalan ditampilkan terpisah.
+    if (radOrd.status === "rejected") {
+      setRadError(
+        toMessage(radOrd.reason, "Anda tidak memiliki akses ke data radiologi pada scope ini.")
+      );
+      setRadOrders([]);
+      setRadResults([]);
+    } else {
+      setRadOrders(radOrd.value);
+      const results: BackendRadiologyResult[] = [];
+      for (const o of radOrd.value) {
+        if (o.status !== "COMPLETED") continue;
+        try {
+          const r = await fetch(apiUrl(`/diagnostic/radiology-orders/${o.id}`), {
+            headers: { Authorization: `Bearer ${localStorage.getItem("kodein_token") ?? ""}` },
+          });
+          if (r.ok) {
+            const data = await r.json();
+            if (data.radiology_result) results.push(data.radiology_result);
+          }
+        } catch {
+          // satu order gagal dibaca tidak boleh menggagalkan seluruh daftar
+        }
+      }
+      setRadResults(results);
+    }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -361,7 +380,11 @@ export default function LabRadiologyPage() {
             </div>
           )}
 
-          {!loading && !error && filteredRadOrders.length === 0 && (
+          {!loading && radError && (
+            <ErrorState title="Radiologi tidak dapat diakses" message={radError} onRetry={load} />
+          )}
+
+          {!loading && !radError && filteredRadOrders.length === 0 && (
             <EmptyState
               title="Belum ada order radiologi"
               description="Belum ada order radiologi pada scope Anda."
@@ -369,7 +392,7 @@ export default function LabRadiologyPage() {
             />
           )}
 
-          {!loading && !error && (
+          {!loading && !radError && (
             <div className="space-y-3">
               {filteredRadOrders.map((order) => {
                 const result = radResults.find(

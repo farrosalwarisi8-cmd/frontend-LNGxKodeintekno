@@ -9,15 +9,36 @@ import { installBrowserStubs } from "./helpers";
  * Set LIVE_API=0 untuk memaksa melewati test ini.
  *
  * Mencakup Modul 1..10 yang sudah dihubungkan ke backend.
+ *
+ * Gap F1-D: target backend diambil dari `TEST_API_URL`/`E2E_API_URL` lebih dulu
+ * (eksplisit) supaya test tidak bergantung pada `.env.local` developer.
  */
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1";
+const BASE =
+  process.env.TEST_API_URL ??
+  process.env.E2E_API_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:3000/api/v1";
 
 installBrowserStubs();
 
+/**
+ * Deteksi backend yang tahan terhadap "port 3000 dipakai dev server frontend":
+ * probe mensyaratkan HTTP 200 **dan** body JSON milik backend. Dev server
+ * frontend membalas redirect ke /login (HTML), sehingga TIDAK dianggap backend —
+ * integrasi live lalu dilewati, bukan gagal palsu (gap F1-D).
+ */
 const LIVE =
   process.env.LIVE_API !== "0" &&
   (await fetch(`${BASE.replace(/\/api\/v1$/, "")}/health/liveness`, { method: "GET" })
-    .then((r) => r.ok)
+    .then(async (r) => {
+      if (!r.ok) return false;
+      const body = (await r.json().catch(() => null)) as
+        | { status?: unknown; data?: { status?: unknown } }
+        | null;
+      // Envelope backend: { success, data: { status: "UP" } }
+      const status = body?.data?.status ?? body?.status;
+      return typeof status === "string";
+    })
     .catch(() => false));
 
 console.log(
@@ -51,6 +72,7 @@ const created = {
 
 describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
   beforeAll(async () => {
+    process.env.TEST_API_URL = BASE;
     process.env.NEXT_PUBLIC_API_URL = BASE;
     const client = await import("@/lib/api-client");
     apiClient = client.apiClient;

@@ -9,22 +9,33 @@ import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
+import { environmentLabel, getDemoPassword, isDemoModeEnabled } from "@/lib/env";
 import { Activity, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
 
-// Akun uji seed backend (development/staging) — satu password untuk semua role.
-const SEED_PASSWORD = "KlinikLNG2026!";
-const DEMO_ACCOUNTS = [
-  { username: "admin", password: SEED_PASSWORD, label: "Admin Sistem", role: "admin" },
-  { username: "dr.hendra", password: SEED_PASSWORD, label: "Dokter Sp.Oh", role: "dokter-oh" },
-  { username: "dr.klinik", password: SEED_PASSWORD, label: "Dokter Klinik", role: "dokter-klinik" },
-  { username: "perawat", password: SEED_PASSWORD, label: "Perawat", role: "perawat" },
-  { username: "apoteker", password: SEED_PASSWORD, label: "Apoteker", role: "apoteker" },
-  { username: "lab.analis", password: SEED_PASSWORD, label: "Analis Lab", role: "lab" },
-  { username: "hr.pic", password: SEED_PASSWORD, label: "HR/PIC", role: "hr" },
-  { username: "hse.officer", password: SEED_PASSWORD, label: "HSE Officer", role: "hse" },
-  { username: "hse.manager", password: SEED_PASSWORD, label: "HSE Manager", role: "hse" },
-  { username: "manajemen", password: SEED_PASSWORD, label: "Manajemen", role: "manajemen" },
+/**
+ * Akun uji seed backend (deployment demo/development).
+ *
+ * GAP F1-C: password demo TIDAK lagi ditulis di source. Daftar ini hanya
+ * ditampilkan bila demo mode diminta eksplisit (`NEXT_PUBLIC_ENABLE_DEMO=true`)
+ * DAN `NEXT_PUBLIC_DEMO_PASSWORD` tersedia, sehingga build production normal
+ * tidak memuat kredensial apa pun.
+ */
+const DEMO_ACCOUNTS: ReadonlyArray<{ username: string; label: string; role: string }> = [
+  { username: "admin", label: "Admin Sistem", role: "admin" },
+  { username: "dr.hendra", label: "Dokter Sp.Oh", role: "dokter-oh" },
+  { username: "dr.klinik", label: "Dokter Klinik", role: "dokter-klinik" },
+  { username: "perawat", label: "Perawat", role: "perawat" },
+  { username: "apoteker", label: "Apoteker", role: "apoteker" },
+  { username: "lab.analis", label: "Analis Lab", role: "lab" },
+  { username: "hr.pic", label: "HR/PIC", role: "hr" },
+  { username: "hse.officer", label: "HSE Officer", role: "hse" },
+  { username: "hse.manager", label: "HSE Manager", role: "hse" },
+  { username: "manajemen", label: "Manajemen", role: "manajemen" },
 ];
+
+const DEMO_MODE_ENABLED = isDemoModeEnabled();
+const DEMO_PASSWORD = DEMO_MODE_ENABLED ? getDemoPassword() : "";
+const DEMO_ACCOUNTS_READY = DEMO_MODE_ENABLED && DEMO_PASSWORD.length > 0;
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 60_000;
@@ -187,15 +198,22 @@ export default function LoginPageContent() {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Kodein Klinik</h1>
         <p className="text-sm text-slate-500">
-          Occupational Health & Clinic Management — Demo Awal
+          Occupational Health &amp; Clinic Management
         </p>
+        <Badge variant="outline" data-testid="environment-label">
+          {environmentLabel()}
+        </Badge>
       </div>
 
       <div className="grid w-full max-w-4xl gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Masuk</CardTitle>
-            <CardDescription>Gunakan akun demo di bawah atau isi manual.</CardDescription>
+            <CardDescription>
+              {DEMO_ACCOUNTS_READY
+                ? "Gunakan akun demo di samping atau isi manual."
+                : "Masukkan username dan password akun Anda."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
@@ -224,35 +242,37 @@ export default function LoginPageContent() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Akun Demo</CardTitle>
-            <CardDescription>
-              Akun seed backend (password: KlinikLNG2026!). Klik untuk login cepat.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            {DEMO_ACCOUNTS.map((acc) => {
-              const roleMeta = ROLES[acc.role as keyof typeof ROLES];
-              return (
-                <button
-                  key={acc.username}
-                  onClick={() => doLogin(acc.username, acc.password)}
-                  disabled={isLocked || isSubmitting}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{acc.label}</span>
-                    <span className="text-xs text-slate-500">@{acc.username}</span>
-                  </div>
-                  <Badge variant="outline" className={roleMeta.color}>
-                    {roleMeta.label}
-                  </Badge>
-                </button>
-              );
-            })}
-          </CardContent>
-        </Card>
+        {DEMO_ACCOUNTS_READY && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Akun Demo</CardTitle>
+              <CardDescription>
+                Akun seed backend pada environment demo. Klik untuk login cepat.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2" data-testid="demo-accounts">
+              {DEMO_ACCOUNTS.map((acc) => {
+                const roleMeta = ROLES[acc.role as keyof typeof ROLES];
+                return (
+                  <button
+                    key={acc.username}
+                    onClick={() => doLogin(acc.username, DEMO_PASSWORD)}
+                    disabled={isLocked || isSubmitting}
+                    className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{acc.label}</span>
+                      <span className="text-xs text-slate-500">@{acc.username}</span>
+                    </div>
+                    <Badge variant="outline" className={roleMeta.color}>
+                      {roleMeta.label}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <p className="mt-6 text-xs text-slate-500">

@@ -178,6 +178,8 @@ export interface CreatedPersonResult {
   consentStatus: ConsentStatus;
   consentLink: string;
   deliveryStatus: "SIMULATED_SENT" | "SIMULATED_FAILED";
+  /** Pesan error backend saat pengiriman consent gagal (agar tidak disembunyikan UI). */
+  deliveryError?: string;
 }
 
 export interface DuplicateCheckInput {

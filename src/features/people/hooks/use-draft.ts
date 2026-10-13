@@ -31,7 +31,9 @@ const EMPTY_DRAFT: CreatePersonDraft = {
   phone: "",
   emergencyContact: { name: "", relationship: "", phone: "" },
   documentIds: [],
-  consentType: "EMR_DATA_PROCESSING",
+  // Nilai harus sesuai enum ConsentType backend (DATA_PROCESSING, MEDICAL_TREATMENT,
+  // DRUG_ALCOHOL_SCREENING, TELEMEDICINE). Nilai lain ditolak backend (500).
+  consentType: "DATA_PROCESSING",
   consentVersion: "1.0",
 };
 

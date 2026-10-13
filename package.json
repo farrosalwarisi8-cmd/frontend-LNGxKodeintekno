@@ -9,7 +9,12 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e:frontend": "node e2e/run-frontend-e2e.mjs",
+    "test:e2e:frontend:contract": "node e2e/run-frontend-e2e.mjs --mode=contract",
+    "test:e2e:fase2": "node e2e/fase2-identity-mcu-staging.mjs",
+    "test:e2e:fase1": "node e2e/staging-business-flows.mjs",
+    "test:e2e:staging": "node e2e/fase2-identity-mcu-staging.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -35,6 +40,7 @@
     "@vitest/coverage-v8": "^5.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "playwright-core": "^1.64.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.3.2",

@@ -35,10 +35,30 @@ export default function ReportsPage() {
   const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
+  // Peringatan ketika sebagian sumber data ditolak backend (mis. /patients untuk
+  // role MANAGEMENT) agar angka parsial tidak disalahartikan sebagai "nol".
+  const [partialNotice, setPartialNotice] = useState<string | null>(null);
 
   // Modul 8 — data laporan & analitik dari backend
   const { loading, error, refetch } = useSyncedModules(async () => {
-    await Promise.all([syncPatients(1, 100), syncMcu(1, 100), syncQueues()]);
+    setPartialNotice(null);
+    // Satu sumber yang ditolak tidak boleh mengosongkan seluruh halaman laporan.
+    const syncResults = await Promise.allSettled([
+      syncPatients(1, 100),
+      syncMcu(1, 100),
+      syncQueues(),
+    ]);
+    const rejected = syncResults.filter(
+      (r): r is PromiseRejectedResult => r.status === "rejected"
+    );
+    if (rejected.length === syncResults.length) {
+      throw rejected[0].reason;
+    }
+    if (rejected.length > 0) {
+      setPartialNotice(
+        "Sebagian data tidak dapat dimuat karena keterbatasan akses peran Anda; angka di bawah hanya mencakup sumber data yang berhasil dibaca."
+      );
+    }
     const [analytics, defs] = await Promise.all([
       reportingService.topDiseases({}).catch(() => null),
       reportingService.getDefinitions().catch(() => []),
@@ -124,6 +144,12 @@ export default function ReportsPage() {
 
       {exportMsg && (
         <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{exportMsg}</div>
+      )}
+
+      {partialNotice && (
+        <div role="status" className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-700">
+          {partialNotice}
+        </div>
       )}
 
       {error && <ErrorState title="Gagal memuat data laporan" message={error} onRetry={refetch} />}

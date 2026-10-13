@@ -64,6 +64,21 @@ export interface BackendMcuCycle {
   calculations?: Array<Record<string, unknown>>;
 }
 
+/**
+ * Response `POST /mcu/restrictions/:id/acknowledge`.
+ *
+ * `acknowledged_at` berasal dari server (BUKAN waktu lokal) sehingga UI dapat
+ * menampilkan timestamp yang benar-benar tercatat backend.
+ */
+export interface BackendRestrictionAcknowledgement {
+  id?: string;
+  restriction_id?: string;
+  user_id?: string;
+  acknowledgement_type?: AcknowledgementType;
+  note?: string | null;
+  acknowledged_at?: string;
+}
+
 export interface McuListParams {
   page?: number;
   limit?: number;
@@ -118,11 +133,11 @@ export const mcuService = {
     restrictionId: string,
     acknowledgementType: AcknowledgementType,
     note?: string
-  ): Promise<unknown> {
-    return apiClient.post(`/mcu/restrictions/${restrictionId}/acknowledge`, {
-      acknowledgementType,
-      note,
-    });
+  ): Promise<BackendRestrictionAcknowledgement> {
+    return apiClient.post<BackendRestrictionAcknowledgement>(
+      `/mcu/restrictions/${restrictionId}/acknowledge`,
+      { acknowledgementType, note }
+    );
   },
 
   async closeRestriction(restrictionId: string): Promise<unknown> {

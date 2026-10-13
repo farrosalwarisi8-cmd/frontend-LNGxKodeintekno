@@ -25,6 +25,9 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   { pattern: /^\/visits(?:\/.*)?$/, permission: "view-visits" },
   { pattern: /^\/medical-records(?:\/.*)?$/, permission: "view-clinical-notes" },
   { pattern: /^\/medicine\/dispense(?:\/.*)?$/, permission: "dispense-medicine" },
+  // Retur obat adalah aksi dispensing (sama dengan item navigasi "Retur Obat"),
+  // bukan manajemen stok — diselaraskan agar guard = navigasi.
+  { pattern: /^\/medicine\/return(?:\/.*)?$/, permission: "dispense-medicine" },
   { pattern: /^\/medicine(?:\/.*)?$/, permission: "manage-stock" },
   { pattern: /^\/certificates(?:\/.*)?$/, permission: "issue-certificate" },
   { pattern: /^\/reports(?:\/.*)?$/, permission: "view-reports" },
@@ -35,6 +38,9 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   { pattern: /^\/waiver(?:\/.*)?$/, permission: "manage-hse" },
   { pattern: /^\/da(?:\/.*)?$/, permission: "manage-hse" },
   { pattern: /^\/emergency(?:\/.*)?$/, permission: "view-emergency" },
+  // Lab & Radiologi sebelumnya tidak punya guard padahal menu mensyaratkan
+  // `input-lab-result` → tautan langsung melewati guard. Kini diselaraskan.
+  { pattern: /^\/lab(?:\/.*)?$/, permission: "input-lab-result" },
   { pattern: /^\/my(?:\/.*)?$/, permission: "view-profile" },
 ];
 

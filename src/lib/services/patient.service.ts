@@ -197,14 +197,18 @@ export const patientService = {
     // Kirim consent digital (POST /consents/send) -> token verifikasi publik
     let consent: BackendConsentResult = {};
     let deliveryStatus: CreatedPersonResult["deliveryStatus"] = "SIMULATED_FAILED";
+    let deliveryError: string | undefined;
     try {
       consent = await apiClient.post<BackendConsentResult>("/consents/send", {
         patientId: created.id,
+        // Harus salah satu enum ConsentType backend; nilai lain -> error dari server.
         consentType: draft.consentType || "DATA_PROCESSING",
       });
       deliveryStatus = "SIMULATED_SENT";
-    } catch {
+    } catch (e) {
       deliveryStatus = "SIMULATED_FAILED";
+      // Jangan sembunyikan kegagalan: UI wajib tahu consent TIDAK terkirim.
+      deliveryError = e instanceof Error ? e.message : "Permintaan consent gagal dikirim.";
     }
 
     return {
@@ -212,11 +216,12 @@ export const patientService = {
       employeeId: created.employeeNo,
       mrn: created.medicalRecordNo,
       consentId: consent.consentId ?? "",
-      consentStatus: "PENDING",
+      consentStatus: deliveryStatus === "SIMULATED_SENT" ? "PENDING" : "DELIVERY_FAILED",
       consentLink: consent.verificationToken
         ? `${window.location.origin}/public/consent/${consent.verificationToken}`
         : "",
       deliveryStatus,
+      deliveryError,
     };
   },
 
@@ -246,12 +251,38 @@ export const patientService = {
     };
   },
 
-  async sendConsent(patientId: string, consentType: string): Promise<{ success: boolean; message?: string }> {
-    const res = await apiClient.post<BackendConsentResult>("/consents/send", {
-      patientId,
-      consentType,
-    });
-    return { success: true, message: res.message };
+  async sendConsent(
+    patientId: string,
+    consentType: string
+  ): Promise<{
+    success: boolean;
+    message?: string;
+    consentId?: string;
+    consentLink?: string;
+    deliveryStatus: CreatedPersonResult["deliveryStatus"];
+    deliveryError?: string;
+  }> {
+    try {
+      const res = await apiClient.post<BackendConsentResult>("/consents/send", {
+        patientId,
+        consentType: consentType || "DATA_PROCESSING",
+      });
+      return {
+        success: true,
+        message: res.message,
+        consentId: res.consentId,
+        consentLink: res.verificationToken
+          ? `${typeof window === "undefined" ? "" : window.location.origin}/public/consent/${res.verificationToken}`
+          : undefined,
+        deliveryStatus: "SIMULATED_SENT",
+      };
+    } catch (e) {
+      return {
+        success: false,
+        deliveryStatus: "SIMULATED_FAILED",
+        deliveryError: e instanceof Error ? e.message : "Permintaan consent gagal dikirim.",
+      };
+    }
   },
 
   async verifyConsent(

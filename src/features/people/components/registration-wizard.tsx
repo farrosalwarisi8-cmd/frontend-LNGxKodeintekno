@@ -18,6 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import type { CreatePersonDraft, IdentifierType, Sex, CreatedPersonResult, DuplicateCheckResult } from "../api/people.types";
+import { apiUrl } from "@/lib/env";
 import { patientService } from "@/lib/services/patient.service";
 import { useDraft, EMPTY_DRAFT } from "../hooks/use-draft";
 import { useOnlineStatus } from "../hooks/use-online-status";
@@ -67,6 +68,10 @@ export function RegistrationWizard() {
   const [submitResult, setSubmitResult] = useState<CreatedPersonResult | null>(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
+  // Status pengiriman consent mengikuti hasil API (bukan asumsi UI).
+  const [consentSent, setConsentSent] = useState(false);
+  const [consentError, setConsentError] = useState("");
+  const [resending, setResending] = useState(false);
 
   const updateField = useCallback(<K extends keyof CreatePersonDraft>(key: K, value: CreatePersonDraft[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -159,6 +164,8 @@ export function RegistrationWizard() {
         documentIds: uploadedFiles.map((f) => f.id),
       });
       setSubmitResult(result);
+      setConsentSent(result.deliveryStatus === "SIMULATED_SENT");
+      setConsentError(result.deliveryError ?? "");
       clear();
     } catch (e) {
       setErrors({ submit: e instanceof Error ? e.message : "Terjadi kesalahan." });
@@ -171,6 +178,32 @@ export function RegistrationWizard() {
     save(formData, currentStep);
   };
 
+  /** Kirim ulang consent setelah kegagalan pengiriman — memakai respons backend. */
+  const handleResendConsent = async () => {
+    if (!submitResult) return;
+    setResending(true);
+    setConsentError("");
+    const res = await patientService.sendConsent(
+      submitResult.patientId,
+      formData.consentType || "DATA_PROCESSING"
+    );
+    if (res.success) {
+      setSubmitResult({
+        ...submitResult,
+        consentId: res.consentId ?? submitResult.consentId,
+        consentStatus: "PENDING",
+        consentLink: res.consentLink ?? submitResult.consentLink,
+        deliveryStatus: "SIMULATED_SENT",
+        deliveryError: undefined,
+      });
+      setConsentSent(true);
+    } else {
+      setConsentSent(false);
+      setConsentError(res.deliveryError ?? "Permintaan consent gagal dikirim.");
+    }
+    setResending(false);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
@@ -180,7 +213,7 @@ export function RegistrationWizard() {
         const formData = new FormData();
         formData.append("file", file);
         const token = localStorage.getItem("kodein_token");
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1"}/documents/upload`, {
+        const res = await fetch(apiUrl("/documents/upload"), {
           method: "POST",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           body: formData,
@@ -208,19 +241,55 @@ export function RegistrationWizard() {
             <Check className="size-8 text-success-600" />
           </div>
           <h1 className="text-2xl font-semibold text-slate-900">Pekerja berhasil didaftarkan</h1>
-          <p className="mt-2 text-sm text-slate-500">Data pekerja dan consent telah dibuat.</p>
+          <p className="mt-2 text-sm text-slate-500">
+            {consentSent
+              ? "Data pekerja tersimpan dan permintaan consent dikirim."
+              : "Data pekerja tersimpan, namun permintaan consent BELUM terkirim."}
+          </p>
 
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
             <div className="space-y-2 text-sm">
               <p><span className="font-medium text-slate-700">MRN:</span> <span className="font-mono text-slate-900">{submitResult.mrn}</span></p>
               <p><span className="font-medium text-slate-700">Employee ID:</span> <span className="font-mono text-slate-900">{submitResult.employeeId}</span></p>
-              <p><span className="font-medium text-slate-700">Consent Status:</span> <Badge variant="warning">Pending</Badge></p>
-              <p><span className="font-medium text-slate-700">Delivery:</span> <Badge variant={submitResult.deliveryStatus === "SIMULATED_SENT" ? "success" : "danger"}>{submitResult.deliveryStatus === "SIMULATED_SENT" ? "Terkirim (simulasi)" : "Gagal"}</Badge></p>
+              {/* Status consent hanya boleh mencerminkan hasil API, bukan nilai tetap. */}
+              <p>
+                <span className="font-medium text-slate-700">Consent:</span>{" "}
+                {consentSent ? (
+                  <Badge variant="warning">Menunggu keputusan pekerja</Badge>
+                ) : (
+                  <Badge variant="danger">Gagal dikirim</Badge>
+                )}
+              </p>
+              <p>
+                <span className="font-medium text-slate-700">Delivery:</span>{" "}
+                <Badge variant={consentSent ? "success" : "danger"}>
+                  {consentSent ? "Terkirim (simulasi provider)" : "Gagal"}
+                </Badge>
+              </p>
             </div>
           </div>
 
+          {!consentSent && (
+            <div className="mt-4 rounded-xl bg-warning-50 p-3 text-left text-sm text-warning-700" role="alert">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="size-4 shrink-0" />
+                <div className="space-y-2">
+                  <p>{consentError || "Permintaan consent gagal dikirim ke backend."}</p>
+                  <Button variant="outline" size="sm" loading={resending} onClick={handleResendConsent}>
+                    Kirim ulang consent
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button variant="outline" className="flex-1" onClick={() => setShowEmailPreview(true)}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={!submitResult.consentLink}
+              onClick={() => setShowEmailPreview(true)}
+            >
               Buka preview email
             </Button>
             <Button className="flex-1" onClick={() => router.push(`/people/${submitResult.patientId}`)}>
@@ -564,9 +633,13 @@ export function RegistrationWizard() {
               value={formData.consentType}
               onChange={(e) => updateField("consentType", e.target.value)}
               error={errors.consentType}
+              // Harus sama dengan enum ConsentType backend — nilai lain membuat
+              // POST /consents/send gagal, sehingga consent tidak pernah terkirim.
               options={[
-                { value: "EMR_DATA_PROCESSING", label: "Pemrosesan Data EMR" },
-                { value: "HEALTH_DATA_SHARING", label: "Berbagi Data Kesehatan" },
+                { value: "DATA_PROCESSING", label: "Pemrosesan Data EMR" },
+                { value: "MEDICAL_TREATMENT", label: "Tindakan Medis" },
+                { value: "DRUG_ALCOHOL_SCREENING", label: "Skrining Narkoba & Alkohol" },
+                { value: "TELEMEDICINE", label: "Telemedicine" },
               ]}
             />
             <Input

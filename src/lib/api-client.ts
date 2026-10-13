@@ -2,12 +2,29 @@
  * API client terpusat untuk seluruh modul frontend.
  *
  * Disesuaikan dengan kontrak backend NestJS (lihat API_ENDPOINTS.md):
- * - Base URL : http://localhost:3000/api/v1  (prefix global `api/v1`)
+ * - Base URL : `NEXT_PUBLIC_API_URL` (prefix global `api/v1`) — dibaca lewat `src/lib/env.ts`
  * - Envelope : { success, statusCode, message, data, meta?, timestamp }  -> dikembalikan sebagai `data`
  * - Error    : { success: false, statusCode, error, message, fieldErrors?, traceId } -> dilempar sebagai ApiError
  * - Header   : Content-Type, Accept, Authorization: Bearer <jwt>, X-Trace-Id
+ *
+ * Konfigurasi (gap F1-C): TIDAK ada fallback ke localhost pada build production.
+ * Bila `NEXT_PUBLIC_API_URL` kosong/tidak valid, request ditolak dengan pesan
+ * konfigurasi yang jelas sebelum `fetch` dipanggil (bukan request ke URL kosong).
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1";
+import { API_BASE_URL as CONFIGURED_API_BASE_URL, API_CONFIG_ERROR } from "@/lib/env";
+import { CONFIG_ERROR_MESSAGE } from "@/lib/env";
+import { mapApiError } from "@/lib/error-mapping";
+
+/** Base URL API (string kosong bila konfigurasi invalid — lihat `API_CONFIG_ERROR`). */
+const API_BASE_URL = CONFIGURED_API_BASE_URL;
+
+/** Melempar ApiError konfigurasi bila base URL tidak valid. */
+function requireBaseUrl(): string {
+  if (!API_BASE_URL) {
+    throw new ApiError(0, API_CONFIG_ERROR ?? CONFIG_ERROR_MESSAGE);
+  }
+  return API_BASE_URL;
+}
 
 const TOKEN_KEY = "kodein_token";
 const REFRESH_TOKEN_KEY = "kodein_refresh_token";
@@ -94,6 +111,7 @@ function toMessage(body: BackendEnvelope<unknown> | Record<string, unknown>, sta
 async function refreshAccessToken(): Promise<string | null> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;
+  if (!API_BASE_URL) return null;
   try {
     const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
@@ -124,7 +142,8 @@ async function requestFull<T>(
   options: RequestInit = {},
   allowRefresh = true
 ): Promise<ApiResult<T>> {
-  const url = `${API_BASE_URL}${path}`;
+  // Konfigurasi invalid -> tolak sebelum fetch (tidak ada fallback diam-diam).
+  const url = `${requireBaseUrl()}${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -139,7 +158,8 @@ async function requestFull<T>(
   try {
     res = await fetch(url, { ...options, headers });
   } catch {
-    throw new ApiError(0, "Tidak dapat terhubung ke server backend. Pastikan backend berjalan di port 3000.");
+    // Network/offline/timeout — pesan netral dari pemetaan error frontend.
+    throw new ApiError(0, mapApiError(0).message);
   }
 
   // Token kedaluwarsa -> coba refresh sekali lalu ulangi request
@@ -159,7 +179,7 @@ async function requestFull<T>(
     if (typeof window !== "undefined") {
       window.location.href = "/login";
     }
-    throw new ApiError(401, "Sesi telah berakhir. Silakan login kembali.");
+    throw new ApiError(401, mapApiError(401).message);
   }
 
   if (res.status === 204) return { data: undefined as unknown as T };
@@ -167,11 +187,14 @@ async function requestFull<T>(
   const body = (await res.json().catch(() => ({}))) as BackendEnvelope<T> & Record<string, unknown>;
 
   if (!res.ok || body?.success === false) {
-    throw new ApiError(
-      typeof body?.statusCode === "number" ? body.statusCode : res.status,
-      toMessage(body, res.status),
-      body?.fieldErrors
-    );
+    const status = typeof body?.statusCode === "number" ? body.statusCode : res.status;
+    // Pesan backend dipakai bila ada; selain itu pesan netral per-status
+    // (429/500/503 tidak lagi menampilkan "Request failed with status N").
+    const raw = toMessage(body, status);
+    const message = /^Request failed with status \d+$/.test(raw)
+      ? mapApiError(status).message
+      : raw;
+    throw new ApiError(status, message, body?.fieldErrors);
   }
 
   // Envelope standar backend: ambil `data` + `meta`
@@ -201,4 +224,5 @@ export {
   getRefreshToken,
   setRefreshToken,
   API_BASE_URL,
+  API_CONFIG_ERROR,
 };

@@ -15,6 +15,8 @@ export const ACTION_PERMISSIONS = {
   "mcu.create": "create-mcu",
   "mcu.review": "review-mcu",
   "mcu.approve": "approve-mcu",
+  // Acknowledgement restriksi kerja HSE (POST /mcu/restrictions/:id/acknowledge).
+  "mcu.acknowledge-restriction": "acknowledge-restriction",
   "visits.create": "register-patient",
   "visits.edit-soap": "edit-visit",
   "pharmacy.receive-stock": "manage-stock",

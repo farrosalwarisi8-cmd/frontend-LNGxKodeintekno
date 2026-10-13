@@ -5,32 +5,31 @@ import { Can } from "@/components/can";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, UserRound, ChevronRight, Plus } from "lucide-react";
-import type { ConsentStatus, EmploymentStatus, ListPeopleParams } from "../api/people.types";
+import { Search, UserRound, ChevronRight, Plus, Info } from "lucide-react";
+import type { ListPeopleParams } from "../api/people.types";
 import { usePeople } from "../hooks/use-people";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
 import { Card } from "@/shared/components/design-system/card";
-import { ConsentStatusBadge, EmploymentStatusBadge } from "@/shared/components/design-system/badge";
 import { PeopleListSkeleton } from "@/shared/components/design-system/skeleton";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
-import { ORGANIZATIONS, ORG_UNITS, SITES } from "../fixtures/people.fixtures";
 import { formatRelativeTime } from "@/shared/utils/date";
 import { maskEmail } from "@/shared/utils/masking";
 
+/**
+ * Catatan kontrak API (jangan dihilangkan tanpa mengubah backend):
+ * `GET /api/v1/patients` hanya menerima `page`, `limit`, dan `search`.
+ * Tidak ada parameter filter site/unit/organisasi/status/consent, dan endpoint
+ * ini juga tidak mengembalikan status employment maupun status consent.
+ * Karena itu filter bawaan fixture DULU dihapus: filter yang tidak diteruskan
+ * ke backend hanya menyesatkan (hasil tetap sama) dan kolom status menampilkan
+ * nilai karangan frontend.
+ */
 export function PeopleList() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [filters, setFilters] = useState({
-    organizationId: "",
-    orgUnitId: "",
-    siteId: "",
-    employmentStatus: "" as EmploymentStatus | "",
-    consentStatus: "" as ConsentStatus | "",
-  });
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -40,23 +39,11 @@ export function PeopleList() {
 
   const params: ListPeopleParams = {
     search: debouncedSearch || undefined,
-    organizationId: filters.organizationId || undefined,
-    orgUnitId: filters.orgUnitId || undefined,
-    siteId: filters.siteId || undefined,
-    employmentStatus: filters.employmentStatus || undefined,
-    consentStatus: filters.consentStatus || undefined,
     page,
     pageSize: 10,
   };
 
   const { data, loading, error, refetch } = usePeople(params);
-
-  const filteredOrgUnits = ORG_UNITS.filter(
-    (ou) => !filters.organizationId || ou.organizationId === filters.organizationId
-  );
-  const filteredSites = SITES.filter(
-    (s) => !filters.orgUnitId || s.orgUnitId === filters.orgUnitId
-  );
 
   return (
     <div className="space-y-4">
@@ -90,69 +77,14 @@ export function PeopleList() {
               aria-label="Cari pekerja"
             />
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex">
-            <Select
-              placeholder="Organisasi"
-              value={filters.organizationId}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFilters((f) => ({ ...f, organizationId: e.target.value, orgUnitId: "", siteId: "" }));
-                setPage(1);
-              }}
-              options={ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }))}
-              aria-label="Filter organisasi"
-            />
-            <Select
-              placeholder="Unit Kerja"
-              value={filters.orgUnitId}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFilters((f) => ({ ...f, orgUnitId: e.target.value, siteId: "" }));
-                setPage(1);
-              }}
-              options={filteredOrgUnits.map((o) => ({ value: o.id, label: o.name }))}
-              aria-label="Filter unit kerja"
-            />
-            <Select
-              placeholder="Site"
-              value={filters.siteId}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFilters((f) => ({ ...f, siteId: e.target.value }));
-                setPage(1);
-              }}
-              options={filteredSites.map((s) => ({ value: s.id, label: s.name }))}
-              aria-label="Filter site"
-            />
-            <Select
-              placeholder="Status"
-              value={filters.employmentStatus}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFilters((f) => ({ ...f, employmentStatus: e.target.value as EmploymentStatus | "" }));
-                setPage(1);
-              }}
-              options={[
-                { value: "ACTIVE", label: "Aktif" },
-                { value: "INACTIVE", label: "Nonaktif" },
-                { value: "ARCHIVED", label: "Arsip" },
-              ]}
-              aria-label="Filter status employment"
-            />
-            <Select
-              placeholder="Consent"
-              value={filters.consentStatus}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFilters((f) => ({ ...f, consentStatus: e.target.value as ConsentStatus | "" }));
-                setPage(1);
-              }}
-              options={[
-                { value: "PENDING", label: "Pending" },
-                { value: "APPROVED", label: "Approved" },
-                { value: "REJECTED", label: "Rejected" },
-                { value: "EXPIRED", label: "Expired" },
-                { value: "DELIVERY_FAILED", label: "Delivery Failed" },
-              ]}
-              aria-label="Filter status consent"
-            />
-          </div>
         </div>
+        <p className="mt-3 flex items-start gap-2 text-xs text-slate-500" role="status">
+          <Info className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            Filter site/unit/status/consent belum tersedia: API daftar pekerja saat ini hanya mendukung
+            pencarian. Gunakan kolom pencarian (nama, MRN, atau Employee ID).
+          </span>
+        </p>
       </Card>
 
       {loading ? (
@@ -164,8 +96,8 @@ export function PeopleList() {
           icon={UserRound}
           title="Tidak ada pekerja ditemukan"
           description={
-            debouncedSearch || Object.values(filters).some(Boolean)
-              ? "Coba ubah kata kunci pencarian atau filter Anda."
+            debouncedSearch
+              ? "Coba ubah kata kunci pencarian Anda (nama, MRN, atau Employee ID)."
               : "Mulai dengan menambahkan pekerja pertama."
           }
           action={
@@ -193,8 +125,6 @@ export function PeopleList() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">MRN</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Employee ID</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Site</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Consent</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -212,12 +142,6 @@ export function PeopleList() {
                     <td className="px-4 py-3 font-mono text-sm text-slate-600">{person.mrn}</td>
                     <td className="px-4 py-3 font-mono text-sm text-slate-600">{person.employeeNo}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{person.siteName}</td>
-                    <td className="px-4 py-3">
-                      <ConsentStatusBadge status={person.consentStatus} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <EmploymentStatusBadge status={person.employmentStatus} />
-                    </td>
                     <td className="px-4 py-3">
                       <ChevronRight className="size-4 text-slate-400" />
                     </td>
@@ -238,9 +162,6 @@ export function PeopleList() {
                     <div className="font-medium text-slate-900">{person.fullName}</div>
                     <div className="text-xs text-slate-500">
                       {person.mrn} · {person.employeeNo}
-                    </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <ConsentStatusBadge status={person.consentStatus} />
                     </div>
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-slate-400" />

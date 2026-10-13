@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { HEALTH_STATUS } from "@/lib/constants";
+import { RestrictionAcknowledgementSection } from "@/features/mcu/components/restriction-acknowledgement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Input } from "@/shared/components/design-system/input";
@@ -32,6 +33,10 @@ export default function HealthStatusPage() {
         <h1 className="text-2xl font-semibold text-slate-900">Status Kesehatan Kerja</h1>
         <p className="text-sm text-slate-500">Pantau status kesehatan kerja pekerja</p>
       </div>
+
+      {/* HSE only: komponen ini mengembalikan null bila role tidak punya
+          permission `acknowledge-restriction` (route tetap view-health-status). */}
+      <RestrictionAcknowledgementSection />
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
