@@ -11,7 +11,9 @@ import {
   useSyncedModules,
 } from "@/lib/remote-sync";
 import { encounterService } from "@/lib/services/encounter.service";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { patientService, type BackendClinicalEncounter } from "@/lib/services/patient.service";
+import type { ClinicVisit } from "@/lib/types";
+import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
@@ -19,7 +21,7 @@ import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
-import { Search, FileText, Plus, ChevronRight, Lock, Unlock } from "lucide-react";
+import { Search, FileText, Lock } from "lucide-react";
 
 export default function MedicalRecordsPage() {
   const visits = useStore((s) => s.visits);
@@ -28,6 +30,10 @@ export default function MedicalRecordsPage() {
   const updateVisit = useStore((s) => s.updateVisit);
 
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  // Fase 3 — status transaksi SOAP/finalize di lapisan form (di dalam modal)
+  const [saving, setSaving] = useState(false);
+  const [locking, setLocking] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Rekam medis — data pasien, kunjungan, dan katalog ICD-10 dari backend
   const { loading, error, refetch } = useSyncedModules(async () => {
@@ -54,9 +60,16 @@ export default function MedicalRecordsPage() {
   const visit = visits.find((v) => v.id === selectedVisit);
   const visitEmployee = visit ? employees.find((e) => e.id === visit.employeeId) : null;
 
-  const openSOAP = (visitId: string) => {
+  const openSOAP = async (visitId: string) => {
     const v = visits.find((vis) => vis.id === visitId);
     if (!v) return;
+    // Muat jejak encounter backend (id + status LOCKED) sebelum form dibuka,
+    // supaya record terkunci langsung tampil read-only.
+    try {
+      await resolveEncounter(v, false);
+    } catch {
+      /* tidak fatal — form tetap dibuka dengan state lokal */
+    }
     setSelectedVisit(visitId);
     setSoapData({
       subjective: v.chiefComplaint || "",
@@ -68,41 +81,145 @@ export default function MedicalRecordsPage() {
     setDiagnosisNote(v.diagnosisNote || "");
     setTreatment(v.treatment || "");
     setDoctorNote(v.doctorNote || "");
+    setFormError(null);
     setShowModal(true);
   };
 
-  const handleSaveSOAP = async () => {
-    if (!selectedVisit) return;
-    setSaveMsg(null);
-    const primaryCode = diagnoses.find((d) => d.id === selectedDiagnoses[0])?.code;
+  const selectedVisitRecord = visits.find((v) => v.id === selectedVisit);
+  const isLocked = selectedVisitRecord?.recordStatus === "LOCKED";
 
-    try {
-      // PUT /api/v1/clinic/encounters/:id/soap
-      await encounterService.saveSoap(selectedVisit, {
-        subjective: soapData.subjective || undefined,
-        objective: soapData.objective || undefined,
-        assessment: diagnosisNote || undefined,
-        plan: treatment || undefined,
-        primaryIcd10: primaryCode,
-      });
-    } catch (e) {
-      setSaveMsg(
-        e instanceof Error
-          ? e.message
-          : "SOAP tidak tersimpan di backend (kunjungan mungkin berasal dari antrean)."
-      );
+  const applyEncounter = (
+    visitId: string,
+    enc: { id: string; status?: string; locked_at?: string | null }
+  ) => {
+    updateVisit(visitId, {
+      encounterId: enc.id,
+      recordStatus: String(enc.status ?? "").toUpperCase() === "LOCKED" ? "LOCKED" : "DRAFT",
+      lockedAt: enc.locked_at ?? undefined,
+    });
+  };
+
+  /**
+   * Fase 3 — Queue → Visit: kunjungan dari antrean hanya punya ticket id,
+   * bukan encounter id. Encounter yang SUDAH ADA untuk appointment dipakai
+   * ulang; baru dibuat bila benar-benar belum ada.
+   *
+   * Pencarian wajib karena backend memberlakukan unique constraint pada
+   * `appointment_id` — create membabi-buta akan ditolak dan SOAP gagal tersimpan.
+   * Jalur baca satu-satunya: GET /patients/:id/profile → clinical_encounters.
+   */
+  const resolveEncounter = async (v: ClinicVisit, create: boolean): Promise<string | null> => {
+    if (v.encounterId) return v.encounterId;
+    if (!v.employeeId) {
+      if (!create) return null;
+      throw new Error("Kunjungan tidak memiliki pasien terkait — encounter tidak dapat dibuka.");
     }
 
-    updateVisit(selectedVisit, {
-      chiefComplaint: soapData.subjective,
-      initialExam: soapData.objective,
-      diagnosisIds: selectedDiagnoses,
-      diagnosisNote,
-      treatment,
-      doctorNote,
-      status: "Completed",
-    });
-    setShowModal(false);
+    if (v.appointmentId) {
+      try {
+        const existing = (await patientService.getClinicalEncounters(v.employeeId)).find(
+          (e) => e.appointment_id === v.appointmentId
+        );
+        if (existing) {
+          applyEncounter(v.id, existing);
+          return existing.id;
+        }
+      } catch {
+        /* bukan user medis / gagal baca — lanjut ke pembuatan */
+      }
+    }
+
+    if (!create) return null;
+    const enc = await encounterService.openEncounter(v.employeeId, v.appointmentId || undefined);
+    applyEncounter(v.id, enc);
+    return enc.id;
+  };
+
+  const soapPayload = () => ({
+    subjective: soapData.subjective || undefined,
+    objective: soapData.objective || undefined,
+    assessment: diagnosisNote || undefined,
+    plan: treatment || undefined,
+    primaryIcd10: diagnoses.find((d) => d.id === selectedDiagnoses[0])?.code,
+  });
+
+  /** PUT /clinic/encounters/:id/soap — melempar bila backend menolak (mis. LOCKED). */
+  const persistSoap = async (v: ClinicVisit): Promise<string> => {
+    const encounterId = await resolveEncounter(v, true);
+    if (!encounterId) {
+      throw new Error("Encounter kunjungan tidak ditemukan — SOAP tidak dapat disimpan.");
+    }
+    await encounterService.saveSoap(encounterId, soapPayload());
+    return encounterId;
+  };
+
+  const localSoapPatch = (): Partial<ClinicVisit> => ({
+    chiefComplaint: soapData.subjective,
+    initialExam: soapData.objective,
+    diagnosisIds: selectedDiagnoses,
+    diagnosisNote,
+    treatment,
+    doctorNote,
+    status: "Completed",
+  });
+
+  const handleSaveSOAP = async () => {
+    if (!selectedVisit) return;
+    const v = visits.find((vis) => vis.id === selectedVisit);
+    if (!v) return;
+
+    // Guard lapisan UI: record terkunci tidak bisa disimpan ulang sembarangan.
+    if (v.recordStatus === "LOCKED") {
+      setFormError(
+        "Rekam medis terkunci (LOCKED) — tidak dapat diedit. Koreksi formal hanya melalui Addendum."
+      );
+      return;
+    }
+
+    setSaving(true);
+    setFormError(null);
+    try {
+      const encounterId = await persistSoap(v);
+      updateVisit(v.id, localSoapPatch());
+      setSaveMsg(`SOAP tersimpan di backend — encounter ${encounterId}.`);
+      setShowModal(false);
+    } catch (e) {
+      // Gagal = state lokal TIDAK diubah dan modal tetap terbuka (tanpa fake success).
+      setFormError(e instanceof Error ? e.message : "SOAP tidak tersimpan di backend.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Finalize → backend mengunci record (LOCKED). SOAP disimpan dulu. */
+  const handleFinalize = async () => {
+    if (!selectedVisit) return;
+    const v = visits.find((vis) => vis.id === selectedVisit);
+    if (!v || v.recordStatus === "LOCKED") return;
+
+    setLocking(true);
+    setFormError(null);
+    try {
+      const encounterId = await persistSoap(v);
+      const locked = await encounterService.finalize(encounterId);
+      const recordStatus: NonNullable<ClinicVisit["recordStatus"]> =
+        String(locked?.status ?? "LOCKED").toUpperCase() === "LOCKED" ? "LOCKED" : "DRAFT";
+      updateVisit(v.id, {
+        ...localSoapPatch(),
+        recordStatus,
+        lockedAt: locked?.locked_at ?? new Date().toISOString(),
+      });
+      setSaveMsg(
+        recordStatus === "LOCKED"
+          ? `Rekam medis dikunci permanen (LOCKED) — encounter ${encounterId}. Perubahan lanjutan wajib lewat Addendum.`
+          : `Backend tidak mengunci rekam medis (status ${locked?.status ?? "unknown"}).`
+      );
+      if (recordStatus === "LOCKED") setShowModal(false);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Finalize gagal — record tidak dikunci.");
+    } finally {
+      setLocking(false);
+    }
   };
 
   return (
@@ -119,7 +236,7 @@ export default function MedicalRecordsPage() {
         </div>
       )}
       {saveMsg && (
-        <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700">{saveMsg}</div>
+        <div className="rounded-xl bg-success-50 p-3 text-sm text-success-700">{saveMsg}</div>
       )}
       {loading && !error && (
         <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
@@ -164,13 +281,29 @@ export default function MedicalRecordsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={v.status === "Completed" ? "success" : "warning"}>
-                    {v.status}
-                  </Badge>
+                  {v.recordStatus === "LOCKED" ? (
+                    <Badge variant="success">
+                      <Lock className="size-3" />
+                      Terkunci
+                    </Badge>
+                  ) : (
+                    <Badge variant={v.status === "Completed" ? "success" : "warning"}>
+                      {v.status}
+                    </Badge>
+                  )}
                   <Can action="visits.edit-soap">
                     <Button size="sm" variant="outline" onClick={() => openSOAP(v.id)}>
-                      <FileText className="size-3.5" />
-                      SOAP
+                      {v.recordStatus === "LOCKED" ? (
+                        <>
+                          <Lock className="size-3.5" />
+                          Lihat
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="size-3.5" />
+                          SOAP
+                        </>
+                      )}
                     </Button>
                   </Can>
                 </div>
@@ -188,12 +321,25 @@ export default function MedicalRecordsPage() {
         size="lg"
       >
         <div className="space-y-4">
+          {/* Fase 3 — record terkunci hanya bisa dibaca, tidak bisa diedit. */}
+          {isLocked && (
+            <div className="flex items-start gap-2 rounded-xl bg-slate-100 p-3 text-sm text-slate-600">
+              <Lock className="mt-0.5 size-4 shrink-0" />
+              <div>
+                <p className="font-medium text-slate-800">Rekam medis terkunci (LOCKED)</p>
+                <p className="text-xs">
+                  Record final tidak dapat diedit. Koreksi hanya melalui Addendum formal.
+                </p>
+              </div>
+            </div>
+          )}
           <div>
             <h3 className="mb-2 text-sm font-medium text-slate-700">S — Subjective</h3>
             <Input
               value={soapData.subjective}
               onChange={(e) => setSoapData((s) => ({ ...s, subjective: e.target.value }))}
               placeholder="Keluhan utama..."
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -202,6 +348,7 @@ export default function MedicalRecordsPage() {
               value={soapData.objective}
               onChange={(e) => setSoapData((s) => ({ ...s, objective: e.target.value }))}
               placeholder="Hasil pemeriksaan fisik..."
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -216,6 +363,7 @@ export default function MedicalRecordsPage() {
                   }
                 }}
                 placeholder="Pilih diagnosis..."
+                disabled={isLocked}
                 options={diagnoses.map((d) => ({ value: d.id, label: `${d.code} — ${d.description}` }))}
               />
               {selectedDiagnoses.length > 0 && (
@@ -223,8 +371,18 @@ export default function MedicalRecordsPage() {
                   {selectedDiagnoses.map((id) => {
                     const d = diagnoses.find((diag) => diag.id === id);
                     return (
-                      <Badge key={id} variant="info" className="cursor-pointer" onClick={() => setSelectedDiagnoses((prev) => prev.filter((x) => x !== id))}>
-                        {d?.code} ✕
+                      <Badge
+                        key={id}
+                        variant="info"
+                        className={isLocked ? "" : "cursor-pointer"}
+                        onClick={
+                          isLocked
+                            ? undefined
+                            : () => setSelectedDiagnoses((prev) => prev.filter((x) => x !== id))
+                        }
+                      >
+                        {d?.code}
+                        {!isLocked && " ✕"}
                       </Badge>
                     );
                   })}
@@ -234,6 +392,7 @@ export default function MedicalRecordsPage() {
                 value={diagnosisNote}
                 onChange={(e) => setDiagnosisNote(e.target.value)}
                 placeholder="Catatan diagnosis..."
+                disabled={isLocked}
               />
             </div>
           </div>
@@ -243,6 +402,7 @@ export default function MedicalRecordsPage() {
               value={treatment}
               onChange={(e) => setTreatment(e.target.value)}
               placeholder="Rencana pengobatan..."
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -251,13 +411,38 @@ export default function MedicalRecordsPage() {
               value={doctorNote}
               onChange={(e) => setDoctorNote(e.target.value)}
               placeholder="Catatan tambahan..."
+              disabled={isLocked}
             />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Can action="visits.edit-soap">
-              <Button onClick={handleSaveSOAP}>Simpan SOAP</Button>
-            </Can>
+
+          {formError && (
+            <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{formError}</div>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowModal(false)} disabled={saving || locking}>
+              {isLocked ? "Tutup" : "Batal"}
+            </Button>
+            {!isLocked && (
+              <Can action="visits.edit-soap">
+                <Button
+                  variant="outline"
+                  onClick={handleFinalize}
+                  loading={locking}
+                  disabled={saving || locking}
+                >
+                  <Lock className="size-4" />
+                  Finalize & Kunci
+                </Button>
+              </Can>
+            )}
+            {!isLocked && (
+              <Can action="visits.edit-soap">
+                <Button onClick={handleSaveSOAP} loading={saving} disabled={saving || locking}>
+                  Simpan SOAP
+                </Button>
+              </Can>
+            )}
           </div>
         </div>
       </Modal>

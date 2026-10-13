@@ -137,6 +137,7 @@ export function mapQueueTicket(ticket: BackendQueueTicket, index: number): Clini
     visitNumber: ticket.ticket_no ?? `TKT-${index + 1}`,
     queueNumber: index + 1,
     employeeId: patient?.id ?? "",
+    appointmentId: ticket.appointment_id,
     locationId: "",
     date: createdAt.slice(0, 10),
     time: createdAt ? new Date(createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "",
@@ -151,11 +152,46 @@ export function mapQueueTicket(ticket: BackendQueueTicket, index: number): Clini
   };
 }
 
+/**
+ * Jejak yang hanya dimiliki lapisan frontend dan harus bertahan saat
+ * antrean di-refetch: id encounter backend, status kunci (LOCKED), dan
+ * isi SOAP yang sudah tersimpan. Tanpa ini bukti "SOAP tersimpan" dan
+ * "record terkunci" hilang setiap kali halaman dimuat ulang.
+ */
+function keepLocalClinicalTrace(prev: ClinicVisit, next: ClinicVisit): ClinicVisit {
+  return {
+    ...next,
+    appointmentId: prev.appointmentId || next.appointmentId,
+    encounterId: prev.encounterId,
+    recordStatus: prev.recordStatus,
+    lockedAt: prev.lockedAt,
+    employeeId: prev.employeeId || next.employeeId,
+    locationId: prev.locationId || next.locationId,
+    chiefComplaint: prev.chiefComplaint || next.chiefComplaint,
+    initialExam: prev.initialExam || next.initialExam,
+    diagnosisIds: prev.diagnosisIds.length > 0 ? prev.diagnosisIds : next.diagnosisIds,
+    diagnosisNote: prev.diagnosisNote || next.diagnosisNote,
+    treatment: prev.treatment || next.treatment,
+    doctorNote: prev.doctorNote || next.doctorNote,
+  };
+}
+
 export async function syncQueues(siteId?: string): Promise<ClinicVisit[]> {
   const tickets = await encounterService.getQueues(siteId);
-  const visits = tickets.map(mapQueueTicket);
-  useStore.setState({ visits });
-  return visits;
+  const fresh = tickets.map(mapQueueTicket);
+  const visits = useStore.getState().visits;
+  const queuedIds = new Set(fresh.map((v) => v.id));
+  const merged = fresh.map((next) => {
+    const prev = visits.find((v) => v.id === next.id);
+    return prev ? keepLocalClinicalTrace(prev, next) : next;
+  });
+  // Kunjungan yang dibuat via POST /clinic/encounters (bukan dari antrean)
+  // tetap ditampilkan — kalau tidak, bukti "SOAP tersimpan" hilang begitu
+  // halaman Rekam Medis di-refresh.
+  const localEncounters = visits.filter((v) => v.encounterId && !queuedIds.has(v.id));
+  const result = [...merged, ...localEncounters];
+  useStore.setState({ visits: result });
+  return result;
 }
 
 // ---------------------------------------------------------------------------

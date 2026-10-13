@@ -84,6 +84,10 @@ export default function VisitNewPage() {
 
       const visit: ClinicVisit = {
         id: encounter.id,
+        // Fase 3 — jejak backend: id encounter dipakai ulang oleh halaman
+        // Rekam Medis untuk simpan SOAP & finalize tanpa membuka encounter baru.
+        encounterId: encounter.id,
+        recordStatus: "DRAFT",
         visitNumber: `ENC-${encounter.id.slice(0, 8).toUpperCase()}`,
         queueNumber: useStore.getState().visits.length + 1,
         employeeId,

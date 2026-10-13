@@ -276,9 +276,19 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
     const result = await mcuService.assessFtw(cycle.id, "FIT", "Laik kerja tanpa restriksi");
     expect(result.assessment.ftw_status).toBe("FIT");
 
-    const list = await mcuService.list({ page: 1, limit: 50 });
-    expect(list.data.some((c) => c.id === cycle.id)).toBe(true);
-    expect(list.data.find((c) => c.id === cycle.id)?.ftw_assessment).toBeTruthy();
+    // Data uji menumpuk antar run sehingga total siklus melebihi satu halaman
+    // (page 1 berisi siklus TERLAMA, bukan yang baru dibuat). Telusuri semua
+    // halaman sampai ketemu — assertion tetap sama: siklus + FTW assessment
+    // harus terbaca dari backend.
+    const firstPage = await mcuService.list({ page: 1, limit: 50 });
+    const totalPages = firstPage.meta?.totalPages ?? 1;
+    let found = firstPage.data.find((c) => c.id === cycle.id);
+    for (let page = 2; !found && page <= totalPages; page++) {
+      const next = await mcuService.list({ page, limit: 50 });
+      found = next.data.find((c) => c.id === cycle.id);
+    }
+    expect(found).toBeTruthy();
+    expect(found?.ftw_assessment).toBeTruthy();
   });
 
   it("Modul 5 — inventaris farmasi dan resep pending terbaca", async () => {

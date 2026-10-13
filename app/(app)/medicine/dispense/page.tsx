@@ -15,8 +15,12 @@ import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
 import { resolveScope } from "@/lib/services/reference.service";
 import {
   pharmacyService,
+  dispensingGuard,
+  resolvePharmacySiteScope,
+  CrossSiteActionError,
   type BackendPrescription,
   type BackendPrescriptionItem,
+  type PharmacySiteContext,
 } from "@/lib/services/pharmacy.service";
 import { Pill, Search, CheckCircle, AlertTriangle } from "lucide-react";
 
@@ -72,13 +76,37 @@ export default function DispensePage() {
    * Alur dispensing backend:
    *  1. POST /api/v1/pharmacy/dispensing/recommend-batches (engine FEFO per obat)
    *  2. POST /api/v1/pharmacy/dispensing (transaksi atomik + pessimistic lock)
+   *
+   * Fase 3 — dispensing tidak terjadi dua kali:
+   *  - DispensingGuard menolak permintaan kedua untuk resep yang sama
+   *    (in-flight atau sudah selesai) SEBELUM request dikirim.
+   *  - Cross-site guard memastikan FEFO/dispensing hanya menargetkan
+   *    site dalam cakupan apoteker.
+   *  - Setelah sukses, resep dihapus dari antrean lokal + refetch
+   *    (backend juga menyembunyikan resep yang sudah ada dispensing-nya).
    */
   const handleDispense = async () => {
     if (!selectedRx) return;
+    // Anti double-submit: guard menolak bila resep sudah/m sedang diproses.
+    if (!dispensingGuard.begin(selectedRx.id)) {
+      setMessage({
+        type: "error",
+        text: dispensingGuard.isDispensed(selectedRx.id)
+          ? "Resep ini sudah didispensasi — tidak dapat diproses dua kali."
+          : "Dispensing resep ini sedang berjalan. Tunggu hingga selesai.",
+      });
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
       const scope = await resolveScope();
+      // Cakupan site apoteker — aksi lintas site ditolak di sini.
+      const siteContext: PharmacySiteContext = {
+        siteId: scope.siteId,
+        siteName: scope.siteName,
+      };
+      await resolvePharmacySiteScope(); // pastikan cakupan terverifikasi
       const byBatch = new Map<string, number>();
 
       for (const item of selectedRx.items) {
@@ -90,7 +118,8 @@ export default function DispensePage() {
         const rec = await pharmacyService.recommendBatches(
           medicationId,
           scope.siteId,
-          qty
+          qty,
+          siteContext
         );
         if (!rec.isFullyAllocatable) {
           throw new Error(
@@ -111,7 +140,9 @@ export default function DispensePage() {
         quantity,
       }));
 
-      await pharmacyService.dispense(selectedRx.id, allocations);
+      await pharmacyService.dispense(selectedRx.id, allocations, siteContext);
+      // Resep resmi selesai didispensasi — terkunci untuk sesi ini.
+      dispensingGuard.commit(selectedRx.id);
 
       setMessage({ type: "ok", text: "Dispensing berhasil diproses oleh backend." });
       setPrescriptions((prev) => prev.filter((p) => p.id !== selectedRx.id));
@@ -120,9 +151,15 @@ export default function DispensePage() {
         refetch();
       }, 900);
     } catch (e) {
+      dispensingGuard.rollback(selectedRx.id);
       setMessage({
         type: "error",
-        text: e instanceof Error ? e.message : "Dispensing gagal.",
+        text:
+          e instanceof CrossSiteActionError
+            ? e.message
+            : e instanceof Error
+              ? e.message
+              : "Dispensing gagal.",
       });
     } finally {
       setBusy(false);
@@ -187,9 +224,20 @@ export default function DispensePage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="warning">Menunggu</Badge>
+                  {dispensingGuard.isDispensed(rx.id) ? (
+                    <Badge variant="success">Terdispensasi</Badge>
+                  ) : (
+                    <Badge variant="warning">Menunggu</Badge>
+                  )}
                   <Can action="pharmacy.dispense">
-                    <Button size="sm" onClick={() => openDispense(rx)}>
+                    <Button
+                      size="sm"
+                      onClick={() => openDispense(rx)}
+                      disabled={
+                        dispensingGuard.isDispensed(rx.id) ||
+                        dispensingGuard.isInProgress(rx.id)
+                      }
+                    >
                       <Pill className="size-3.5" />
                       Dispense
                     </Button>

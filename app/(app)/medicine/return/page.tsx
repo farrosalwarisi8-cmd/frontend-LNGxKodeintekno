@@ -13,15 +13,25 @@ import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import {
   pharmacyService,
+  resolvePharmacySiteScope,
+  CrossSiteActionError,
+  diffStockLedger,
   type DispensingHistoryItem,
+  type BackendInventoryItem,
+  type StockLedgerEntry,
 } from "@/lib/services/pharmacy.service";
-import { Undo2, Search, AlertTriangle } from "lucide-react";
+import { Undo2, Search, AlertTriangle, ScrollText } from "lucide-react";
 
 export default function ReturnMedicinePage() {
   const [history, setHistory] = useState<DispensingHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // Fase 3 — stock ledger: snapshot inventory sebelum retur agar
+  // perubahan stok (RETURN movement) dapat dibuktikan dari UI.
+  const [stockSnapshot, setStockSnapshot] = useState<BackendInventoryItem[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<StockLedgerEntry[]>([]);
 
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedDispensing, setSelectedDispensing] = useState<DispensingHistoryItem | null>(null);
@@ -35,8 +45,12 @@ export default function ReturnMedicinePage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await pharmacyService.getDispensingHistory();
-      setHistory(data);
+      const [historyData, inventoryData] = await Promise.all([
+        pharmacyService.getDispensingHistory(),
+        pharmacyService.getInventory(),
+      ]);
+      setHistory(historyData);
+      setStockSnapshot(inventoryData);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat riwayat dispensing.");
     } finally {
@@ -65,19 +79,43 @@ export default function ReturnMedicinePage() {
     setSaving(true);
     setActionError(null);
     try {
+      // Cross-site guard: riwayat dispensing sudah di-scope backend
+      // ke site pengguna — retur hanya sah untuk site dalam cakupan.
+      const siteScope = await resolvePharmacySiteScope();
+      const siteContext = siteScope.unrestricted
+        ? undefined
+        : { siteId: siteScope.siteIds[0], siteName: siteScope.siteNames[0] };
+
       await pharmacyService.returnMedication(
         selectedDispensing.id,
         returnBatchId,
         qty,
-        returnReason
+        returnReason,
+        siteContext
       );
+
+      // Refetch history + inventory, lalu hitung selisih stock ledger.
+      const [newHistory, newInventory] = await Promise.all([
+        pharmacyService.getDispensingHistory(),
+        pharmacyService.getInventory(),
+      ]);
+      const entries = diffStockLedger(stockSnapshot, newInventory, "RETURN");
+      setLedgerEntries((prev) => [...entries, ...prev]);
+      setStockSnapshot(newInventory);
+      setHistory(newHistory);
+
       setShowReturnModal(false);
       setReturnBatchId("");
       setReturnQuantity("");
       setReturnReason("");
-      await load();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Gagal memproses retur.");
+      setActionError(
+        e instanceof CrossSiteActionError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Gagal memproses retur."
+      );
     } finally {
       setSaving(false);
     }
@@ -119,6 +157,49 @@ export default function ReturnMedicinePage() {
           className="pl-10"
         />
       </div>
+
+      {/* Fase 3 — Stock Ledger: riwayat perubahan stok (RETURN)
+          yang dibuktikan dari selisih snapshot inventory. */}
+      {ledgerEntries.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ScrollText className="size-4 text-slate-500" />
+            <h2 className="text-sm font-semibold text-slate-900">
+              Stock Ledger — Retur
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {ledgerEntries.map((entry, i) => (
+              <div
+                key={`${entry.recordedAt}-${i}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900">
+                    {entry.genericName}{" "}
+                    <span className="text-xs font-normal text-slate-500">
+                      ({entry.medicationCode}) · {entry.siteName}
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {formatDate(entry.recordedAt)} · movement: {entry.movement}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-slate-500">
+                    {entry.before}
+                  </span>
+                  <span className="text-slate-400">→</span>
+                  <span className="font-mono text-xs font-semibold text-slate-900">
+                    {entry.after}
+                  </span>
+                  <Badge variant="success">+{entry.delta}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {loading && (
         <div className="space-y-3">
@@ -274,12 +355,15 @@ export default function ReturnMedicinePage() {
           {actionError && <p className="text-xs text-danger-600">{actionError}</p>}
 
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowReturnModal(false)}>
+            <Button variant="ghost" onClick={() => setShowReturnModal(false)} disabled={saving}>
               Batal
             </Button>
-            <Button onClick={handleReturn} disabled={saving}>
-              {saving ? "Memproses..." : "Proses Retur"}
-            </Button>
+            {/* Hanya apoteker (dispense-medicine) yang boleh memproses retur. */}
+            <Can action="pharmacy.dispense">
+              <Button onClick={handleReturn} disabled={saving}>
+                {saving ? "Memproses..." : "Proses Retur"}
+              </Button>
+            </Can>
           </div>
         </div>
       </Modal>

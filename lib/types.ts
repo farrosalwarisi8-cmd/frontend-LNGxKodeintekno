@@ -207,6 +207,17 @@ export interface ClinicVisit {
   referralReason?: string
   status: VisitStatus
   createdAt: string
+  /**
+   * Fase 3 — jejak klinik backend.
+   * `encounterId` = id dari POST /clinic/encounters (dibuat saat pertama kali
+   * SOAP disimpan untuk kunjungan yang berasal dari antrean).
+   * `recordStatus` = status rekam medis backend; "LOCKED" setelah finalize
+   * sehingga UI dapat menolak edit sembarangan.
+   */
+  appointmentId?: string
+  encounterId?: string
+  recordStatus?: "DRAFT" | "LOCKED"
+  lockedAt?: string
 }
 
 export interface Dispensing {

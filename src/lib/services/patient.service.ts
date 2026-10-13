@@ -59,6 +59,23 @@ interface BackendProfile {
     job_task?: { id?: string; name?: string };
   };
   identifiers?: Array<{ identifier_type?: string; identifier_last4?: string }>;
+  /**
+   * Hanya diisi untuk user medis (Medical Data Firewall).
+   * Fase 3: satu-satunya jalur baca encounter klinik di backend
+   * (tidak ada GET /clinic/encounters) — dipakai FE untuk memakai ulang
+   * encounter appointment yang sudah ada, bukan membuat duplikat.
+   */
+  clinical_encounters?: BackendClinicalEncounter[];
+}
+
+export interface BackendClinicalEncounter {
+  id: string;
+  appointment_id?: string | null;
+  patient_id?: string;
+  status?: string;
+  started_at?: string;
+  finalized_at?: string | null;
+  locked_at?: string | null;
 }
 
 interface BackendCreateResult {
@@ -173,6 +190,20 @@ export const patientService = {
       `/patients/${patientId}/profile`
     );
     return mapProfile(profile);
+  },
+
+  /**
+   * Fase 3 — daftar encounter klinik milik seorang pasien.
+   *
+   * Backend tidak menyediakan `GET /clinic/encounters`; profil pasien
+   * (read-only, khusus user medis) adalah satu-satunya sumber yang
+   * mengembalikan `clinical_encounters` beserta `appointment_id` dan
+   * status `LOCKED`-nya. Endpoint create menerapkan unique constraint
+   * pada `appointment_id`, sehingga FE wajib mencari dulu sebelum create.
+   */
+  async getClinicalEncounters(patientId: string): Promise<BackendClinicalEncounter[]> {
+    const profile = await apiClient.get<BackendProfile>(`/patients/${patientId}/profile`);
+    return profile.clinical_encounters ?? [];
   },
 
   async create(draft: CreatePersonDraft): Promise<CreatedPersonResult> {
