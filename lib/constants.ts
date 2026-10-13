@@ -1,14 +1,18 @@
-import type { HealthStatus, MCUStatus, MCUType, VisitStatus, EmployeeStatus } from "@/lib/types"
+import type { HealthStatus, MCUStatus, MCUType, VisitStatus, EmployeeStatus, Role } from "@/lib/types"
 
-export const ROLES = {
+export const ROLES: Record<Role, { label: string; color: string }> = {
   admin: { label: "Admin Sistem", color: "bg-violet-100 text-violet-700" },
-  doctor: { label: "Dokter", color: "bg-emerald-100 text-emerald-700" },
-  clinic: { label: "Petugas Klinik", color: "bg-sky-100 text-sky-700" },
-  pharmacy: { label: "Petugas Farmasi", color: "bg-amber-100 text-amber-700" },
-  hr: { label: "HR", color: "bg-blue-100 text-blue-700" },
-  worker: { label: "Pekerja", color: "bg-slate-100 text-slate-700" },
-  management: { label: "Manajemen", color: "bg-rose-100 text-rose-700" },
-} as const
+  "dokter-oh": { label: "Dokter OH", color: "bg-emerald-100 text-emerald-700" },
+  "dokter-klinik": { label: "Dokter Klinik", color: "bg-teal-100 text-teal-700" },
+  perawat: { label: "Perawat", color: "bg-sky-100 text-sky-700" },
+  apoteker: { label: "Apoteker", color: "bg-amber-100 text-amber-700" },
+  lab: { label: "Analis Lab/Radiolog", color: "bg-cyan-100 text-cyan-700" },
+  "admin-klinik": { label: "Admin Klinik", color: "bg-indigo-100 text-indigo-700" },
+  hr: { label: "HR/PIC", color: "bg-blue-100 text-blue-700" },
+  hse: { label: "HSE/Line Mgmt", color: "bg-orange-100 text-orange-700" },
+  manajemen: { label: "Manajemen", color: "bg-rose-100 text-rose-700" },
+  pekerja: { label: "Pekerja", color: "bg-slate-100 text-slate-700" },
+}
 
 export const MCU_STATUS: Record<MCUStatus, { label: string; color: string }> = {
   Draft: { label: "Draft", color: "bg-slate-100 text-slate-600" },
@@ -80,3 +84,9 @@ export const LOCATION_TYPES: Record<string, string> = {
   onshore: "Onshore",
   offshore: "Offshore",
 }
+
+export const LANGUAGES = [
+  { code: "id" as const, label: "Indonesia" },
+  { code: "en" as const, label: "English" },
+  { code: "zh" as const, label: "中文" },
+]

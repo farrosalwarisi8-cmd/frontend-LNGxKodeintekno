@@ -1,32 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Kodein Klinik — Occupational Health & Clinic Management",
-  description: "Demo awal aplikasi manajemen klinik & kesehatan kerja",
+  title: "EMR PT Layar Nusantara Gas — Modul 01",
+  description: "Electronic Medical Record — Registrasi Pekerja, MRN, dan Consent",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col font-sans">
+    <html lang="id" className="h-full antialiased" data-scroll-behavior="smooth">
+      <body className="min-h-full bg-surface-page font-sans text-text-primary">
         {children}
         <Toaster />
       </body>

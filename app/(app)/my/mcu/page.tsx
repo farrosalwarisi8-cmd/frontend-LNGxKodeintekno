@@ -1,65 +1,119 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useStore, useCurrentUser } from "@/lib/store";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { MCU_STATUS } from "@/lib/constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { formatDate } from "@/lib/format";
+import { Activity, HeartPulse, Calendar } from "lucide-react";
 
-export default function MyMCUPage() {
-  const router = useRouter();
-  const user = useCurrentUser();
-  const mcus = useStore((s) => s.mcus);
-
-  if (!user) return null;
-  const mine = mcus.filter((m) => {
-    const emp = useStore.getState().employees.find((e) => e.employeeId === user.employeeId);
-    return emp && m.employeeId === emp.id;
-  });
-
+function PageTitle() {
   return (
     <div>
-      <PageHeader title="MCU Saya" description="Status proses MCU saya." />
-      <div className="rounded-xl border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>No. MCU</TableHead>
-              <TableHead>Jenis</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Keputusan</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mine.map((m) => (
-              <TableRow key={m.id} className="cursor-pointer" onClick={() => router.push(`/mcu/${m.id}`)}>
-                <TableCell className="font-medium">{m.mcuNumber}</TableCell>
-                <TableCell>{m.type}</TableCell>
-                <TableCell>{formatDate(m.examDate)}</TableCell>
-                <TableCell>
-                  <StatusBadge value={m.status} kind="mcu" />
-                </TableCell>
-                <TableCell>{m.decision ?? "—"}</TableCell>
-              </TableRow>
+      <h1 className="text-2xl font-semibold text-slate-900">MCU Saya</h1>
+      <p className="text-sm text-slate-500">Riwayat Medical Check-Up</p>
+    </div>
+  );
+}
+
+export default function MyMCUPage() {
+  const user = useCurrentUser();
+  const employees = useStore((s) => s.employees);
+  const mcus = useStore((s) => s.mcus);
+  const workHealthStatus = useStore((s) => s.workHealthStatus);
+
+  if (!user) return null;
+
+  const employee = employees.find((e) => e.employeeId === user.employeeId);
+  if (!employee) {
+    return (
+      <div className="space-y-4">
+        <PageTitle />
+        <EmptyState
+          icon={Activity}
+          title="Data MCU tidak ditemukan"
+          description="Akun Anda belum tertaut ke data pekerja, sehingga riwayat MCU belum bisa ditampilkan."
+        />
+      </div>
+    );
+  }
+
+  const myMCUs = mcus.filter((m) => m.employeeId === employee.id);
+  const myHealthStatus = workHealthStatus.filter((w) => w.employeeId === employee.id);
+
+  return (
+    <div className="space-y-4">
+      <PageTitle />
+
+      {myHealthStatus.length > 0 && (
+        <Card className="border-success-200 bg-success-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <HeartPulse className="size-5 text-success-600" />
+              Status Kesehatan Kerja Saat Ini
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {myHealthStatus.map((whs) => (
+              <div key={whs.id} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={whs.status === "Fit to Work" ? "success" : whs.status === "Fit with Restriction" ? "warning" : "danger"}>
+                    {whs.status}
+                  </Badge>
+                  <span className="text-xs text-slate-500">
+                    Berlaku s.d. {formatDate(whs.validUntil)}
+                  </span>
+                </div>
+                {whs.restriction && (
+                  <p className="text-sm text-warning-600">Restriction: {whs.restriction}</p>
+                )}
+                {whs.recommendation && (
+                  <p className="text-sm text-slate-600">Rekomendasi: {whs.recommendation}</p>
+                )}
+              </div>
             ))}
-            {mine.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  Belum ada MCU.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-3">
+        {myMCUs.length === 0 ? (
+          <EmptyState
+            icon={Activity}
+            title="Belum ada riwayat MCU"
+            description="Riwayat Medical Check-Up Anda akan tampil di sini setelah pemeriksaan pertama selesai."
+          />
+        ) : (
+          myMCUs.map((mcu) => {
+            const statusMeta = MCU_STATUS[mcu.status];
+            return (
+              <Card key={mcu.id} className="p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium text-slate-900">{mcu.mcuNumber}</p>
+                    <p className="text-xs text-slate-500">
+                      {mcu.type} · {formatDate(mcu.examDate)} · {mcu.facility}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Badge variant="outline" className={statusMeta?.color}>
+                        {statusMeta?.label}
+                      </Badge>
+                      {mcu.decision && (
+                        <span className="text-xs text-slate-500">{mcu.decision}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    {mcu.validFrom && (
+                      <p>Berlaku: {formatDate(mcu.validFrom)} — {formatDate(mcu.validUntil)}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })
+        )}
       </div>
     </div>
   );

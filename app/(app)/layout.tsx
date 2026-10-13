@@ -1,5 +1,10 @@
-import { AppShell } from "@/components/app-shell";
+import { EmrShell } from "@/components/emr-shell";
+import { RouteGuard } from "@/components/route-guard";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <EmrShell>
+      <RouteGuard>{children}</RouteGuard>
+    </EmrShell>
+  );
 }

@@ -1,228 +1,301 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts";
-import { useStore, useCurrentUser } from "@/lib/store";
-import { can } from "@/lib/rbac";
-import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { HEALTH_STATUS, MCU_STATUS } from "@/lib/constants";
-import { toast } from "sonner";
+import { Can } from "@/components/can";
 
-const COLORS = ["#10b981", "#f59e0b", "#f97316", "#3b82f6", "#ef4444"];
+import { useState } from "react";
+import { useStore } from "@/lib/store";
+import {
+  syncMcu,
+  syncPatients,
+  syncQueues,
+  useSyncedModules,
+} from "@/lib/remote-sync";
+import {
+  reportingService,
+  type ReportDefinition,
+  type TopDiseaseItem,
+} from "@/lib/services/reporting.service";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { formatDate } from "@/lib/format";
+import { BarChart3, Download, TrendingUp, Users, Activity, HeartPulse, Pill } from "lucide-react";
 
 export default function ReportsPage() {
-  const user = useCurrentUser();
   const employees = useStore((s) => s.employees);
-  const companies = useStore((s) => s.companies);
-  const departments = useStore((s) => s.departments);
-  const locations = useStore((s) => s.locations);
   const mcus = useStore((s) => s.mcus);
   const visits = useStore((s) => s.visits);
-  const whs = useStore((s) => s.workHealthStatus);
+  const workHealthStatus = useStore((s) => s.workHealthStatus);
+  const dispensings = useStore((s) => s.dispensings);
   const diagnoses = useStore((s) => s.diagnoses);
 
-  const [companyId, setCompanyId] = useState("all");
-  const [departmentId, setDepartmentId] = useState("all");
-  const [locationId, setLocationId] = useState("all");
+  const [topDiseases, setTopDiseases] = useState<TopDiseaseItem[]>([]);
+  const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  // Peringatan ketika sebagian sumber data ditolak backend (mis. /patients untuk
+  // role MANAGEMENT) agar angka parsial tidak disalahartikan sebagai "nol".
+  const [partialNotice, setPartialNotice] = useState<string | null>(null);
 
-  const scopedEmployees = useMemo(() => {
-    return employees.filter(
-      (e) =>
-        (companyId === "all" || e.companyId === companyId) &&
-        (departmentId === "all" || e.departmentId === departmentId) &&
-        (locationId === "all" || e.locationId === locationId)
+  // Modul 8 — data laporan & analitik dari backend
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    setPartialNotice(null);
+    // Satu sumber yang ditolak tidak boleh mengosongkan seluruh halaman laporan.
+    const syncResults = await Promise.allSettled([
+      syncPatients(1, 100),
+      syncMcu(1, 100),
+      syncQueues(),
+    ]);
+    const rejected = syncResults.filter(
+      (r): r is PromiseRejectedResult => r.status === "rejected"
     );
-  }, [employees, companyId, departmentId, locationId]);
+    if (rejected.length === syncResults.length) {
+      throw rejected[0].reason;
+    }
+    if (rejected.length > 0) {
+      setPartialNotice(
+        "Sebagian data tidak dapat dimuat karena keterbatasan akses peran Anda; angka di bawah hanya mencakup sumber data yang berhasil dibaca."
+      );
+    }
+    const [analytics, defs] = await Promise.all([
+      reportingService.topDiseases({}).catch(() => null),
+      reportingService.getDefinitions().catch(() => []),
+    ]);
+    setTopDiseases(analytics ? analytics.topDiseases ?? analytics.top10Morbidity ?? [] : []);
+    setDefinitions(defs);
+  });
 
-  if (!user) return null;
-  const seeClinical = can(user.role, "view-clinical-notes");
+  const handleExport = async () => {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const def = definitions[0];
+      if (!def) throw new Error("Tidak ada definisi laporan di backend.");
+      const run = await reportingService.runReport(def.id, "PDF", {
+        startDate: `${new Date().getFullYear()}-01-01`,
+        endDate: new Date().toISOString().slice(0, 10),
+      });
+      const download = await reportingService.downloadExport(run.exportId);
+      setExportMsg(`Laporan ${run.format} dibuat (${run.status}).`);
+      if (download?.downloadUrl) {
+        window.open(download.downloadUrl, "_blank", "noopener");
+      }
+    } catch (e) {
+      setExportMsg(e instanceof Error ? e.message : "Ekspor laporan gagal.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
-  const scopedIds = new Set(scopedEmployees.map((e) => e.id));
+  const totalEmployees = employees.length;
+  const activeEmployees = employees.filter((e) => e.status === "Active").length;
+  const totalMCU = mcus.length;
+  const approvedMCU = mcus.filter((m) => m.status === "Approved" || m.status === "Closed").length;
+  const totalVisits = visits.length;
+  const completedVisits = visits.filter((v) => v.status === "Completed").length;
 
-  const healthData = Object.keys(HEALTH_STATUS).map((k) => ({
-    name: k,
-    value: whs.filter((w) => scopedIds.has(w.employeeId) && w.status === k).length,
+  const fitToWork = workHealthStatus.filter((w) => w.status === "Fit to Work").length;
+  const fitWithRestriction = workHealthStatus.filter((w) => w.status === "Fit with Restriction").length;
+  const temporarilyUnfit = workHealthStatus.filter((w) => w.status === "Temporarily Unfit").length;
+  const unfit = workHealthStatus.filter((w) => w.status === "Unfit").length;
+
+  const diagnosisCounts = diagnoses.map((d) => ({
+    ...d,
+    count: visits.filter((v) => v.diagnosisIds?.includes(d.id)).length,
+  })).sort((a, b) => b.count - a.count).slice(0, 10);
+
+  // Backend bisa mengirim entri analitik tanpa kode/nama (mis. agregat kosong).
+  // Baris tanpa label dibuang agar tabel tidak menampilkan "- —" dengan angka 0.
+  const topRows = (
+    topDiseases.length > 0
+      ? topDiseases.map((t, i) => {
+          const code = (t.icd10 ?? t.code ?? "").trim();
+          const name = (t.name ?? t.disease ?? "").trim();
+          return {
+            key: code || name || String(i),
+            label: [code, name].filter(Boolean).join(" — "),
+            count: t.caseCount ?? t.count ?? 0,
+          };
+        })
+      : diagnosisCounts.map((d) => ({ key: d.id, label: `${d.code} — ${d.description}`, count: d.count }))
+  ).filter((row) => row.label.length > 0);
+
+  const mcuByType = ["Pre-Employment", "Periodic", "Return to Work", "Special"].map((type) => ({
+    type,
+    count: mcus.filter((m) => m.type === type).length,
   }));
-
-  const mcuData = Object.keys(MCU_STATUS).map((k) => ({
-    name: k,
-    count: mcus.filter((m) => scopedIds.has(m.employeeId) && m.status === k).length,
-  }));
-
-  const diagnosisData = diagnoses
-    .map((d) => ({
-      name: d.code,
-      count: visits.filter((v) => scopedIds.has(v.employeeId) && v.diagnosisIds.includes(d.id)).length,
-    }))
-    .filter((d) => d.count > 0);
-
-  const visitsCount = visits.filter((v) => scopedIds.has(v.employeeId)).length;
 
   return (
-    <div>
-      <PageHeader title="Reports & Analytics" description="Laporan sesuai role dan filter dasar.">
-        <Button variant="outline" onClick={() => toast.success("Export dummy: laporan preview diunduh.")}>
-          <Download /> Export
-        </Button>
-      </PageHeader>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Laporan & Analitik</h1>
+          <p className="text-sm text-slate-500">Dashboard reporting per role</p>
+        </div>
+        <Can action="reports.export">
+          <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting || loading}>
+            <Download className="size-4" />
+            Ekspor PDF
+          </Button>
+        </Can>
+      </div>
 
-      <Card className="mb-4">
-        <CardContent className="flex flex-wrap items-end gap-3 py-3">
-          <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Perusahaan</span>
-            <Select value={companyId} onValueChange={(v) => setCompanyId(v as string)}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
-                {companies.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
+      {exportMsg && (
+        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{exportMsg}</div>
+      )}
+
+      {partialNotice && (
+        <div role="status" className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-700">
+          {partialNotice}
+        </div>
+      )}
+
+      {error && <ErrorState title="Gagal memuat data laporan" message={error} onRetry={refetch} />}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+              <Users className="size-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-900">{totalEmployees}</p>
+              <p className="text-xs text-slate-500">Total Pekerja</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-success-100 text-success-600">
+              <Activity className="size-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-900">{approvedMCU}</p>
+              <p className="text-xs text-slate-500">MCU Approved</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-info-100 text-info-600">
+              <BarChart3 className="size-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-900">{totalVisits}</p>
+              <p className="text-xs text-slate-500">Total Kunjungan</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
+              <Pill className="size-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-slate-900">{dispensings.length}</p>
+              <p className="text-xs text-slate-500">Dispensing</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HeartPulse className="size-5 text-success-600" />
+              Status Kesehatan Kerja
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Fit to Work</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-32 rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-success-500" style={{ width: `${workHealthStatus.length > 0 ? (fitToWork / workHealthStatus.length) * 100 : 0}%` }} />
+                  </div>
+                  <span className="text-sm font-medium text-slate-900">{fitToWork}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Fit with Restriction</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-32 rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-warning-500" style={{ width: `${workHealthStatus.length > 0 ? (fitWithRestriction / workHealthStatus.length) * 100 : 0}%` }} />
+                  </div>
+                  <span className="text-sm font-medium text-slate-900">{fitWithRestriction}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Temporarily Unfit</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-32 rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-orange-500" style={{ width: `${workHealthStatus.length > 0 ? (temporarilyUnfit / workHealthStatus.length) * 100 : 0}%` }} />
+                  </div>
+                  <span className="text-sm font-medium text-slate-900">{temporarilyUnfit}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Unfit</span>
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-32 rounded-full bg-slate-100">
+                    <div className="h-2 rounded-full bg-danger-500" style={{ width: `${workHealthStatus.length > 0 ? (unfit / workHealthStatus.length) * 100 : 0}%` }} />
+                  </div>
+                  <span className="text-sm font-medium text-slate-900">{unfit}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="size-5 text-info-600" />
+              Top 10 Diagnosis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {topRows.length === 0 ? (
+              <EmptyState
+                icon={TrendingUp}
+                title="Belum ada data diagnosis"
+                description="Data akan muncul setelah ada kunjungan dengan diagnosis ICD-10."
+              />
+            ) : (
+              <div className="space-y-2">
+                {topRows.map((d) => (
+                  <div key={d.key} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="min-w-0 truncate text-slate-600" title={d.label}>
+                      {d.label}
+                    </span>
+                    <Badge variant="info">{d.count}</Badge>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>MCU per Tipe</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {mcuByType.map((item) => (
+              <div key={item.type} className="rounded-xl border border-slate-200 p-4 text-center">
+                <p className="text-2xl font-semibold text-slate-900">{item.count}</p>
+                <p className="text-xs text-slate-500">{item.type}</p>
+              </div>
+            ))}
           </div>
-          <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Departemen</span>
-            <Select value={departmentId} onValueChange={(v) => setDepartmentId(v as string)}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Lokasi</span>
-            <Select value={locationId} onValueChange={(v) => setLocationId(v as string)}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua</SelectItem>
-                {locations.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="ml-auto text-sm text-muted-foreground">
-            {scopedEmployees.length} pekerja · {visitsCount} kunjungan
-          </p>
         </CardContent>
       </Card>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Status Kesehatan Kerja</CardTitle>
-            <CardDescription>Distribusi pekerja per status</CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={healthData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                  {healthData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Status MCU</CardTitle>
-            <CardDescription>Jumlah MCU per status</CardDescription>
-          </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mcuData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {seeClinical && diagnosisData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Tren Diagnosis</CardTitle>
-              <CardDescription>Diagnosis terbanyak (klinis)</CardDescription>
-            </CardHeader>
-            <CardContent className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={diagnosisData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {!seeClinical && user.role === "hr" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Ringkasan Aktivitas Klinik</CardTitle>
-              <CardDescription>Data agregat tanpa detail diagnosis individual.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p>Total kunjungan: <strong>{visitsCount}</strong></p>
-              <p>MCU disetujui: <strong>{mcus.filter((m) => scopedIds.has(m.employeeId) && m.status === "Approved").length}</strong></p>
-              <p>Restriction aktif: <strong>{whs.filter((w) => scopedIds.has(w.employeeId) && w.status === "Fit with Restriction").length}</strong></p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
     </div>
   );
 }

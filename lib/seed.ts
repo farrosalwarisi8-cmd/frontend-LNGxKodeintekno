@@ -38,12 +38,17 @@ export const LOCATIONS: WorkLocation[] = [
 ]
 
 export const USERS: User[] = [
-  { id: "u1", username: "admin", password: "admin", name: "Bagus Pratama", role: "admin", title: "System Administrator" },
-  { id: "u2", username: "dokter", password: "dokter", name: "dr. Siti Rahayu", role: "doctor", title: "Medical Reviewer" },
-  { id: "u3", username: "klinik", password: "klinik", name: "Andi Wijaya, Amd.Kep", role: "clinic", title: "Clinic Nurse" },
-  { id: "u4", username: "hr", password: "hr", name: "Rina Kurnia", role: "hr", title: "HR Officer" },
-  { id: "u5", username: "manajemen", password: "manajemen", name: "Dewi Lestari", role: "management", title: "Management" },
-  { id: "u6", username: "pekerja", password: "pekerja", name: "Budi Santoso", role: "worker", title: "Employee", employeeId: "EMP-0001" },
+  { id: "u1", username: "admin", password: "", name: "Bagus Pratama", role: "admin", title: "System Administrator", mfaEnabled: true, mfaMethod: "totp", mfaSecret: "123456", preferredLanguage: "id" },
+  { id: "u2", username: "dokter", password: "", name: "dr. Siti Rahayu", role: "dokter-oh", title: "Dokter OH", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u3", username: "klinik", password: "", name: "Andi Wijaya, Amd.Kep", role: "perawat", title: "Perawat Klinik", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u4", username: "hr", password: "", name: "Rina Kurnia", role: "hr", title: "HR Officer", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u5", username: "manajemen", password: "", name: "Dewi Lestari", role: "manajemen", title: "Management", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u6", username: "pekerja", password: "", name: "Budi Santoso", role: "pekerja", title: "Employee", employeeId: "EMP-0001", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u7", username: "dokter-klinik", password: "", name: "dr. Ahmad Hidayat", role: "dokter-klinik", title: "Dokter Klinik", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u8", username: "apoteker", password: "", name: "Sari Wulandari, S.Farm", role: "apoteker", title: "Apoteker", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u9", username: "lab", password: "", name: "Dian Prasetyo, A.Md", role: "lab", title: "Analis Lab", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u10", username: "admin-klinik", password: "", name: "Rudi Hartono", role: "admin-klinik", title: "Admin Klinik", mfaEnabled: false, preferredLanguage: "id" },
+  { id: "u11", username: "hse", password: "", name: "Hendra Gunawan", role: "hse", title: "HSE Officer", mfaEnabled: false, preferredLanguage: "id" },
 ]
 
 const NAMES: { name: string; gender: "Male" | "Female" }[] = [
@@ -106,6 +111,7 @@ function buildEmployees(): Employee[] {
     return {
       id: `e${idx}`,
       employeeId: `EMP-${pad(idx)}`,
+      mrn: `MRN-${String(idx).padStart(6, "0")}`,
       fullName: item.name,
       nationalId: `32${String(50000000000000 + idx * 137911).padStart(14, "0")}`,
       dateOfBirth: `${birthYear}-${String((i % 12) + 1).padStart(2, "0")}-${String((i % 27) + 1).padStart(2, "0")}`,
@@ -128,6 +134,9 @@ function buildEmployees(): Employee[] {
           note: "Penempatan awal",
         },
       ],
+      consentGiven: i % 3 !== 0,
+      consentDate: i % 3 !== 0 ? `${startYear}-${startMonth}-15` : undefined,
+      documents: [],
     }
   })
 }

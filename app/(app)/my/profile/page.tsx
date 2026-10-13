@@ -1,83 +1,124 @@
 "use client";
 
 import { useStore, useCurrentUser } from "@/lib/store";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { initials, formatDate, age } from "@/lib/format";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { Avatar } from "@/shared/components/design-system/avatar";
+import { formatDate } from "@/lib/format";
+import { UserRound, Building2, Phone, Mail, Calendar, FileText, HeartPulse } from "lucide-react";
+
+function PageTitle() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-slate-900">Profil Saya</h1>
+      <p className="text-sm text-slate-500">Informasi data diri dan employment</p>
+    </div>
+  );
+}
 
 export default function MyProfilePage() {
   const user = useCurrentUser();
-  const employee = useStore((s) => s.employees.find((e) => e.employeeId === user?.employeeId));
+  const employees = useStore((s) => s.employees);
   const companies = useStore((s) => s.companies);
   const departments = useStore((s) => s.departments);
   const locations = useStore((s) => s.locations);
 
   if (!user) return null;
+
+  const employee = employees.find((e) => e.employeeId === user.employeeId);
   if (!employee) {
-    return <div className="text-muted-foreground">Profil pekerja tidak ditemukan.</div>;
+    return (
+      <div className="space-y-4">
+        <PageTitle />
+        <EmptyState
+          icon={UserRound}
+          title="Data pekerja tidak ditemukan"
+          description="Akun Anda belum tertaut ke data pekerja. Hubungi admin klinik atau HR untuk menautkannya."
+        />
+      </div>
+    );
   }
 
-  const lookup = (id: string, list: { id: string; name: string }[]) => list.find((x) => x.id === id)?.name ?? "—";
+  const company = companies.find((c) => c.id === employee.companyId);
+  const dept = departments.find((d) => d.id === employee.departmentId);
+  const loc = locations.find((l) => l.id === employee.locationId);
 
   return (
-    <div>
-      <PageHeader title="Profil Saya" />
-      <Card className="mb-4">
-        <CardContent className="flex items-center gap-4 py-4">
-          <Avatar size="lg">
-            <AvatarFallback>{initials(employee.fullName)}</AvatarFallback>
-          </Avatar>
+    <div className="space-y-4">
+      <PageTitle />
+
+      <Card className="p-6">
+        <div className="flex items-center gap-4">
+          <Avatar name={employee.fullName} size="lg" />
           <div>
-            <h2 className="text-lg font-semibold">{employee.fullName}</h2>
-            <p className="text-sm text-muted-foreground">
-              {employee.employeeId} · {employee.jobTitle}
-            </p>
-            <StatusBadge value={employee.status} kind="employee" />
+            <h2 className="text-xl font-semibold text-slate-900">{employee.fullName}</h2>
+            <p className="text-sm text-slate-500">{employee.employeeId} · {employee.mrn}</p>
+            <div className="mt-1 flex items-center gap-2">
+              <Badge variant="success">{employee.status}</Badge>
+              <Badge variant="default">{employee.gender}</Badge>
+            </div>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Data Pribadi</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Building2 className="size-4 text-slate-400" />
+              Employment
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <Row label="Nomor identitas" value={employee.nationalId} />
-            <Row label="Tanggal lahir" value={`${formatDate(employee.dateOfBirth)} (${age(employee.dateOfBirth)} th)`} />
-            <Row label="Jenis kelamin" value={employee.gender} />
-            <Row label="Telepon" value={employee.phone} />
-            <Row label="Email" value={employee.email} />
+            <p><span className="text-slate-500">Perusahaan:</span> {company?.name}</p>
+            <p><span className="text-slate-500">Departemen:</span> {dept?.name}</p>
+            <p><span className="text-slate-500">Jabatan:</span> {employee.jobTitle}</p>
+            <p><span className="text-slate-500">Lokasi:</span> {loc?.name}</p>
+            <p><span className="text-slate-500">Tanggal Bergabung:</span> {formatDate(employee.startDate)}</p>
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Pekerjaan</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Phone className="size-4 text-slate-400" />
+              Kontak
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <Row label="Perusahaan" value={lookup(employee.companyId, companies)} />
-            <Row label="Departemen" value={lookup(employee.departmentId, departments)} />
-            <Row label="Lokasi" value={lookup(employee.locationId, locations)} />
-            <Row label="Tanggal mulai" value={formatDate(employee.startDate)} />
+            <p><span className="text-slate-500">Email:</span> {employee.email}</p>
+            <p><span className="text-slate-500">Telepon:</span> {employee.phone}</p>
+            <p><span className="text-slate-500">Tanggal Lahir:</span> {formatDate(employee.dateOfBirth)}</p>
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
-}
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{value || "—"}</span>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="size-4 text-slate-400" />
+            Dokumen
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {employee.documents.length === 0 ? (
+            <p className="text-sm text-slate-500">Belum ada dokumen.</p>
+          ) : (
+            <div className="space-y-2">
+              {employee.documents.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{doc.name}</p>
+                    <p className="text-xs text-slate-500">{doc.type} · {formatDate(doc.uploadedAt)}</p>
+                  </div>
+                  <Badge variant="success">Verified</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

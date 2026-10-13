@@ -1,68 +1,94 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useStore, useCurrentUser } from "@/lib/store";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CERT_STATUS } from "@/lib/constants";
+import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { formatDate } from "@/lib/format";
+import { BadgeCheck, QrCode } from "lucide-react";
+import Link from "next/link";
+
+function PageTitle() {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-slate-900">Sertifikat Saya</h1>
+      <p className="text-sm text-slate-500">Sertifikat kesehatan kerja</p>
+    </div>
+  );
+}
 
 export default function MyCertificatesPage() {
-  const router = useRouter();
   const user = useCurrentUser();
+  const employees = useStore((s) => s.employees);
   const certificates = useStore((s) => s.certificates);
 
   if (!user) return null;
-  const mine = certificates.filter((c) => {
-    const emp = useStore.getState().employees.find((e) => e.employeeId === user.employeeId);
-    return emp && c.employeeId === emp.id;
-  });
+
+  const employee = employees.find((e) => e.employeeId === user.employeeId);
+  if (!employee) {
+    return (
+      <div className="space-y-4">
+        <PageTitle />
+        <EmptyState
+          icon={BadgeCheck}
+          title="Sertifikat tidak ditemukan"
+          description="Akun Anda belum tertaut ke data pekerja, sehingga sertifikat belum bisa ditampilkan."
+        />
+      </div>
+    );
+  }
+
+  const myCerts = certificates.filter((c) => c.employeeId === employee.id);
 
   return (
-    <div>
-      <PageHeader title="Sertifikat Saya" />
-      <div className="rounded-xl border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>No. Sertifikat</TableHead>
-              <TableHead>Status Kesehatan</TableHead>
-              <TableHead>Diterbitkan</TableHead>
-              <TableHead>Berlaku s.d.</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mine.map((c) => (
-              <TableRow key={c.id} className="cursor-pointer" onClick={() => router.push(`/certificates/${c.id}`)}>
-                <TableCell className="font-medium">{c.certNumber}</TableCell>
-                <TableCell>
-                  <StatusBadge value={c.healthStatus} kind="health" />
-                </TableCell>
-                <TableCell>{formatDate(c.issuedAt)}</TableCell>
-                <TableCell>{formatDate(c.validUntil)}</TableCell>
-                <TableCell>
-                  <StatusBadge value={c.status} kind="cert" />
-                </TableCell>
-              </TableRow>
-            ))}
-            {mine.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                  Belum ada sertifikat.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+    <div className="space-y-4">
+      <PageTitle />
+
+      {myCerts.length === 0 ? (
+        <EmptyState
+          icon={BadgeCheck}
+          title="Belum ada sertifikat"
+          description="Sertifikat kesehatan kerja Anda akan tampil di sini setelah diterbitkan dokter."
+        />
+      ) : (
+        <div className="space-y-3">
+          {myCerts.map((cert) => {
+            const statusMeta = CERT_STATUS[cert.status];
+            return (
+              <Card key={cert.id} className="p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                      <BadgeCheck className="size-6" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900">{cert.certNumber}</p>
+                      <p className="text-xs text-slate-500">
+                        {cert.healthStatus} · Berlaku s.d. {formatDate(cert.validUntil)}
+                      </p>
+                      {cert.restrictions && (
+                        <p className="text-xs text-warning-600">Restriction: {cert.restrictions}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={statusMeta?.color}>
+                      {statusMeta?.label}
+                    </Badge>
+                    <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
+                      <Badge variant="info" className="cursor-pointer">
+                        <QrCode className="size-3" />
+                        QR
+                      </Badge>
+                    </Link>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

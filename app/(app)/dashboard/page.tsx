@@ -1,253 +1,265 @@
 "use client";
 
-import {
-  Activity,
-  AlertTriangle,
-  BadgeCheck,
-  CalendarClock,
-  ClipboardList,
-  Clock,
-  Pill,
-  Stethoscope,
-  Users,
-} from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  CartesianGrid,
-} from "recharts";
 import { useStore, useCurrentUser } from "@/lib/store";
-import { StatCard } from "@/components/stat-card";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { HEALTH_STATUS, MCU_STATUS } from "@/lib/constants";
-import { formatDate } from "@/lib/format";
+  syncInventory,
+  syncMcu,
+  syncPatients,
+  syncQueues,
+  useSyncedModules,
+} from "@/lib/remote-sync";
+import { ROLES, MCU_STATUS, HEALTH_STATUS, VISIT_STATUS, EMPLOYEE_STATUS } from "@/lib/constants";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Avatar } from "@/shared/components/design-system/avatar";
+import { cn } from "@/lib/utils";
+import {
+  Users,
+  Activity,
+  ClipboardList,
+  Pill,
+  BadgeCheck,
+  AlertTriangle,
+  Clock,
+  TrendingUp,
+  HeartPulse,
+  CalendarCheck,
+  FileText,
+} from "lucide-react";
 import Link from "next/link";
-
-const COLORS = ["#10b981", "#f59e0b", "#f97316", "#3b82f6", "#ef4444"];
-
-const NOW = Date.now();
 
 export default function DashboardPage() {
   const user = useCurrentUser();
+  const employees = useStore((s) => s.employees);
   const mcus = useStore((s) => s.mcus);
   const visits = useStore((s) => s.visits);
-  const employees = useStore((s) => s.employees);
-  const whs = useStore((s) => s.workHealthStatus);
+  const dispensings = useStore((s) => s.dispensings);
+  const certificates = useStore((s) => s.certificates);
+  const workHealthStatus = useStore((s) => s.workHealthStatus);
+  const notifications = useStore((s) => s.notifications);
+  const auditLogs = useStore((s) => s.auditLogs);
   const stockBatches = useStore((s) => s.stockBatches);
   const medicines = useStore((s) => s.medicines);
-  const certificates = useStore((s) => s.certificates);
-  const diagnoses = useStore((s) => s.diagnoses);
+
+  // Dashboard — tarik ringkasan semua modul inti dari backend
+  useSyncedModules(async () => {
+    await Promise.all([
+      syncPatients(1, 100),
+      syncMcu(1, 100),
+      syncQueues(),
+      syncInventory(),
+    ]);
+  });
 
   if (!user) return null;
 
-  const role = user.role;
-  const today = new Date().toISOString().slice(0, 10);
-  const visitsToday = visits.filter((v) => v.date === today).length;
-  const inQueue = visits.filter((v) => v.status === "In Queue" || v.status === "Registered").length;
-  const awaitingReview = mcus.filter((m) => m.status === "Submitted" || m.status === "Resubmitted").length;
-  const activeReferrals = visits.filter((v) => v.status === "Referred").length;
+  const roleMeta = ROLES[user.role];
+  const myNotifications = notifications.filter((n) => n.userId === user.id);
+  const unreadCount = myNotifications.filter((n) => !n.read).length;
+
+  const activeEmployees = employees.filter((e) => e.status === "Active").length;
+  const pendingMCU = mcus.filter((m) => m.status === "Submitted" || m.status === "Resubmitted").length;
+  const approvedMCU = mcus.filter((m) => m.status === "Approved" || m.status === "Closed").length;
+  const todayVisits = visits.filter((v) => v.status !== "Completed" && v.status !== "Referred").length;
+  const validCerts = certificates.filter((c) => c.status === "valid").length;
+  const fitToWork = workHealthStatus.filter((w) => w.status === "Fit to Work").length;
+  const fitWithRestriction = workHealthStatus.filter((w) => w.status === "Fit with Restriction").length;
+  const temporarilyUnfit = workHealthStatus.filter((w) => w.status === "Temporarily Unfit").length;
   const lowStock = stockBatches.filter((b) => {
     const med = medicines.find((m) => m.id === b.medicineId);
     return med && b.quantity < med.minStock;
   }).length;
-  const expiringCert = certificates.filter(
-    (c) => c.status === "valid" && new Date(c.validUntil).getTime() - NOW < 45 * 24 * 3600 * 1000
-  ).length;
 
-  const mcuStatusData = Object.keys(MCU_STATUS).map((k) => ({
-    name: k,
-    count: mcus.filter((m) => m.status === k).length,
-  }));
+  const stats = [
+    { label: "Total Pekerja", value: employees.length, icon: Users, color: "bg-primary-100 text-primary-700" },
+    { label: "Pekerja Aktif", value: activeEmployees, icon: Users, color: "bg-success-100 text-success-600" },
+    { label: "MCU Pending", value: pendingMCU, icon: Clock, color: "bg-warning-100 text-warning-600" },
+    { label: "MCU Approved", value: approvedMCU, icon: Activity, color: "bg-info-100 text-info-600" },
+    { label: "Kunjungan Hari Ini", value: todayVisits, icon: ClipboardList, color: "bg-purple-100 text-purple-600" },
+    { label: "Sertifikat Valid", value: validCerts, icon: BadgeCheck, color: "bg-success-100 text-success-600" },
+    { label: "Fit to Work", value: fitToWork, icon: HeartPulse, color: "bg-success-100 text-success-600" },
+    { label: "Stok Rendah", value: lowStock, icon: AlertTriangle, color: "bg-danger-100 text-danger-600" },
+  ];
 
-  const healthStatusData = Object.keys(HEALTH_STATUS).map((k) => ({
-    name: k,
-    value: whs.filter((w) => w.status === k).length,
-  }));
-
-  const diagnosisData = diagnoses.map((d) => ({
-    name: d.description.length > 24 ? d.description.slice(0, 24) + "…" : d.description,
-    count: visits.filter((v) => v.diagnosisIds.includes(d.id)).length,
-  })).filter((d) => d.count > 0);
-
-  const isClinical = role === "doctor" || role === "clinic" || role === "admin";
-  const isHrLike = role === "hr" || role === "management";
-  const isOps = role === "admin" || role === "clinic";
-  const isDoctor = role === "doctor";
+  const recentMCU = mcus.slice(0, 5);
+  const recentVisits = visits.slice(0, 5);
+  const recentAudit = auditLogs.slice(0, 8);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Selamat datang, {user.name}. Ringkasan sesuai peran {user.title}.
-        </p>
-      </div>
-
-      {/* Stat cards per role */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {isOps && (
-          <>
-            <StatCard label="Kunjungan hari ini" value={visitsToday} icon={<ClipboardList className="size-5" />} tone="info" />
-            <StatCard label="Pasien dalam antrean" value={inQueue} icon={<Clock className="size-5" />} tone="warning" />
-            <StatCard label="MCU menunggu review" value={awaitingReview} icon={<Stethoscope className="size-5" />} />
-            <StatCard label="Rujukan aktif" value={activeReferrals} icon={<Users className="size-5" />} />
-            <StatCard label="Stok obat rendah" value={lowStock} icon={<Pill className="size-5" />} tone="danger" />
-            <StatCard label="Sertifikat segera kedaluwarsa" value={expiringCert} icon={<CalendarClock className="size-5" />} tone="warning" />
-          </>
-        )}
-        {isDoctor && (
-          <>
-            <StatCard label="MCU menunggu review" value={awaitingReview} icon={<Stethoscope className="size-5" />} tone="info" />
-            <StatCard label="Kunjungan hari ini" value={visitsToday} icon={<ClipboardList className="size-5" />} />
-            <StatCard label="Sertifikat diterbitkan" value={certificates.length} icon={<BadgeCheck className="size-5" />} tone="success" />
-            <StatCard label="Rujukan aktif" value={activeReferrals} icon={<Users className="size-5" />} />
-          </>
-        )}
-        {isHrLike && (
-          <>
-            <StatCard label="Total pekerja" value={employees.length} icon={<Users className="size-5" />} tone="info" />
-            <StatCard label="Fit to Work" value={whs.filter((w) => w.status === "Fit to Work").length} icon={<Activity className="size-5" />} tone="success" />
-            <StatCard label="Dengan restriction" value={whs.filter((w) => w.status === "Fit with Restriction").length} icon={<AlertTriangle className="size-5" />} tone="warning" />
-            <StatCard label="Tidak fit sementara" value={whs.filter((w) => w.status === "Temporarily Unfit" || w.status === "Unfit").length} icon={<AlertTriangle className="size-5" />} tone="danger" />
-          </>
-        )}
-        {role === "worker" && (
-          <>
-            <StatCard label="MCU saya" value={mcus.filter((m) => m.employeeId === user.employeeId).length} icon={<Stethoscope className="size-5" />} tone="info" />
-            <StatCard label="Sertifikat saya" value={certificates.filter((c) => c.employeeId === user.employeeId).length} icon={<BadgeCheck className="size-5" />} tone="success" />
-          </>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-500">
+            Selamat datang, {user.name} — {roleMeta.label}
+          </p>
+        </div>
+        {unreadCount > 0 && (
+          <div className="flex items-center gap-2 rounded-xl bg-warning-50 px-4 py-2 text-sm text-warning-700">
+            <AlertTriangle className="size-4" />
+            {unreadCount} notifikasi belum dibaca
+          </div>
         )}
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {(isOps || isDoctor) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Distribusi Status MCU</CardTitle>
-              <CardDescription>Jumlah MCU per status saat ini</CardDescription>
-            </CardHeader>
-            <CardContent className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mcuStatusData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {(isHrLike || isOps || isDoctor) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Status Kesehatan Kerja</CardTitle>
-              <CardDescription>Distribusi pekerja berdasarkan status</CardDescription>
-            </CardHeader>
-            <CardContent className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={healthStatusData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                    {healthStatusData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.label}>
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", stat.color)}>
+                  <Icon className="size-6" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold text-slate-900">{stat.value}</p>
+                  <p className="text-xs text-slate-500">{stat.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {isClinical && diagnosisData.length > 0 && (
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Distribusi Diagnosis</CardTitle>
-            <CardDescription>Diagnosis terbanyak dari kunjungan klinik</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="size-5 text-primary-600" />
+              MCU Terbaru
+            </CardTitle>
           </CardHeader>
-          <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={diagnosisData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent>
+            {recentMCU.length === 0 ? (
+              <p className="text-sm text-slate-500">Belum ada data MCU.</p>
+            ) : (
+              <div className="space-y-3">
+                {recentMCU.map((mcu) => {
+                  const emp = employees.find((e) => e.id === mcu.employeeId);
+                  const statusMeta = MCU_STATUS[mcu.status];
+                  return (
+                    <div key={mcu.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={emp?.fullName ?? "?"} size="sm" />
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{emp?.fullName ?? "Unknown"}</p>
+                          <p className="text-xs text-slate-500">{mcu.mcuNumber} · {mcu.type}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={statusMeta?.color}>
+                        {statusMeta?.label ?? mcu.status}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
 
-      {/* Low stock list for ops */}
-      {isOps && (
         <Card>
           <CardHeader>
-            <CardTitle>Stok Obat Rendah</CardTitle>
-            <CardDescription>Obat dengan stok di bawah batas minimum</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="size-5 text-primary-600" />
+              Kunjungan Terbaru
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-2">
-            {stockBatches
-              .filter((b) => {
-                const med = medicines.find((m) => m.id === b.medicineId);
-                return med && b.quantity < med.minStock;
-              })
-              .map((b) => {
-                const med = medicines.find((m) => m.id === b.medicineId)!;
-                return (
-                  <div key={b.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
-                    <span>{med.name}</span>
-                    <span className="text-red-600">
-                      {b.quantity} {med.unit} <span className="text-muted-foreground">(min {med.minStock})</span>
-                    </span>
-                  </div>
-                );
-              })}
-            {lowStock === 0 && <p className="text-sm text-muted-foreground">Tidak ada stok rendah.</p>}
+          <CardContent>
+            {recentVisits.length === 0 ? (
+              <p className="text-sm text-slate-500">Belum ada kunjungan.</p>
+            ) : (
+              <div className="space-y-3">
+                {recentVisits.map((visit) => {
+                  const emp = employees.find((e) => e.id === visit.employeeId);
+                  const statusMeta = VISIT_STATUS[visit.status];
+                  return (
+                    <div key={visit.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{emp?.fullName ?? "Unknown"}</p>
+                        <p className="text-xs text-slate-500">{visit.visitNumber} · {visit.chiefComplaint}</p>
+                      </div>
+                      <Badge variant="outline" className={statusMeta?.color}>
+                        {statusMeta?.label ?? visit.status}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
 
-      {/* Upcoming MCU / expiring certs for HR-like */}
-      {isHrLike && (
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Sertifikat & Status Terkini</CardTitle>
-            <CardDescription>Daftar status kesehatan kerja pekerja</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <HeartPulse className="size-5 text-success-600" />
+              Status Kesehatan Kerja
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-2">
-            {whs.slice(0, 8).map((w) => {
-              const emp = employees.find((e) => e.id === w.employeeId);
-              return (
-                <Link key={w.id} href={`/health-status`} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm hover:bg-muted">
-                  <span className="font-medium">{emp?.fullName ?? w.employeeId}</span>
-                  <span className="text-muted-foreground">{w.status} · s.d. {formatDate(w.validUntil)}</span>
-                </Link>
-              );
-            })}
-            {whs.length === 0 && <p className="text-sm text-muted-foreground">Belum ada status kesehatan kerja.</p>}
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Fit to Work</span>
+                <Badge variant="success">{fitToWork}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Fit with Restriction</span>
+                <Badge variant="warning">{fitWithRestriction}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Temporarily Unfit</span>
+                <Badge variant="danger">{temporarilyUnfit}</Badge>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Pill className="size-5 text-info-600" />
+              Farmasi
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Total Obat</span>
+                <Badge variant="info">{medicines.length}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Batch Aktif</span>
+                <Badge variant="info">{stockBatches.length}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Stok Rendah</span>
+                <Badge variant={lowStock > 0 ? "danger" : "success"}>{lowStock}</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="size-5 text-purple-600" />
+              Audit Log Terbaru
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {recentAudit.slice(0, 5).map((log) => (
+                <div key={log.id} className="flex items-center justify-between text-xs">
+                  <span className="text-slate-600">{log.action}</span>
+                  <span className="text-slate-400">{log.userName}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

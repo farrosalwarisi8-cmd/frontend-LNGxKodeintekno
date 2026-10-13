@@ -1,0 +1,115 @@
+
+=== 1. Login semua akun uji per role ===
+PASS | Login SYSTEM_ADMIN (admin)
+PASS | Login DOCTOR_OH (dr.hendra)
+PASS | Login DOCTOR_CLINIC (dr.klinik)
+PASS | Login NURSE (perawat)
+PASS | Login PHARMACIST (apoteker)
+PASS | Login LAB_ANALYST (lab.analis)
+PASS | Login RADIOLOGIST (radiolog)
+PASS | Login HR_ADMIN (hr.pic)
+PASS | Login HSE_OFFICER (hse.officer)
+PASS | Login HSE_MANAGER (hse.manager)
+PASS | Login MANAGEMENT (manajemen)
+
+=== 2. Otorisasi negatif (401/403/2xx) ===
+PASS | GET /iam/users tanpa token -> 401 — status=401
+PASS | GET /iam/audit-logs tanpa token -> 401 — status=401
+PASS | GET /iam/users sebagai DOCTOR_OH -> 403 — status=403
+PASS | GET /iam/users sebagai HR_ADMIN -> 2xx — status=200
+PASS | GET /iam/audit-logs sebagai HR_ADMIN -> 403 — status=403
+PASS | POST /pharmacy/dispensing sebagai PHARMACIST (role valid, resep tak ada -> 404/500) — status=500
+PASS | POST /mcu/.../ftw-assessment sebagai PHARMACIST -> 403 — status=403
+PASS | POST /consents/send sebagai HSE_OFFICER -> 403 — status=403
+PASS | GET /patients sebagai HSE_OFFICER -> 403 — status=403
+PASS | GET /iam/audit-logs sebagai NURSE -> 403 — status=403
+PASS | GET /patients sebagai NURSE -> 2xx — status=200
+PASS | GET /patients sebagai MANAGEMENT (non-medical, bukan HR) -> 403 — status=403
+PASS | GET /pharmacy/inventory sebagai MANAGEMENT -> 403 — status=403
+PASS | GET /iam/users/:id tidak ada -> 404 — status=404
+
+=== 3. Employee + Consent + Notification (HR_ADMIN) ===
+PASS | Resolve cakupan organisasi/site dari profil pasien — {"organizationId":"0cfff1c5-f908-4f42-a709-7002bfa296e4","orgUnitId":"4405f7eb-bfdb-40ea-b1cf-6e2be31238cf","siteId":"9c042bd5-78f8-4aff-8183-bb7e1b84a634","siteCode":"SITE-PLANT-01"}
+PASS | POST /patients create employee (HR_ADMIN) — status=201 msg=Operation completed successfully
+PASS | MRN dibuat server-side — MRN-SITE-PLANT-01-2026-00027
+PASS | Duplicate identifier -> 409 Conflict — status=409
+PASS | Duplicate employee_no -> 409 Conflict — status=409
+PASS | Data pekerja tetap ada setelah refresh (GET list)
+PASS | POST /consents/send pertama — status=201
+PASS | Resend consent idempotent (consentId sama, tidak duplikat) — eb02a0b7-2204-4344-b051-611c83880ccb vs eb02a0b7-2204-4344-b051-611c83880ccb
+PASS | Public consent verify (AGREED) -> SUCCESS — status=200 consentStatus=GRANTED
+PASS | Token consent one-time (verify ulang ditolak) — status=400
+
+=== 4. MCU + FTW + Restriction (DOCTOR_OH + HSE) ===
+PASS | Lookup pasien Siti untuk MCU
+PASS | POST /mcu/cycles (DOCTOR_OH) — status=201
+PASS | POST /mcu/cycles/:id/calculate (kalkulasi klinis tersimpan) — status=201
+PASS | POST /mcu/cycles/:id/ftw-assessment (DOCTOR_OH) — status=201
+PASS | Restriksi FTW dibuat & tersimpan
+PASS | FTW assessment oleh DOCTOR_CLINIC -> 403 — status=403
+PASS | POST /mcu/restrictions/:id/acknowledge (HSE_OFFICER) — status=200
+PASS | Close restriction oleh HSE_OFFICER -> 403 (hanya DOCTOR_OH) — status=403
+PASS | Close restriction oleh DOCTOR_OH -> 2xx — status=200
+PASS | FTW status tersimpan setelah refresh (GET /mcu/cycles)
+
+=== 5. Clinic visit + queue + vitals + SOAP + ICD-10 + finalize ===
+PASS | GET /clinic/queues (antrean seed tampil) — count=1
+PASS | POST /clinic/encounters (buka encounter) — status=201
+PASS | PUT vitals (BMI dihitung backend) — bmi=23.44
+PASS | GET /clinic/icd10/search (master ICD-10 nyata) — count=1
+PASS | PUT SOAP + ICD-10 tersimpan — status=200
+PASS | POST finalize (encounter LOCKED) — status=200 recordStatus=LOCKED
+PASS | Encounter terkunci tidak bisa diedit (403) — status=403
+
+=== 6. Pharmacy dispensing FEFO + stock ledger ===
+PASS | GET /pharmacy/inventory (apoteker) — items=7
+PASS | GET /pharmacy/prescriptions/pending (resep seed) — count=1
+PASS | Site resep (pasien Andi) teridentifikasi — 9c042bd5-78f8-4aff-8183-bb7e1b84a634
+PASS | POST recommend-batches FEFO — status=200 allocatable=true
+PASS | FEFO recommendation menghasilkan batch — batches=1
+PASS | POST /pharmacy/dispensing (transaksi nyata) — status=201 msg=Operation completed successfully
+PASS | Stok backend berkurang setelah dispensing — 1873 -> 1864
+PASS | FEFO: batch expiry terdekat terpakai lebih dulu — batchPertama=PCM-2026-C
+PASS | Resep hilang dari daftar pending setelah dispensing
+PASS | POST /pharmacy/dispensing oleh DOCTOR_OH -> 403 — status=403
+
+=== 7. Documents + TTE + QR verify ===
+PASS | POST /documents/render-pdf — status=201
+PASS | POST /signatures/request (tersimpan PENDING) — status=201 sigStatus=PENDING
+PASS | POST /signatures/callback (mock provider) — status=200 status=SIGNED
+PASS | Public QR verify -> VERIFIED (tanpa data medis sensitif) — status=200 valid=true
+PASS | Payload verifikasi publik tanpa bocoran klinis
+PASS | QR verify token tidak valid -> isValid=false
+PASS | POST /documents/render-pdf oleh NURSE -> 403 — status=403
+
+=== 8. Notifications + mark-as-read ===
+PASS | GET /notifications (data nyata dari event bisnis/seed) — count=1
+PASS | PUT /notifications/:id/read tersimpan — status=200 newStatus=READ
+PASS | Status READ bertahan setelah refetch
+PASS | Mark-as-read notifikasi user lain -> 404 (ownership) — status=404
+
+=== 9. Audit log + verify-chain ===
+PASS | GET /iam/audit-logs berisi event nyata — count=100
+PASS | Audit event LOGIN_SUCCESS tercatat
+PASS | Audit event EMPLOYEE_CREATE tercatat
+PASS | Audit event CONSENT_APPROVE/REJECT tercatat
+PASS | Audit event FTW_ASSESS tercatat
+PASS | Audit event ENCOUNTER_FINALIZE tercatat
+PASS | Audit event PRESCRIPTION_DISPENSE tercatat
+PASS | Audit event SIGNATURE_REQUEST tercatat
+PASS | POST verify-chain -> isValid true (rantai SHA-256 utuh) — isValid=true
+
+=== 10. Offline sync: register + push idempotent + conflicts ===
+PASS | POST /sync/register-device — status=201
+PASS | POST /sync/push pertama -> SYNCED — status=SYNCED
+PASS | Push ulang idempotent -> IDEMPOTENT_SKIPPED — status=IDEMPOTENT_SKIPPED
+PASS | GET /sync/conflicts (admin) — status=200
+PASS | GET /sync/conflicts oleh MANAGEMENT -> 403 — status=403
+
+=== 11. Reporting ===
+PASS | GET /reports/definitions — status=200
+PASS | GET /analytics/top-diseases (HSE/MGMT) — status=200
+PASS | GET /analytics/top-diseases oleh PHARMACIST -> 403 — status=403
+
+========================================
+TOTAL: 90 | PASS: 90 | FAIL: 0

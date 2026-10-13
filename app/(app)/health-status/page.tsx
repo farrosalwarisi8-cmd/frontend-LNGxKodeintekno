@@ -1,133 +1,111 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
-import { useStore, useCurrentUser } from "@/lib/store";
-import { can } from "@/lib/rbac";
+import { useState } from "react";
+import { useStore } from "@/lib/store";
 import { HEALTH_STATUS } from "@/lib/constants";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { RestrictionAcknowledgementSection } from "@/features/mcu/components/restriction-acknowledgement";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Input } from "@/shared/components/design-system/input";
+import { Select } from "@/shared/components/design-system/select";
+import { Avatar } from "@/shared/components/design-system/avatar";
 import { formatDate } from "@/lib/format";
+import { Search, HeartPulse, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 
 export default function HealthStatusPage() {
-  const user = useCurrentUser();
-  const whs = useStore((s) => s.workHealthStatus);
+  const workHealthStatus = useStore((s) => s.workHealthStatus);
   const employees = useStore((s) => s.employees);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = whs;
-    if (status !== "all") list = list.filter((w) => w.status === status);
-    if (q) {
-      list = list.filter((w) => {
-        const emp = employees.find((e) => e.id === w.employeeId);
-        return emp?.fullName.toLowerCase().includes(q) ?? emp?.employeeId.toLowerCase().includes(q) ?? false;
-      });
-    }
-    return list;
-  }, [whs, employees, query, status]);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
-  if (!user) return null;
-  const seeRestriction = can(user.role, "view-clinical-notes");
+  const filtered = workHealthStatus.filter((w) => {
+    const emp = employees.find((e) => e.id === w.employeeId);
+    const q = search.toLowerCase();
+    const matchSearch = !q || emp?.fullName.toLowerCase().includes(q) || emp?.employeeId.toLowerCase().includes(q);
+    const matchStatus = !statusFilter || w.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
   return (
-    <div>
-      <PageHeader
-        title="Work Health Status"
-        description={
-          user.role === "hr"
-            ? "Status kelayakan kerja tanpa detail medis (sesuai prinsip minimum information)."
-            : "Daftar status kesehatan kerja pekerja."
-        }
-      >
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari pekerja…" className="w-56 pl-8" />
-        </div>
-        <Select value={status} onValueChange={(v) => setStatus(v as string)}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua status</SelectItem>
-            {Object.keys(HEALTH_STATUS).map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </PageHeader>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">Status Kesehatan Kerja</h1>
+        <p className="text-sm text-slate-500">Pantau status kesehatan kerja pekerja</p>
+      </div>
 
-      <div className="rounded-xl border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Pekerja</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Berlaku</TableHead>
-              {seeRestriction && <TableHead>Restriction / Rekomendasi</TableHead>}
-              <TableHead>Dokter</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((w) => {
-              const emp = employees.find((e) => e.id === w.employeeId);
-              return (
-                <TableRow key={w.id}>
-                  <TableCell>
-                    <span className="font-medium">{emp?.fullName ?? "—"}</span>
-                    <span className="block text-xs text-muted-foreground">{emp?.employeeId}</span>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge value={w.status} kind="health" />
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(w.validFrom)} — {formatDate(w.validUntil)}
-                  </TableCell>
-                  {seeRestriction && (
-                    <TableCell className="max-w-xs whitespace-normal">
-                      {w.restriction ? (
-                        <>
-                          <span className="block">{w.restriction}</span>
-                          <span className="text-xs text-muted-foreground">{w.recommendation}</span>
-                        </>
-                      ) : (
-                        w.recommendation ?? "—"
+      {/* HSE only: komponen ini mengembalikan null bila role tidak punya
+          permission `acknowledge-restriction` (route tetap view-health-status). */}
+      <RestrictionAcknowledgementSection />
+
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Cari nama pekerja..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select
+            placeholder="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={Object.entries(HEALTH_STATUS).map(([value, { label }]) => ({ value, label }))}
+          />
+        </div>
+      </Card>
+
+      <p className="text-sm text-slate-500">{filtered.length} status kesehatan</p>
+
+      <div className="space-y-3">
+        {filtered.map((whs) => {
+          const emp = employees.find((e) => e.id === whs.employeeId);
+          const statusMeta = HEALTH_STATUS[whs.status];
+          const isExpiringSoon = new Date(whs.validUntil).getTime() - new Date().getTime() < 30 * 24 * 3600 * 1000;
+          return (
+            <Card key={whs.id} className="p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar name={emp?.fullName ?? "?"} />
+                  <div>
+                    <p className="font-medium text-slate-900">{emp?.fullName}</p>
+                    <p className="text-xs text-slate-500">{emp?.employeeId} · {emp?.jobTitle}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Badge variant="outline" className={statusMeta?.color}>
+                        {statusMeta?.label}
+                      </Badge>
+                      {isExpiringSoon && (
+                        <Badge variant="warning">
+                          <Clock className="size-3" />
+                          Segera Berakhir
+                        </Badge>
                       )}
-                    </TableCell>
-                  )}
-                  <TableCell>{w.doctorName}</TableCell>
-                </TableRow>
-              );
-            })}
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={seeRestriction ? 5 : 4} className="py-8 text-center text-muted-foreground">
-                  Belum ada status kesehatan kerja.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-slate-500">
+                  <p>Berlaku: {formatDate(whs.validFrom)} — {formatDate(whs.validUntil)}</p>
+                  {whs.reviewDate && <p>Review: {formatDate(whs.reviewDate)}</p>}
+                </div>
+              </div>
+              {whs.restriction && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl bg-warning-50 p-3 text-sm text-warning-700">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  <span>Restriction: {whs.restriction}</span>
+                </div>
+              )}
+              {whs.recommendation && (
+                <div className="mt-2 flex items-start gap-2 rounded-xl bg-info-50 p-3 text-sm text-info-700">
+                  <CheckCircle className="size-4 shrink-0" />
+                  <span>Rekomendasi: {whs.recommendation}</span>
+                </div>
+              )}
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

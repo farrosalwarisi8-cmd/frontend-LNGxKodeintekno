@@ -1,59 +1,148 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useStore, useCurrentUser } from "@/lib/store";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useStore } from "@/lib/store";
+import { syncQueues, useSyncedModules } from "@/lib/remote-sync";
+import { VISIT_STATUS } from "@/lib/constants";
+import type { VisitStatus } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Avatar } from "@/shared/components/design-system/avatar";
+import { Button } from "@/shared/components/design-system/button";
+import { formatDate } from "@/lib/format";
+import { ListOrdered, UserRound, Clock, CheckCircle } from "lucide-react";
 
 export default function QueuePage() {
-  const router = useRouter();
-  const user = useCurrentUser();
   const visits = useStore((s) => s.visits);
   const employees = useStore((s) => s.employees);
+  const locations = useStore((s) => s.locations);
+  const updateVisit = useStore((s) => s.updateVisit);
 
-  if (!user) return null;
-  const queue = visits
-    .filter((v) => ["Registered", "In Queue", "In Consultation", "Awaiting Pharmacy"].includes(v.status))
-    .sort((a, b) => a.queueNumber - b.queueNumber);
+  // Modul 3 — antrean klinik real-time dari backend
+  const { loading, error, refetch } = useSyncedModules(() => syncQueues());
+
+  const todayVisits = visits.filter((v) => v.status !== "Completed" && v.status !== "Referred");
+  const sorted = [...todayVisits].sort((a, b) => a.queueNumber - b.queueNumber);
+
+  const handleStatusChange = (visitId: string, status: VisitStatus) => {
+    updateVisit(visitId, { status });
+  };
 
   return (
-    <div>
-      <PageHeader title="Queue Board" description="Antrean pasien klinik hari ini." />
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {queue.map((v) => {
-          const emp = employees.find((e) => e.id === v.employeeId);
-          return (
-            <Card key={v.id}>
-              <CardContent className="flex items-center justify-between gap-3 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-lg bg-muted text-lg font-semibold">
-                    {v.queueNumber}
-                  </div>
-                  <div>
-                    <p className="font-medium">{emp?.fullName ?? "—"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {v.visitNumber} · {v.chiefComplaint}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <StatusBadge value={v.status} kind="visit" />
-                  <Button size="xs" variant="outline" onClick={() => router.push(`/visits/${v.id}`)}>
-                    Proses
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        {queue.length === 0 && (
-          <div className="col-span-full rounded-xl border bg-white py-12 text-center text-muted-foreground">
-            Tidak ada pasien dalam antrean.
-          </div>
-        )}
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">Antrean Klinik</h1>
+        <p className="text-sm text-slate-500">Kelola antrean pasien real-time</p>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-info-100 text-info-600">
+              <ListOrdered className="size-5" />
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-slate-900">{sorted.filter((v) => v.status === "In Queue").length}</p>
+              <p className="text-xs text-slate-500">Dalam Antrean</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
+              <Clock className="size-5" />
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-slate-900">{sorted.filter((v) => v.status === "In Consultation").length}</p>
+              <p className="text-xs text-slate-500">Dalam Konsultasi</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-success-100 text-success-600">
+              <CheckCircle className="size-5" />
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-slate-900">{sorted.filter((v) => v.status === "Completed").length}</p>
+              <p className="text-xs text-slate-500">Selesai</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {error && (
+        <Card className="border-danger-100 bg-danger-50/40 p-6 text-center">
+          <p className="text-sm font-medium text-danger-700">Gagal memuat antrean dari backend.</p>
+          <p className="mt-1 text-xs text-danger-600">{error}</p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={refetch}>
+            Coba lagi
+          </Button>
+        </Card>
+      )}
+
+      {loading && !error && (
+        <div className="space-y-3">
+          <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+        </div>
+      )}
+
+      {!loading && !error && sorted.length === 0 ? (
+        <Card className="p-8 text-center">
+          <ListOrdered className="mx-auto mb-3 size-8 text-slate-300" />
+          <p className="text-sm text-slate-500">Tidak ada antrean saat ini.</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((visit, index) => {
+            const emp = employees.find((e) => e.id === visit.employeeId);
+            const loc = locations.find((l) => l.id === visit.locationId);
+            const statusMeta = VISIT_STATUS[visit.status];
+            return (
+              <Card key={visit.id} className="p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex size-12 items-center justify-center rounded-xl bg-primary-100 text-lg font-bold text-primary-700">
+                      {visit.queueNumber}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={emp?.fullName ?? "?"} />
+                      <div>
+                        <p className="font-medium text-slate-900">{emp?.fullName}</p>
+                        <p className="text-xs text-slate-500">
+                          {visit.visitNumber} · {loc?.name}
+                        </p>
+                        <p className="text-xs text-slate-500">{visit.chiefComplaint}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={statusMeta?.color}>
+                      {statusMeta?.label}
+                    </Badge>
+                    {visit.status === "In Queue" && (
+                      <Button size="sm" variant="outline" onClick={() => handleStatusChange(visit.id, "In Consultation")}>
+                        Mulai Konsultasi
+                      </Button>
+                    )}
+                    {visit.status === "In Consultation" && (
+                      <Button size="sm" variant="outline" onClick={() => handleStatusChange(visit.id, "Awaiting Pharmacy")}>
+                        Selesai Konsultasi
+                      </Button>
+                    )}
+                    {visit.status === "Awaiting Pharmacy" && (
+                      <Button size="sm" onClick={() => handleStatusChange(visit.id, "Completed")}>
+                        <CheckCircle className="size-3.5" />
+                        Selesai
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

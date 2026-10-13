@@ -1,11 +1,15 @@
 export type Role =
   | "admin"
-  | "doctor"
-  | "clinic"
-  | "pharmacy"
+  | "dokter-oh"
+  | "dokter-klinik"
+  | "perawat"
+  | "apoteker"
+  | "lab"
+  | "admin-klinik"
   | "hr"
-  | "worker"
-  | "management"
+  | "hse"
+  | "manajemen"
+  | "pekerja"
 
 export type Gender = "Male" | "Female"
 
@@ -46,6 +50,8 @@ export type VisitStatus =
 
 export type CertificateStatus = "valid" | "revoked" | "expired"
 
+export type MFAMethod = "totp" | "otp"
+
 export interface User {
   id: string
   username: string
@@ -55,6 +61,10 @@ export interface User {
   title: string
   locationId?: string
   employeeId?: string
+  mfaEnabled: boolean
+  mfaMethod?: MFAMethod
+  mfaSecret?: string
+  preferredLanguage: "id" | "en" | "zh"
 }
 
 export interface Company {
@@ -78,6 +88,7 @@ export interface WorkLocation {
 export interface Employee {
   id: string
   employeeId: string
+  mrn: string
   fullName: string
   nationalId: string
   dateOfBirth: string
@@ -91,6 +102,9 @@ export interface Employee {
   phone: string
   email: string
   employmentHistory: EmploymentHistory[]
+  consentGiven: boolean
+  consentDate?: string
+  documents: EmployeeDocument[]
 }
 
 export interface EmploymentHistory {
@@ -101,6 +115,14 @@ export interface EmploymentHistory {
   from: string
   to?: string
   note: string
+}
+
+export interface EmployeeDocument {
+  id: string
+  employeeId: string
+  name: string
+  type: string
+  uploadedAt: string
 }
 
 export interface MCUDocument {
@@ -257,6 +279,7 @@ export interface AppNotification {
   message: string
   read: boolean
   createdAt: string
+  link?: string
 }
 
 export interface AuditLog {
@@ -270,4 +293,16 @@ export interface AuditLog {
   after?: string
   reason?: string
   at: string
+}
+
+export interface SessionInfo {
+  userId: string
+  loginAt: string
+  lastActivity: string
+  mfaVerified: boolean
+}
+
+export interface OrgScope {
+  companyId: string
+  locationId: string
 }
