@@ -3,6 +3,7 @@
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
 import { apiUrl } from "@/lib/env";
+import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -58,6 +59,8 @@ export default function LabRadiologyPage() {
 
   const [showRadResultModal, setShowRadResultModal] = useState(false);
   const [selectedRadOrder, setSelectedRadOrder] = useState<BackendRadiologyOrder | null>(null);
+  // Fase 4 — scope site aktif: halaman ikut memuat ulang saat user berpindah scope.
+  const scopeVersion = useStore((s) => s.scopeVersion);
   const [radFindings, setRadFindings] = useState("");
   const [radImpression, setRadImpression] = useState("");
   const [savingRadResult, setSavingRadResult] = useState(false);
@@ -129,7 +132,9 @@ export default function LabRadiologyPage() {
     // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
-  }, [load]);
+    // Fase 4 — refetch saat user berpindah scope site (data scope lama
+    // diganti skeleton saat loading, sehingga baris lama tidak tampil).
+  }, [load, scopeVersion]);
 
   const handleSubmitLabResult = async () => {
     if (!selectedLabOrder) return;

@@ -21,6 +21,7 @@ import {
   type StockLedgerEntry,
 } from "@/lib/services/pharmacy.service";
 import { Undo2, Search, AlertTriangle, ScrollText } from "lucide-react";
+import { useStore } from "@/lib/store";
 
 export default function ReturnMedicinePage() {
   const [history, setHistory] = useState<DispensingHistoryItem[]>([]);
@@ -41,15 +42,34 @@ export default function ReturnMedicinePage() {
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Fase 4 — scope site aktif: riwayat & snapshot inventory dimuat ulang saat
+  // user berpindah scope, sehingga baris scope lama tidak tetap tampil.
+  const scopeVersion = useStore((s) => s.scopeVersion);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const siteId = useStore.getState().activeSiteId ?? undefined;
       const [historyData, inventoryData] = await Promise.all([
         pharmacyService.getDispensingHistory(),
-        pharmacyService.getInventory(),
+        pharmacyService.getInventory(siteId),
       ]);
-      setHistory(historyData);
+      // Fase 4 — snapshot inventory sudah site-scoped ( ?siteId= ). Baris
+      // riwayat dibuang bila batch-nya tidak termasuk inventory site aktif
+      // (fail-closed: tanpa info site di baris -> dianggap luar scope).
+      const scopedInventoryIds = new Set(inventoryData.map((i) => i.id));
+      const scopedHistory = siteId
+          ? historyData.filter((d) => {
+              const items = d.dispensing_items ?? [];
+              if (items.length === 0) return false;
+              return items.every((it) => {
+                const invId = it.stock_batch?.inventory_item_id;
+                return invId ? scopedInventoryIds.has(invId) : false;
+              });
+            })
+          : historyData;
+      setHistory(scopedHistory);
       setStockSnapshot(inventoryData);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat riwayat dispensing.");
@@ -61,9 +81,17 @@ export default function ReturnMedicinePage() {
   useEffect(() => {
     // Defer agar setState tidak dipanggil sinkron di dalam effect
     // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
-    const timer = setTimeout(() => void load(), 0);
+    const timer = setTimeout(() => {
+      // Buang baris scope lama lebih dahulu supaya tidak sempat tampil
+      // selama refetch scope baru berlangsung.
+      setHistory([]);
+      setStockSnapshot([]);
+      setLedgerEntries([]);
+      void load();
+    }, 0);
     return () => clearTimeout(timer);
-  }, [load]);
+    // scopeVersion: refetch saat user berpindah scope site.
+  }, [load, scopeVersion]);
 
   const handleReturn = async () => {
     if (!selectedDispensing) return;
@@ -94,10 +122,12 @@ export default function ReturnMedicinePage() {
         siteContext
       );
 
-      // Refetch history + inventory, lalu hitung selisih stock ledger.
+      // Refetch history + inventory (tetap site-scoped), lalu hitung selisih
+      // stock ledger.
+      const activeSiteId = useStore.getState().activeSiteId ?? undefined;
       const [newHistory, newInventory] = await Promise.all([
         pharmacyService.getDispensingHistory(),
-        pharmacyService.getInventory(),
+        pharmacyService.getInventory(activeSiteId),
       ]);
       const entries = diffStockLedger(stockSnapshot, newInventory, "RETURN");
       setLedgerEntries((prev) => [...entries, ...prev]);

@@ -43,6 +43,28 @@ export interface BackendSite {
   };
 }
 
+/**
+ * Fase 4 — guard kode duplikat di lapisan client.
+ *
+ * Backend memberlakukan unique constraint (409); pemeriksaan awal ini memberi
+ * umpan balik instan tanpa mengeluarkan request DAN TIDAK menggantikan 409
+ * dari backend (tetap ditangani sebagai kebenaran terakhir).
+ *
+ * @returns kode yang bentrok (sudah di-trim) atau null bila unik/kosong.
+ */
+export function findDuplicateCode(
+  rows: Array<{ id: string; code: string }>,
+  code: string,
+  excludeId?: string
+): string | null {
+  const normalized = code.trim().toLowerCase();
+  if (!normalized) return null;
+  const clash = rows.find(
+    (r) => r.id !== excludeId && (r.code ?? "").trim().toLowerCase() === normalized
+  );
+  return clash ? clash.code.trim() : null;
+}
+
 export const masterDataService = {
   async listOrganizations(search?: string): Promise<BackendOrganization[]> {
     const qs = search ? `?search=${encodeURIComponent(search)}` : "";

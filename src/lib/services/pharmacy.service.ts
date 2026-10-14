@@ -476,6 +476,8 @@ export interface DispensingHistoryItem {
     quantity?: number;
     stock_batch?: {
       id?: string;
+      /** Fase 4 — pemetaan batch → inventory item (untuk filter scope site). */
+      inventory_item_id?: string;
       batch_no?: string;
       expiry_date?: string;
       quantity_available?: number;

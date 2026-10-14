@@ -41,6 +41,7 @@ import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive 
 import { INITIAL_ONLINE, onlineStateFromEvent } from "@/lib/online";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { NotificationBell } from "@/components/notification-bell";
+import { ScopeSelector } from "@/components/scope-selector";
 
 const ROLE_LABELS: Record<DemoRole, string> = {
   ADMIN_CLINIC: "Admin Klinik",
@@ -286,6 +287,10 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                     <X className="size-5" />
                   </button>
                 </div>
+                {/* Fase 4 — scope site juga tersedia di menu mobile */}
+                <div className="mb-3">
+                  <ScopeSelector />
+                </div>
                 <nav className="space-y-1" aria-label="Navigasi mobile">
                   {nav.map((item) => {
                     const Icon = ICON_MAP[item.icon] ?? Activity;
@@ -337,6 +342,8 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   <span>Offline</span>
                 </div>
               )}
+              {/* Fase 4 — pemilih scope site (hanya role multi-site) */}
+              <ScopeSelector />
               <NotificationBell />
               <div className="relative">
                 <button

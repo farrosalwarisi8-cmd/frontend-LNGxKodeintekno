@@ -12,6 +12,7 @@ import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
+import { useStore } from "@/lib/store";
 import { resolveScope } from "@/lib/services/reference.service";
 import {
   pharmacyService,
@@ -43,7 +44,10 @@ export default function DispensePage() {
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   const load = async () => {
-    const rows = await pharmacyService.getPendingPrescriptions();
+    // Fase 4 — resep pending di-scope ke site aktif (query ?siteId=).
+    const rows = await pharmacyService.getPendingPrescriptions(
+      useStore.getState().activeSiteId ?? undefined
+    );
     const mapped: PendingRx[] = rows.map((p) => ({
       id: p.id,
       visitNumber: `RX-${p.id.slice(0, 8).toUpperCase()}`,

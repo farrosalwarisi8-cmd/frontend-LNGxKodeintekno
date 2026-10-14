@@ -21,6 +21,7 @@ import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { ApiError } from "@/lib/api-client";
 import {
   masterDataService,
+  findDuplicateCode,
   type BackendDepartment,
   type BackendOrganization,
   type BackendSite,
@@ -58,6 +59,11 @@ export default function MasterDataPage() {
     | null
   >(null);
   const [saving, setSaving] = useState(false);
+  // Fase 4 — dependency guard: setelah 409 (site/org masih punya data aktif),
+  // UI menawarkan konfirmasi "force" alih-alih hanya menyuruh user mengulang.
+  const [forceTarget, setForceTarget] = useState<
+    { kind: FormKind; id: string; label: string; nextActive: boolean } | null
+  >(null);
   const [form, setForm] = useState({
     code: "",
     name: "",
@@ -97,11 +103,37 @@ export default function MasterDataPage() {
     setActionError(null);
   };
 
+  /**
+   * Fase 4 — guard kode duplikat di lapisan client.
+   *
+   * Backend memberlakukan unique constraint (409). Pemeriksaan awal di sini
+   * memberi umpan balik instan tanpa request, DAN tidak menggantikan 409
+   * dari backend (tetap ditangani sebagai kebenaran terakhir).
+   */
+  const duplicateCode = (code: string, kind: FormKind, excludeId?: string): string | null => {
+    const rows: Array<{ id: string; code: string }> =
+      kind === "company"
+        ? organizations
+        : kind === "department"
+          ? departments
+          : sites;
+    const clash = findDuplicateCode(rows, code, excludeId);
+    if (!clash) return null;
+    const label = kind === "company" ? "perusahaan" : kind === "department" ? "departemen" : "lokasi";
+    return `Kode \"${clash}\" sudah dipakai ${label} lain.`;
+  };
+
   const handleCreate = async () => {
     if (!showCreate) return;
     setActionError(null);
     if (!form.name || (showCreate !== "location" && !form.code)) {
       setActionError("Kode dan nama wajib diisi.");
+      return;
+    }
+    // Fase 4 — tolak kode duplikat sebelum request keluar (guard client).
+    const dup = duplicateCode(form.code, showCreate);
+    if (dup) {
+      setActionError(dup);
       return;
     }
     setSaving(true);
@@ -165,6 +197,21 @@ export default function MasterDataPage() {
     }
   };
 
+  const applyStatus = async (
+    kind: FormKind,
+    id: string,
+    nextActive: boolean,
+    force?: boolean
+  ) => {
+    if (kind === "company") {
+      await masterDataService.setOrganizationStatus(id, nextActive ? "ACTIVE" : "INACTIVE", force);
+    } else if (kind === "department") {
+      await masterDataService.setDepartmentStatus(id, nextActive);
+    } else {
+      await masterDataService.setSiteStatus(id, nextActive, force);
+    }
+  };
+
   const handleToggleStatus = async (
     kind: FormKind,
     id: string,
@@ -174,22 +221,37 @@ export default function MasterDataPage() {
     if (nextActive === currentActive) return;
     setActionError(null);
     try {
-      if (kind === "company") {
-        await masterDataService.setOrganizationStatus(id, nextActive ? "ACTIVE" : "INACTIVE");
-      } else if (kind === "department") {
-        await masterDataService.setDepartmentStatus(id, nextActive);
-      } else {
-        await masterDataService.setSiteStatus(id, nextActive);
-      }
+      await applyStatus(kind, id, nextActive);
       await load();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
-        setActionError(
-          `${e.message} Konfirmasi dependency: kirim ulang dengan force. Histori tetap tersimpan.`
-        );
+      if (e instanceof ApiError && e.status === 409 && !nextActive) {
+        // Fase 4 — dependency guard: tawarkan konfirmasi force (backend
+        // menerima force=true; histori tetap tersimpan, tidak ada data dihapus).
+        const row =
+          kind === "company"
+            ? organizations.find((o) => o.id === id)
+            : kind === "department"
+              ? departments.find((d) => d.id === id)
+              : sites.find((s) => s.id === id);
+        setForceTarget({ kind, id, label: row?.name ?? id, nextActive });
+        setActionError(e.message);
       } else {
         setActionError(e instanceof Error ? e.message : "Gagal mengubah status.");
       }
+    }
+  };
+
+  const confirmForce = async () => {
+    if (!forceTarget) return;
+    const { kind, id, nextActive } = forceTarget;
+    setActionError(null);
+    try {
+      await applyStatus(kind, id, nextActive, true);
+      setForceTarget(null);
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Gagal memaksa perubahan status.");
+      setForceTarget(null);
     }
   };
 
@@ -255,6 +317,28 @@ export default function MasterDataPage() {
       {actionError && (
         <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
           {actionError}
+        </div>
+      )}
+
+      {/* Fase 4 — konfirmasi dependency guard (force) */}
+      {forceTarget && (
+        <div className="flex flex-col gap-3 rounded-xl border border-warning-200 bg-warning-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-warning-800">
+            <p className="font-medium">
+              {forceTarget.label} masih memiliki data aktif yang bergantung padanya.
+            </p>
+            <p className="text-xs">
+              Nonaktifkan paksa? Histori tetap tersimpan — tidak ada data yang dihapus.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setForceTarget(null)}>
+              Batal
+            </Button>
+            <Button size="sm" onClick={confirmForce}>
+              Nonaktifkan Paksa
+            </Button>
+          </div>
         </div>
       )}
 

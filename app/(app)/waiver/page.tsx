@@ -3,6 +3,7 @@
 import { Can } from "@/components/can";
 
 import { useCallback, useEffect, useState } from "react";
+import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -16,9 +17,11 @@ import { formatDate } from "@/lib/format";
 import { ApiError } from "@/lib/api-client";
 import {
   waiverService,
+  filterWaiversBySite,
   type BackendWaiver,
   type WaiverDecision,
 } from "@/lib/services/waiver.service";
+import { masterDataService } from "@/lib/services/master-data.service";
 import { ShieldAlert, Plus, CheckCircle, Clock, XCircle, Send, Ban, Search } from "lucide-react";
 
 const EMPTY_FORM = {
@@ -54,6 +57,11 @@ export default function WaiverPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  // Fase 4 — scope site aktif: daftar waiver di-refetch saat scope berubah
+  // dan baris dari scope lain disaring keluar (data lama tidak tampil).
+  const activeSiteId = useStore((s) => s.activeSiteId);
+  const scopeVersion = useStore((s) => s.scopeVersion);
+
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
@@ -64,25 +72,34 @@ export default function WaiverPage() {
   const [publicToken, setPublicToken] = useState("");
   const [publicResult, setPublicResult] = useState<string | null>(null);
 
+  // Fase 4 — kirim consent: backend mewajibkan email penerima (hostEmail atau
+  // body.email). Bila waiver tidak punya host_email, UI memungkinkan input
+  // email sebelum mengirim (sebelumnya langsung 400 tanpa jalan keluar).
+  const [sendTarget, setSendTarget] = useState<BackendWaiver | null>(null);
+  const [sendEmail, setSendEmail] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await waiverService.list(1, 50, search || undefined);
-      setWaivers(res.data);
+      // Fase 4 — GET /waivers di-scope backend per token; untuk user GLOBAL
+      // yang memilih scope site tertentu, baris luar scope dibuang di client.
+      setWaivers(filterWaiversBySite(res.data, activeSiteId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat waiver dari backend.");
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, activeSiteId]);
 
   useEffect(() => {
     // Defer agar setState tidak dipanggil sinkron di dalam effect
     // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
-  }, [load]);
+    // scopeVersion: refetch saat user berpindah scope site.
+  }, [load, scopeVersion]);
 
   const handleSubmit = async () => {
     setActionError(null);
@@ -92,7 +109,17 @@ export default function WaiverPage() {
     }
     setSaving(true);
     try {
+      // Fase 4 — waiver yang dibuat saat scope site aktif harus ikut site itu,
+      // andai tidak, backend menyimpan site_id=null dan waiver langsung hilang
+      // dari daftar (disaring keluar oleh scope aktif).
+      const { activeSiteId } = useStore.getState();
+      let siteCode: string | undefined;
+      if (activeSiteId) {
+        const sites = await masterDataService.listSites({ active: true });
+        siteCode = sites.find((s) => s.id === activeSiteId)?.code;
+      }
       await waiverService.create({
+        siteCode,
         visitorName: formData.visitorName,
         company: formData.company || undefined,
         hostName: formData.hostName || undefined,
@@ -127,11 +154,11 @@ export default function WaiverPage() {
     }
   };
 
-  const handleSend = async (id: string) => {
+  const handleSend = async (id: string, email?: string) => {
     setActingId(id);
     setActionError(null);
     try {
-      const res = await waiverService.send(id);
+      const res = await waiverService.send(id, email || undefined);
       setPublicResult(
         res.devToken
           ? `Token dikirim ke ${res.email}. Token uji (non-production): ${res.devToken}`
@@ -144,6 +171,31 @@ export default function WaiverPage() {
     } finally {
       setActingId(null);
     }
+  };
+
+  /**
+   * Fase 4 — minta email bila waiver belum punya host_email, karena backend
+   * menolak send tanpa email penerima (400).
+   */
+  const requestSend = (waiver: BackendWaiver) => {
+    if (waiver.host_email) {
+      void handleSend(waiver.id);
+      return;
+    }
+    setSendTarget(waiver);
+    setSendEmail("");
+  };
+
+  const confirmSend = async () => {
+    if (!sendTarget) return;
+    const email = sendEmail.trim();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      setActionError("Email penerima consent wajib diisi dengan format yang benar.");
+      return;
+    }
+    const id = sendTarget.id;
+    setSendTarget(null);
+    await handleSend(id, email);
   };
 
   const handleRevoke = async (id: string) => {
@@ -340,7 +392,7 @@ export default function WaiverPage() {
                         size="sm"
                         variant="ghost"
                         disabled={busy}
-                        onClick={() => handleSend(waiver.id)}
+                        onClick={() => requestSend(waiver)}
                       >
                         <Send className="size-3.5" />
                         {consent ? "Kirim ulang" : "Kirim consent"}
@@ -385,6 +437,37 @@ export default function WaiverPage() {
         </div>
         {publicResult && <p className="mt-2 text-xs text-slate-600">{publicResult}</p>}
       </Card>
+
+      {/* Fase 4 — input email penerima bila waiver belum memiliki host_email */}
+      <Modal
+        open={sendTarget !== null}
+        onClose={() => setSendTarget(null)}
+        title="Kirim Consent Waiver"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Waiver <span className="font-medium">{sendTarget?.visitor_name}</span> belum memiliki
+            email host. Masukkan email penerima consent untuk mengirim token verifikasi.
+          </p>
+          <Input
+            label="Email Penerima"
+            type="email"
+            value={sendEmail}
+            onChange={(e) => setSendEmail(e.target.value)}
+            placeholder="nama@contoh.com"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setSendTarget(null)}>
+              Batal
+            </Button>
+            <Button onClick={confirmSend} disabled={actingId !== null}>
+              <Send className="size-3.5" />
+              Kirim Consent
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Buat Waiver Visitor" size="lg">
         <div className="space-y-4">

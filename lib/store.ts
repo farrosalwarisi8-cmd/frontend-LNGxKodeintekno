@@ -67,6 +67,19 @@ interface AppState {
   orgScope: OrgScope
   isOnline: boolean
 
+  /**
+   * Fase 4 — Scope site aktif di lapisan UI.
+   *
+   * Backend tetap menjadi sumber kebenaran authorization/scope (per token);
+   * nilai ini hanya MENGGANGGU tampilan untuk user multi-site (GLOBAL):
+   * data yang sudah tersinkron dari scope sebelumnya dihapus dan halaman
+   * di-refetch ulang, sehingga data lama tidak boleh tetap tampil.
+   */
+  activeSiteId: string | null
+  activeSiteName: string | null
+  /** Dinaikkan setiap scope berubah — dipakai useSyncedModules sebagai trigger refetch. */
+  scopeVersion: number
+
   users: User[]
   companies: Company[]
   departments: Department[]
@@ -91,6 +104,15 @@ interface AppState {
   verifyMfa: (userId: string, code: string) => Promise<{ ok: boolean; error?: string }>
   logout: () => void
   setOrgScope: (scope: OrgScope) => void
+  /**
+   * Fase 4 — ganti scope site aktif.
+   *
+   * Saat scope berubah, seluruh data yang sudah tersinkron dari backend dan
+   * ter-scope per-site DIHAPUS lebih dahulu (bukan dibiarkan basi), lalu
+   * `scopeVersion` dinaikkan agar setiap halaman memicu refetch — kriteria
+   * "data scope sebelumnya tidak boleh tetap tampil".
+   */
+  setActiveSite: (siteId: string | null, siteName?: string | null) => void
   setOnline: (v: boolean) => void
   updateLastActivity: () => void
 
@@ -220,6 +242,10 @@ export const useStore = create<AppState>()(
       orgScope: { companyId: "", locationId: "" },
       isOnline: typeof navigator === "undefined" ? true : navigator.onLine,
 
+      activeSiteId: null,
+      activeSiteName: null,
+      scopeVersion: 0,
+
       users: USERS,
       companies: COMPANIES,
       departments: DEPARTMENTS,
@@ -273,10 +299,32 @@ export const useStore = create<AppState>()(
       logout: () => {
         authService.logout()
         writeSessionCookie(null)
-        set({ currentUserId: null, session: null })
+        // Scope site juga di-reset agar tidak bocor ke sesi berikutnya.
+        set({ currentUserId: null, session: null, activeSiteId: null, activeSiteName: null })
       },
 
       setOrgScope: (scope) => set({ orgScope: scope }),
+
+      setActiveSite: (siteId, siteName) =>
+        set((s) => {
+          const next = siteId ?? null
+          if (s.activeSiteId === next) return {}
+          return {
+            activeSiteId: next,
+            activeSiteName: next ? (siteName ?? null) : null,
+            scopeVersion: s.scopeVersion + 1,
+            // Bersihkan data tersinkron dari scope sebelumnya SEBELUM refetch,
+            // supaya baris lama tidak sempat tampil di scope baru.
+            employees: [],
+            companies: [],
+            departments: [],
+            locations: [],
+            visits: [],
+            mcus: [],
+            medicines: [],
+            stockBatches: [],
+          }
+        }),
 
       setOnline: (v) => set({ isOnline: v }),
 
@@ -784,6 +832,8 @@ export const useStore = create<AppState>()(
         currentUserId: s.currentUserId,
         session: s.session,
         orgScope: s.orgScope,
+        activeSiteId: s.activeSiteId,
+        activeSiteName: s.activeSiteName,
         users: s.users,
         companies: s.companies,
         departments: s.departments,

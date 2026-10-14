@@ -60,7 +60,13 @@ function mergeById<T extends { id: string }>(base: T[], extra: T[]): T[] {
 // ---------------------------------------------------------------------------
 export async function syncPatients(page = 1, limit = PAGE_SIZE): Promise<PersonListItem[]> {
   const res = await patientService.list({ page, pageSize: limit });
-  const rows = res.data;
+  // Fase 4 — GET /patients tidak menerima siteId (kontrak backend), jadi untuk
+  // user GLOBAL yang memilih scope site tertentu, filter baris dilakukan di
+  // client berdasarkan nama site (satu-satunya info site pada response list).
+  const { activeSiteName } = useStore.getState();
+  const rows = activeSiteName
+    ? res.data.filter((p) => (p.siteName ?? "") === activeSiteName)
+    : res.data;
 
   const employees: Employee[] = rows.map((p) => ({
     id: p.id,
@@ -177,7 +183,10 @@ function keepLocalClinicalTrace(prev: ClinicVisit, next: ClinicVisit): ClinicVis
 }
 
 export async function syncQueues(siteId?: string): Promise<ClinicVisit[]> {
-  const tickets = await encounterService.getQueues(siteId);
+  // Fase 4 — bila caller tidak menentukan site, pakai scope site aktif dari UI
+  // (GET /clinic/queues?siteId= didukung backend).
+  const activeSiteId = useStore.getState().activeSiteId;
+  const tickets = await encounterService.getQueues(siteId ?? activeSiteId ?? undefined);
   const fresh = tickets.map(mapQueueTicket);
   const visits = useStore.getState().visits;
   const queuedIds = new Set(fresh.map((v) => v.id));
@@ -285,7 +294,16 @@ export function mapMcuCycle(cycle: BackendMcuCycle, index: number): MCU {
 
 export async function syncMcu(page = 1, limit = PAGE_SIZE, ftwStatus?: string): Promise<MCU[]> {
   const res = await mcuService.list({ page, limit, ftwStatus: ftwStatus as never });
-  const mcus = (res.data ?? []).map(mapMcuCycle);
+  // Fase 4 — GET /mcu/cycles tidak menerima siteId; filter scope site aktif
+  // berdasarkan nama site pekerja pada response.
+  const { activeSiteName } = useStore.getState();
+  const mcus = (res.data ?? [])
+    .filter((c) => {
+      if (!activeSiteName) return true;
+      const siteName = c.patient?.employee?.site?.name;
+      return typeof siteName === "string" && siteName === activeSiteName;
+    })
+    .map(mapMcuCycle);
   useStore.setState({ mcus });
   return mcus;
 }
@@ -326,7 +344,9 @@ export function mapInventory(items: BackendInventoryItem[]): {
 }
 
 export async function syncInventory(siteId?: string) {
-  const items = await pharmacyService.getInventory(siteId);
+  // Fase 4 — scope site aktif diteruskan ke backend (GET /pharmacy/inventory?siteId=).
+  const activeSiteId = useStore.getState().activeSiteId;
+  const items = await pharmacyService.getInventory(siteId ?? activeSiteId ?? undefined);
   const { medicines, stockBatches } = mapInventory(items);
   useStore.setState((s) => ({
     medicines,
@@ -448,6 +468,10 @@ export function useSyncedModules(syncOnce: () => Promise<unknown>): {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Fase 4 — setiap perpindahan scope site menaikkan scopeVersion di store;
+  // halaman yang sedang terbuka ikut membuang hasil lama dan memuat ulang
+  // data sesuai scope baru.
+  const scopeVersion = useStore((s) => s.scopeVersion);
 
   useEffect(() => {
     let alive = true;
@@ -471,7 +495,7 @@ export function useSyncedModules(syncOnce: () => Promise<unknown>): {
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadKey]);
+  }, [reloadKey, scopeVersion]);
 
   return { loading, error, refetch: () => setReloadKey((k) => k + 1) };
 }
