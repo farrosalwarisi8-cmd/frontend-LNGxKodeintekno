@@ -1,10 +1,14 @@
 "use client";
 
 import { useStore, useCurrentUser } from "@/lib/store";
+import { syncMcu, syncPatients, syncWorkHealthStatus, useSyncedModules } from "@/lib/remote-sync";
+import { findMyEmployee } from "@/lib/services/auth.service";
 import { MCU_STATUS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { Activity, HeartPulse, Calendar } from "lucide-react";
 
@@ -23,9 +27,16 @@ export default function MyMCUPage() {
   const mcus = useStore((s) => s.mcus);
   const workHealthStatus = useStore((s) => s.workHealthStatus);
 
+  // Modul 4 — riwayat MCU & status FTW milik akun dari backend,
+  // bukan data seed lokal (sebelumnya halaman ini tidak pernah fetch).
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await syncPatients(1, 100);
+    await Promise.all([syncMcu(1, 100), syncWorkHealthStatus(1, 100)]);
+  });
+
   if (!user) return null;
 
-  const employee = employees.find((e) => e.employeeId === user.employeeId);
+  const employee = findMyEmployee(employees, user);
   if (!employee) {
     return (
       <div className="space-y-4">
@@ -46,7 +57,23 @@ export default function MyMCUPage() {
     <div className="space-y-4">
       <PageTitle />
 
-      {myHealthStatus.length > 0 && (
+      {error && (
+        <ErrorState
+          title="Gagal memuat riwayat MCU"
+          message={error}
+          onRetry={refetch}
+        />
+      )}
+
+      {loading && !error && (
+        <div className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      )}
+
+      {!loading && !error && myHealthStatus.length > 0 && (
         <Card className="border-success-200 bg-success-50/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -77,6 +104,7 @@ export default function MyMCUPage() {
         </Card>
       )}
 
+      {!loading && !error && (
       <div className="space-y-3">
         {myMCUs.length === 0 ? (
           <EmptyState
@@ -114,7 +142,8 @@ export default function MyMCUPage() {
             );
           })
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

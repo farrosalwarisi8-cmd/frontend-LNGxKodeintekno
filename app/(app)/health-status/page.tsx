@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
+import { syncPatients, syncWorkHealthStatus, useSyncedModules } from "@/lib/remote-sync";
 import { HEALTH_STATUS } from "@/lib/constants";
 import { RestrictionAcknowledgementSection } from "@/features/mcu/components/restriction-acknowledgement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
@@ -9,12 +10,22 @@ import { Badge } from "@/shared/components/design-system/badge";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
-import { Search, HeartPulse, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Search, HeartPulse, AlertTriangle, CheckCircle, Clock, ClipboardCheck } from "lucide-react";
 
 export default function HealthStatusPage() {
   const workHealthStatus = useStore((s) => s.workHealthStatus);
   const employees = useStore((s) => s.employees);
+
+  // Modul 4 — status kesehatan kerja (FTW) diambil dari backend
+  // (GET /mcu/cycles -> ftw_assessment + restrictions), bukan data seed lokal.
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await syncPatients(1, 100);
+    await syncWorkHealthStatus(1, 100);
+  });
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -60,6 +71,31 @@ export default function HealthStatusPage() {
 
       <p className="text-sm text-slate-500">{filtered.length} status kesehatan</p>
 
+      {error && (
+        <ErrorState
+          title="Gagal memuat status kesehatan kerja"
+          message={error}
+          onRetry={refetch}
+        />
+      )}
+
+      {loading && !error && (
+        <div className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      )}
+
+      {!loading && !error && filtered.length === 0 && (
+        <EmptyState
+          icon={ClipboardCheck}
+          title="Belum ada status kesehatan kerja"
+          description="Status Fitness to Work akan tampil di sini setelah dokter menetapkan assessment pada siklus MCU."
+        />
+      )}
+
+      {!loading && !error && filtered.length > 0 && (
       <div className="space-y-3">
         {filtered.map((whs) => {
           const emp = employees.find((e) => e.id === whs.employeeId);
@@ -106,7 +142,8 @@ export default function HealthStatusPage() {
             </Card>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

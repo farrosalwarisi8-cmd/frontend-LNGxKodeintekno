@@ -38,6 +38,7 @@ export type Permission =
   | "manage-master-data"
   | "view-audit-logs"
   | "manage-hse"
+  | "manage-da"
   | "view-emergency"
   | "view-profile"
   | "input-lab-result";
@@ -68,6 +69,7 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "manage-master-data",
   "view-audit-logs",
   "manage-hse",
+  "manage-da",
   "view-emergency",
   "view-profile",
   "input-lab-result",
@@ -96,6 +98,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "manage-master-data",
     "view-audit-logs",
     "manage-hse",
+    // D&A hanya untuk role yang diizinkan backend
+    // (@Roles DOCTOR_OH, LAB_ANALYST, SYSTEM_ADMIN pada modul da-test).
+    "manage-da",
     "view-emergency",
     "view-profile",
     "input-lab-result",
@@ -115,6 +120,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "export-reports",
     "view-health-status",
     "set-health-status",
+    // D&A (forensik): backend mengizinkan DOCTOR_OH pada modul da-test.
+    "manage-da",
     "view-emergency",
     "view-profile",
     "input-lab-result",
@@ -166,6 +173,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-mcu",
     "input-mcu-result",
     "input-lab-result",
+    // D&A (forensik): backend mengizinkan LAB_ANALYST pada modul da-test.
+    "manage-da",
     "view-reports",
     "view-health-status",
     "view-emergency",
@@ -269,6 +278,7 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = [
   "manage-users",
   "manage-master-data",
   "manage-hse",
+  "manage-da",
   "input-lab-result",
 ];
 

@@ -37,6 +37,7 @@ import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { ROLES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { PenLine } from "lucide-react";
 import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive } from "@/lib/navigation";
 import { INITIAL_ONLINE, onlineStateFromEvent } from "@/lib/online";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -85,6 +86,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "alert-triangle": AlertTriangle,
   settings: Settings,
   globe: Globe,
+  "pen-line": PenLine,
 };
 
 // Navigasi terpusat di `@/lib/navigation` (label, icon, permission, active route).

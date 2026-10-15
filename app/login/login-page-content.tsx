@@ -51,6 +51,7 @@ export default function LoginPageContent() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [mfaUserId, setMfaUserId] = useState<string | null>(null);
+  const [mfaSetupRequired, setMfaSetupRequired] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [isLocked, setIsLocked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -101,6 +102,7 @@ export default function LoginPageContent() {
       router.push(resolveLoginRedirect(from));
     } else if (result.mfaRequired && result.userId) {
       setMfaUserId(result.userId);
+      setMfaSetupRequired(result.mfaSetupRequired === true);
       setError("");
     } else {
       attemptsRef.current += 1;
@@ -142,7 +144,9 @@ export default function LoginPageContent() {
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Verifikasi MFA</h1>
           <p className="text-sm text-slate-500">
-            Masukkan kode 6 digit dari aplikasi authenticator Anda
+            {mfaSetupRequired
+              ? "Akun Anda wajib mengaktifkan Two-Factor Authentication (TOTP)."
+              : "Masukkan kode 6 digit dari aplikasi authenticator Anda"}
           </p>
         </div>
 
@@ -154,6 +158,14 @@ export default function LoginPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {mfaSetupRequired && (
+              <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+                Kebijakan keamanan mewajibkan MFA untuk peran Anda. Pada environment
+                demo/non-production, backend mengizinkan kode OTP demo <strong>123456</strong>{" "}
+                untuk menyelesaikan login. Pada production, daftarkan akun ke aplikasi
+                authenticator (Google/Microsoft Authenticator) lebih dahulu.
+              </div>
+            )}
             <Input
               label="Kode MFA"
               value={mfaCode}
@@ -178,6 +190,7 @@ export default function LoginPageContent() {
               className="w-full"
               onClick={() => {
                 setMfaUserId(null);
+                setMfaSetupRequired(false);
                 setMfaCode("");
                 setError("");
               }}

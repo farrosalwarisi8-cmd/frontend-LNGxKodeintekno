@@ -23,7 +23,8 @@ import {
   type BackendPrescriptionItem,
   type PharmacySiteContext,
 } from "@/lib/services/pharmacy.service";
-import { Pill, Search, CheckCircle, AlertTriangle } from "lucide-react";
+import { Pill, Search, CheckCircle, AlertTriangle, TrendingDown, ScrollText } from "lucide-react";
+import { diffStockLedger, type BackendInventoryItem, type StockLedgerEntry } from "@/lib/services/pharmacy.service";
 
 interface PendingRx {
   id: string;
@@ -42,12 +43,14 @@ export default function DispensePage() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  // Fase 5 — snapshot inventory sebelum dispensing untuk membuktikan perubahan stok
+  const [stockSnapshot, setStockSnapshot] = useState<BackendInventoryItem[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<StockLedgerEntry[]>([]);
 
   const load = async () => {
     // Fase 4 — resep pending di-scope ke site aktif (query ?siteId=).
-    const rows = await pharmacyService.getPendingPrescriptions(
-      useStore.getState().activeSiteId ?? undefined
-    );
+    const siteId = useStore.getState().activeSiteId ?? undefined;
+    const rows = await pharmacyService.getPendingPrescriptions(siteId);
     const mapped: PendingRx[] = rows.map((p) => ({
       id: p.id,
       visitNumber: `RX-${p.id.slice(0, 8).toUpperCase()}`,
@@ -58,6 +61,9 @@ export default function DispensePage() {
     }));
     setPrescriptions(mapped);
     await syncInventory();
+    // Fase 5 — snapshot inventory untuk stock ledger dispensing
+    const inventory = await pharmacyService.getInventory(siteId);
+    setStockSnapshot(inventory);
   };
 
   const { loading, error, refetch } = useSyncedModules(load);
@@ -148,7 +154,21 @@ export default function DispensePage() {
       // Resep resmi selesai didispensasi — terkunci untuk sesi ini.
       dispensingGuard.commit(selectedRx.id);
 
-      setMessage({ type: "ok", text: "Dispensing berhasil diproses oleh backend." });
+      // Fase 5 — hitung selisih stok (DISPENSING) dari snapshot sebelum/sesudah
+      const siteId = useStore.getState().activeSiteId ?? undefined;
+      const newInventory = await pharmacyService.getInventory(siteId);
+      const entries = diffStockLedger(stockSnapshot, newInventory, "DISPENSING");
+      setLedgerEntries((prev) => [...entries, ...prev]);
+      setStockSnapshot(newInventory);
+
+      const entrySummary =
+        entries.length > 0
+          ? ` Stok berkurang: ${entries.map((e) => `${e.genericName} (${e.before}→${e.after})`).join(", ")}.`
+          : "";
+      setMessage({
+        type: "ok",
+        text: `Dispensing berhasil diproses oleh backend.${entrySummary}`,
+      });
       setPrescriptions((prev) => prev.filter((p) => p.id !== selectedRx.id));
       setTimeout(() => {
         setShowModal(false);
@@ -178,6 +198,51 @@ export default function DispensePage() {
           FEFO dispensing dari resep aktif backend (GET /pharmacy/prescriptions/pending)
         </p>
       </div>
+
+      {/* Fase 5 — Stock Ledger: bukti perubahan stok (DISPENSING) */}
+      {ledgerEntries.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ScrollText className="size-4 text-slate-500" />
+            <h2 className="text-sm font-semibold text-slate-900">
+              Stock Ledger — Dispensing
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {ledgerEntries.map((entry, i) => (
+              <div
+                key={`${entry.recordedAt}-${i}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900">
+                    {entry.genericName}{" "}
+                    <span className="text-xs font-normal text-slate-500">
+                      ({entry.medicationCode}) · {entry.siteName}
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {formatDate(entry.recordedAt)} · movement: {entry.movement}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-slate-500">
+                    {entry.before}
+                  </span>
+                  <span className="text-slate-400">→</span>
+                  <span className="font-mono text-xs font-semibold text-slate-900">
+                    {entry.after}
+                  </span>
+                  <Badge variant="danger">
+                    <TrendingDown className="size-3" />
+                    {entry.delta}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="p-4">
         <div className="relative">

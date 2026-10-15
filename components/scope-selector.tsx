@@ -2,7 +2,60 @@
 
 import { useEffect, useState } from "react";
 import { useCurrentUser, useStore } from "@/lib/store";
-import { masterDataService, type BackendSite } from "@/lib/services/master-data.service";
+import { masterDataService } from "@/lib/services/master-data.service";
+import { iamService } from "@/lib/services/iam.service";
+
+/**
+ * Opsi site untuk selector scope.
+ *
+ * `code` opsional — hanya dipakai untuk tampilan "Nama (Kode)".
+ */
+interface SiteOption {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+/**
+ * Daftar site yang bisa dipilih user.
+ *
+ * Sumber utama `GET /master-data/sites` (Domain 12). Bila route itu belum
+ * tersedia di backend (mis. modul master-data belum terpasang) request-nya
+ * 404, jadi fallback ke `GET /iam/users` → `user_roles[].site`: site yang
+ * melekat pada role user sendiri — tetap data backend, bukan seed lokal.
+ * Kedua sumber gagal → `null` (caller menampilkan keadaan kosong).
+ */
+async function loadSiteOptions(): Promise<SiteOption[] | null> {
+  try {
+    const sites = await masterDataService.listSites({ active: true });
+    return sites.map((s) => ({ id: s.id, name: s.name, code: s.code }));
+  } catch {
+    /* modul master-data tidak terpasang di backend — lanjut fallback */
+  }
+
+  try {
+    // Backend membatasi `limit` ≤ 100 (validation DTO) — tarik beberapa halaman
+    // sampai habis, dengan batas aman, agar site milik role yang muncul di
+    // halaman belakang tetap terbaca.
+    const byId = new Map<string, SiteOption>();
+    for (let page = 1; page <= 5; page++) {
+      const rows = await iamService.listUsers(page, 100);
+      const data = rows.data ?? [];
+      for (const row of data) {
+        for (const userRole of row.user_roles ?? []) {
+          const site = userRole.site;
+          if (!site?.id || !site.name || byId.has(site.id)) continue;
+          byId.set(site.id, { id: site.id, name: site.name, code: site.code });
+        }
+      }
+      // Halaman terakhir = jumlah baris < limit (tidak ada halaman berikut).
+      if (data.length < 100) break;
+    }
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Fase 4 — pemilih scope site untuk user multi-site (GLOBAL).
@@ -21,7 +74,7 @@ export function ScopeSelector({ className }: { className?: string }) {
   const activeSiteId = useStore((s) => s.activeSiteId);
   const activeSiteName = useStore((s) => s.activeSiteName);
   const setActiveSite = useStore((s) => s.setActiveSite);
-  const [sites, setSites] = useState<BackendSite[]>([]);
+  const [sites, setSites] = useState<SiteOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   const canSwitchScope =
@@ -34,9 +87,8 @@ export function ScopeSelector({ className }: { className?: string }) {
     // Defer agar setState tidak dipanggil sinkron di dalam effect
     // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
     const timer = setTimeout(() => {
-      masterDataService
-        .listSites({ active: true })
-        .then(setSites)
+      loadSiteOptions()
+        .then((rows) => setSites(rows ?? []))
         .catch(() => setSites([]))
         .finally(() => setLoading(false));
     }, 0);

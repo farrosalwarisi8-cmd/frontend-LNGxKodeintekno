@@ -19,6 +19,8 @@ export const ACTION_PERMISSIONS = {
   "mcu.acknowledge-restriction": "acknowledge-restriction",
   "visits.create": "register-patient",
   "visits.edit-soap": "edit-visit",
+  // Memanggil tiket antrean ke konter (POST /clinic/queues/call).
+  "visits.call-ticket": "edit-visit",
   "pharmacy.receive-stock": "manage-stock",
   "pharmacy.dispense": "dispense-medicine",
   "certificates.issue": "issue-certificate",
@@ -32,7 +34,10 @@ export const ACTION_PERMISSIONS = {
   "master-data.edit": "manage-master-data",
   "audit.view": "view-audit-logs",
   "waiver.decide": "manage-hse",
-  "da.manage": "manage-hse",
+  // D&A forensik: backend membatasi modul da-test ke DOCTOR_OH, LAB_ANALYST,
+  // SYSTEM_ADMIN. Permission `manage-da` dipetakan ke ketiga role itu saja
+  // supaya tombol tidak pernah tampil untuk role yang pasti ditolak (403).
+  "da.manage": "manage-da",
   "emergency.create": "view-emergency",
   "input-lab-result": "input-lab-result",
 } as const satisfies Record<string, Permission>;

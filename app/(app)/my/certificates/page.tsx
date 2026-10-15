@@ -1,10 +1,14 @@
 "use client";
 
 import { useStore, useCurrentUser } from "@/lib/store";
+import { syncCertificates, syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
+import { findMyEmployee } from "@/lib/services/auth.service";
 import { CERT_STATUS } from "@/lib/constants";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { BadgeCheck, QrCode } from "lucide-react";
 import Link from "next/link";
@@ -23,9 +27,16 @@ export default function MyCertificatesPage() {
   const employees = useStore((s) => s.employees);
   const certificates = useStore((s) => s.certificates);
 
+  // Modul 9 — sertifikat kesehatan dari backend (turunan siklus MCU +
+  // dokumen FTW_CERTIFICATE dengan QR verifikasi publik).
+  const { loading, error, refetch } = useSyncedModules(async () => {
+    await syncPatients(1, 100);
+    await Promise.all([syncMcu(1, 100), syncCertificates(1, 100)]);
+  });
+
   if (!user) return null;
 
-  const employee = employees.find((e) => e.employeeId === user.employeeId);
+  const employee = findMyEmployee(employees, user);
   if (!employee) {
     return (
       <div className="space-y-4">
@@ -45,13 +56,31 @@ export default function MyCertificatesPage() {
     <div className="space-y-4">
       <PageTitle />
 
-      {myCerts.length === 0 ? (
+      {error && (
+        <ErrorState
+          title="Gagal memuat sertifikat"
+          message={error}
+          onRetry={refetch}
+        />
+      )}
+
+      {loading && !error && (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      )}
+
+      {!loading && !error && myCerts.length === 0 && (
         <EmptyState
           icon={BadgeCheck}
           title="Belum ada sertifikat"
           description="Sertifikat kesehatan kerja Anda akan tampil di sini setelah diterbitkan dokter."
         />
-      ) : (
+      )}
+
+      {!loading && !error && myCerts.length > 0 && (
         <div className="space-y-3">
           {myCerts.map((cert) => {
             const statusMeta = CERT_STATUS[cert.status];
@@ -76,12 +105,14 @@ export default function MyCertificatesPage() {
                     <Badge variant="outline" className={statusMeta?.color}>
                       {statusMeta?.label}
                     </Badge>
-                    <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
-                      <Badge variant="info" className="cursor-pointer">
-                        <QrCode className="size-3" />
-                        QR
-                      </Badge>
-                    </Link>
+                    {cert.qrToken && (
+                      <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
+                        <Badge variant="info" className="cursor-pointer">
+                          <QrCode className="size-3" />
+                          QR
+                        </Badge>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </Card>

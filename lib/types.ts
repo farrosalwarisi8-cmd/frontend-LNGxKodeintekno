@@ -59,6 +59,8 @@ export interface User {
   name: string
   role: Role
   title: string
+  /** Status akun di backend (GET /iam/users). undefined = belum diketahui. */
+  active?: boolean
   locationId?: string
   employeeId?: string
   mfaEnabled: boolean

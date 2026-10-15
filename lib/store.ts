@@ -100,7 +100,14 @@ interface AppState {
   login: (
     username: string,
     password: string
-  ) => Promise<{ ok: boolean; mfaRequired?: boolean; userId?: string; error?: string }>
+  ) => Promise<{
+    ok: boolean;
+    mfaRequired?: boolean;
+    mfaSetupRequired?: boolean;
+    userId?: string;
+    mfaMethod?: string;
+    error?: string;
+  }>
   verifyMfa: (userId: string, code: string) => Promise<{ ok: boolean; error?: string }>
   logout: () => void
   setOrgScope: (scope: OrgScope) => void
@@ -268,7 +275,13 @@ export const useStore = create<AppState>()(
         try {
           const res = await authService.login(username, password)
           if (res.mfaRequired && res.userId) {
-            return { ok: false, mfaRequired: true, userId: res.userId }
+            return {
+              ok: false,
+              mfaRequired: true,
+              mfaSetupRequired: res.mfaSetupRequired === true,
+              userId: res.userId,
+              mfaMethod: res.mfaMethod,
+            }
           }
           if (res.accessToken && res.user) {
             commitSession(set, res.user)

@@ -2,10 +2,12 @@
 
 import { useStore, useCurrentUser } from "@/lib/store";
 import {
+  syncCertificates,
   syncInventory,
   syncMcu,
   syncPatients,
   syncQueues,
+  syncWorkHealthStatus,
   useSyncedModules,
 } from "@/lib/remote-sync";
 import { ROLES, MCU_STATUS, HEALTH_STATUS, VISIT_STATUS, EMPLOYEE_STATUS } from "@/lib/constants";
@@ -48,6 +50,8 @@ export default function DashboardPage() {
       syncMcu(1, 100),
       syncQueues(),
       syncInventory(),
+      syncWorkHealthStatus(1, 100),
+      syncCertificates(1, 100),
     ]);
   });
 

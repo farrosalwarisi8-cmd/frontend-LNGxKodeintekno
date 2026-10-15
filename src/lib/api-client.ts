@@ -90,6 +90,24 @@ function clearToken() {
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
+/**
+ * Decode payload JWT tanpa verifikasi tanda tangan (client-side saja).
+ *
+ * Dipakai untuk membaca klaim non-sensitif dari token yang baru diterbitkan
+ * backend (mis. `roles`, `dataScope`) — bukan untuk otorisasi.
+ */
+export function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "="));
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 /** Trace ID per request (sesuai spesifikasi header X-Trace-Id backend). */
 function newTraceId(): string {
   const rnd =

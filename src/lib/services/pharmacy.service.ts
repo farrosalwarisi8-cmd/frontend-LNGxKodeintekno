@@ -1,4 +1,4 @@
-import { apiClient, getToken } from "@/lib/api-client";
+import { apiClient, getToken, decodeJwtPayload } from "@/lib/api-client";
 import type { BackendUserRow } from "@/lib/services/iam.service";
 
 /**
@@ -173,17 +173,10 @@ export interface PharmacySiteScope {
 /** Peran backend yang punya cakupan GLOBAL (seluruh site). */
 const GLOBAL_ROLES = new Set(["SYSTEM_ADMIN", "MANAGEMENT", "HSE_MANAGER", "DOCTOR_OH"]);
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(atob(token.split(".")[1])) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
 function currentUsername(): string | null {
   const token = getToken();
   if (!token) return null;
+  // Helper bersama dari api-client (penanganan base64url benar).
   const payload = decodeJwtPayload(token);
   const username = payload?.username;
   return typeof username === "string" ? username : null;

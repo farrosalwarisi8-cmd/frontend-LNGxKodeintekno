@@ -48,6 +48,9 @@ export default function MasterDataPage() {
   const [sites, setSites] = useState<BackendSite[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Fase 6 — kegagalan SEBAGIAN (route backend yang belum terpasang): tidak
+  // memblokir tab lain, hanya menampilkan peringatan di atas tabel.
+  const [loadWarning, setLoadWarning] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabId>("diagnoses");
@@ -75,20 +78,41 @@ export default function MasterDataPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    try {
-      const [orgs, depts, siteRows] = await Promise.all([
-        masterDataService.listOrganizations(),
-        masterDataService.listDepartments(),
-        masterDataService.listSites(),
-      ]);
-      setOrganizations(orgs);
-      setDepartments(depts);
-      setSites(siteRows);
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Gagal memuat master data dari backend.");
-    } finally {
-      setLoading(false);
+    setLoadWarning(null);
+    // Ketiga modul dibaca TERPISAH: bila satu route backend belum terpasang
+    // (mis. /master-data/sites 404 karena modulnya belum diaktifkan), tab lain
+    // tetap menampilkan data backend yang berhasil dimuat, bukan seluruh
+    // halaman gagal. Kegagalan dicatat per sumber agar user tahu mana yang
+    // belum tersedia.
+    const failures: string[] = [];
+    const [orgs, depts, siteRows] = await Promise.all([
+      masterDataService.listOrganizations().catch((e: unknown) => {
+        failures.push(`perusahaan: ${e instanceof Error ? e.message : "gagal dimuat"}`);
+        return [] as BackendOrganization[];
+      }),
+      masterDataService.listDepartments().catch((e: unknown) => {
+        failures.push(`departemen: ${e instanceof Error ? e.message : "gagal dimuat"}`);
+        return [] as BackendDepartment[];
+      }),
+      masterDataService.listSites().catch((e: unknown) => {
+        failures.push(`lokasi: ${e instanceof Error ? e.message : "gagal dimuat"}`);
+        return [] as BackendSite[];
+      }),
+    ]);
+    setOrganizations(orgs);
+    setDepartments(depts);
+    setSites(siteRows);
+    if (failures.length > 0) {
+      // Gagal SEMUA sumber -> ErrorState penuh (ada tombol coba ulang).
+      // Gagal SEBAGIAN -> peringatan, tab yang berhasil tetap dipakai.
+      const loaded = orgs.length + depts.length + siteRows.length;
+      if (loaded === 0) {
+        setLoadError(`Gagal memuat master data dari backend — ${failures.join("; ")}.`);
+      } else {
+        setLoadWarning(`Sebagian data belum tersedia di backend — ${failures.join("; ")}.`);
+      }
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -317,6 +341,14 @@ export default function MasterDataPage() {
       {actionError && (
         <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
           {actionError}
+        </div>
+      )}
+
+      {/* Fase 6 — peringatan parsial: sumber backend yang belum tersedia tidak
+          memblokir tab lain; tabel yang berhasil tetap dirender di bawah. */}
+      {!loading && !loadError && loadWarning && (
+        <div className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
+          {loadWarning}
         </div>
       )}
 

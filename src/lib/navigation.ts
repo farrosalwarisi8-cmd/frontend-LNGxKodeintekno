@@ -41,12 +41,16 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Laporan", href: "/reports", icon: "bar-chart", permission: "view-reports" },
   { label: "Status Kesehatan", href: "/health-status", icon: "heart-pulse", permission: "view-health-status" },
   { label: "Waiver", href: "/waiver", icon: "shield-check", permission: "manage-hse" },
-  { label: "D&A", href: "/da", icon: "flask", permission: "manage-hse" },
+  // D&A forensik = wewenang Dokter OH & Analis Lab (sesuai @Roles backend
+  // pada modul da-test), bukan HSE yang hanya menerima hasilnya.
+  { label: "D&A", href: "/da", icon: "flask", permission: "manage-da" },
   { label: "Emergency", href: "/emergency", icon: "alert-triangle", permission: "view-emergency" },
   { label: "User", href: "/users", icon: "users", permission: "manage-users" },
   { label: "Master Data", href: "/master-data", icon: "database", permission: "manage-master-data" },
   { label: "Audit Log", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
   { label: "Lab & Radiologi", href: "/lab", icon: "flask", permission: "input-lab-result" },
+  { label: "Tanda Tangan", href: "/signatures", icon: "pen-line", permission: "issue-certificate" },
+  { label: "Dokumen", href: "/documents", icon: "file-text", permission: "issue-certificate" },
 ];
 
 /** Label bahasa Indonesia untuk tiap route (dipakai breadcrumb). */
@@ -75,6 +79,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/master-data": "Master Data",
   "/audit-logs": "Audit Log",
   "/lab": "Lab & Radiologi",
+  "/signatures": "Tanda Tangan",
+  "/documents": "Dokumen",
   "/my": "Profil Saya",
   "/my/profile": "Profil Saya",
   "/my/mcu": "MCU Saya",

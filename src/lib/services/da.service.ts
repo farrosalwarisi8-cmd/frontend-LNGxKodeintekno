@@ -19,6 +19,27 @@ export interface BackendDaTest {
   encounter_id?: string | null;
   test_type?: string;
   status?: string;
+  created_at?: string;
+  updated_at?: string;
+  collected_at?: string | null;
+  ordered_by?: string | null;
+  patient?: {
+    id: string;
+    medical_record_no?: string;
+    full_name?: string;
+    employee_id?: string;
+    birth_date?: string;
+    sex?: string;
+  };
+  samples?: BackendDaSample[];
+  results?: BackendDaResult[];
+  certificate?: {
+    id: string;
+    da_test_id?: string;
+    document_id?: string;
+    signed_by?: string;
+    issued_at?: string;
+  } | null;
 }
 
 export interface BackendDaSample {
@@ -27,6 +48,38 @@ export interface BackendDaSample {
   sample_no?: string;
   specimen_type?: string;
   status?: string;
+  sealed_at?: string | null;
+  custody_chain?: BackendCustodyEntry[];
+}
+
+export interface BackendCustodyEntry {
+  id: string;
+  sample_id?: string;
+  from_party: string;
+  to_party: string;
+  action: string;
+  signature_hash: string;
+  event_at: string;
+}
+
+export interface BackendDaResult {
+  id: string;
+  da_test_id?: string;
+  screening_result?: string;
+  confirmation_result?: string | null;
+  confirmed?: boolean;
+  verified_by?: string | null;
+  verified_at?: string | null;
+}
+
+export interface BackendDaTestsResponse {
+  data: BackendDaTest[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export type DaTestType =
@@ -36,6 +89,21 @@ export type DaTestType =
   | "FOR_CAUSE";
 
 export const daService = {
+  async getTests(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    patientId?: string;
+  }): Promise<BackendDaTestsResponse> {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.status) qs.set("status", params.status);
+    if (params?.patientId) qs.set("patientId", params.patientId);
+    const query = qs.toString();
+    return apiClient.get<BackendDaTestsResponse>(`/da/tests${query ? `?${query}` : ""}`);
+  },
+
   async createTest(
     patientId: string,
     testType: DaTestType = "RANDOM_INSPECTION",
