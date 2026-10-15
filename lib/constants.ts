@@ -40,6 +40,7 @@ export const VISIT_STATUS: Record<VisitStatus, { label: string; color: string }>
   "Awaiting Pharmacy": { label: "Awaiting Pharmacy", color: "bg-indigo-100 text-indigo-700" },
   Completed: { label: "Completed", color: "bg-emerald-100 text-emerald-700" },
   Referred: { label: "Referred", color: "bg-orange-100 text-orange-700" },
+  Locked: { label: "Locked", color: "bg-slate-200 text-slate-700" },
 }
 
 export const EMPLOYEE_STATUS: Record<EmployeeStatus, { label: string; color: string }> = {

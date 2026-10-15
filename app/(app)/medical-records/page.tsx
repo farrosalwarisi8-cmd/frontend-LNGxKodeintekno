@@ -11,7 +11,8 @@ import {
   useSyncedModules,
 } from "@/lib/remote-sync";
 import { encounterService } from "@/lib/services/encounter.service";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { ApiError } from "@/lib/api-client";
+import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
@@ -19,7 +20,7 @@ import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
-import { Search, FileText, Plus, ChevronRight, Lock, Unlock } from "lucide-react";
+import { Search, FileText, Lock, PenLine } from "lucide-react";
 
 export default function MedicalRecordsPage() {
   const visits = useStore((s) => s.visits);
@@ -28,6 +29,12 @@ export default function MedicalRecordsPage() {
   const updateVisit = useStore((s) => s.updateVisit);
 
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [conflictMsg, setConflictMsg] = useState<string | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [addendumReason, setAddendumReason] = useState("");
+  const [addendumNote, setAddendumNote] = useState("");
+  const [savingAddendum, setSavingAddendum] = useState(false);
+  const [icdQuery, setIcdQuery] = useState("");
 
   // Rekam medis — data pasien, kunjungan, dan katalog ICD-10 dari backend
   const { loading, error, refetch } = useSyncedModules(async () => {
@@ -58,6 +65,11 @@ export default function MedicalRecordsPage() {
     const v = visits.find((vis) => vis.id === visitId);
     if (!v) return;
     setSelectedVisit(visitId);
+    setSaveMsg(null);
+    setConflictMsg(null);
+    setAddendumReason("");
+    setAddendumNote("");
+    setIcdQuery("");
     setSoapData({
       subjective: v.chiefComplaint || "",
       objective: v.initialExam || "",
@@ -74,6 +86,7 @@ export default function MedicalRecordsPage() {
   const handleSaveSOAP = async () => {
     if (!selectedVisit) return;
     setSaveMsg(null);
+    setConflictMsg(null);
     const primaryCode = diagnoses.find((d) => d.id === selectedDiagnoses[0])?.code;
 
     try {
@@ -86,11 +99,16 @@ export default function MedicalRecordsPage() {
         primaryIcd10: primaryCode,
       });
     } catch (e) {
-      setSaveMsg(
-        e instanceof Error
-          ? e.message
-          : "SOAP tidak tersimpan di backend (kunjungan mungkin berasal dari antrean)."
-      );
+      if (e instanceof ApiError && e.status === 409) {
+        setConflictMsg("Data rekam medis telah berubah di backend. Muat ulang lalu coba lagi (409 Conflict).");
+      } else {
+        setSaveMsg(
+          e instanceof Error
+            ? e.message
+            : "SOAP tidak tersimpan di backend (kunjungan mungkin berasal dari antrean)."
+        );
+      }
+      return;
     }
 
     updateVisit(selectedVisit, {
@@ -100,9 +118,69 @@ export default function MedicalRecordsPage() {
       diagnosisNote,
       treatment,
       doctorNote,
-      status: "Completed",
+      status: visit?.status === "Locked" ? "Locked" : "Completed",
     });
     setShowModal(false);
+  };
+
+  const handleFinalize = async () => {
+    if (!selectedVisit) return;
+    setSaveMsg(null);
+    setConflictMsg(null);
+    setFinalizing(true);
+    try {
+      const res = await encounterService.finalize(selectedVisit);
+      const nextStatus = String(res?.status ?? "").toUpperCase() === "LOCKED" ? "Locked" : "Completed";
+      updateVisit(selectedVisit, { status: nextStatus });
+      setSaveMsg("Rekam medis berhasil difinalisasi dan dikunci.");
+      setShowModal(false);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setConflictMsg("Data rekam medis telah berubah di backend. Muat ulang lalu coba lagi (409 Conflict).");
+      } else {
+        setSaveMsg(e instanceof Error ? e.message : "Gagal finalisasi rekam medis.");
+      }
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
+  const handleAddendum = async () => {
+    if (!selectedVisit || !addendumReason.trim() || !addendumNote.trim()) return;
+    setSaveMsg(null);
+    setConflictMsg(null);
+    setSavingAddendum(true);
+    try {
+      await encounterService.addendum(selectedVisit, addendumReason.trim(), addendumNote.trim());
+      setSaveMsg("Addendum berhasil disimpan pada rekam medis yang terkunci.");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setConflictMsg("Data rekam medis telah berubah di backend. Muat ulang lalu coba lagi (409 Conflict).");
+      } else {
+        setSaveMsg(e instanceof Error ? e.message : "Gagal menyimpan addendum.");
+      }
+    } finally {
+      setSavingAddendum(false);
+    }
+  };
+
+  const handleIcdSearch = async (keyword: string) => {
+    setIcdQuery(keyword);
+    if (keyword.trim().length < 2) return;
+    try {
+      const rows = await encounterService.searchIcd10(keyword.trim());
+      const mapped = rows.map((r) => ({
+        id: r.id ?? r.code,
+        code: r.code,
+        description: r.description ?? r.name ?? "",
+        category: "",
+      }));
+      if (mapped.length > 0) {
+        useStore.setState({ diagnoses: mapped });
+      }
+    } catch {
+      // biarkan daftar ICD-10 lokal tetap tersedia
+    }
   };
 
   return (
@@ -120,6 +198,14 @@ export default function MedicalRecordsPage() {
       )}
       {saveMsg && (
         <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700">{saveMsg}</div>
+      )}
+      {conflictMsg && (
+        <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+          {conflictMsg}{" "}
+          <button className="underline" onClick={refetch}>
+            Muat ulang
+          </button>
+        </div>
       )}
       {loading && !error && (
         <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
@@ -164,13 +250,13 @@ export default function MedicalRecordsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant={v.status === "Completed" ? "success" : "warning"}>
+                  <Badge variant={v.status === "Completed" ? "success" : v.status === "Locked" ? "outline" : "warning"}>
                     {v.status}
                   </Badge>
                   <Can action="visits.edit-soap">
                     <Button size="sm" variant="outline" onClick={() => openSOAP(v.id)}>
-                      <FileText className="size-3.5" />
-                      SOAP
+                      {v.status === "Locked" ? <Lock className="size-3.5" /> : <FileText className="size-3.5" />}
+                      {v.status === "Locked" ? "Addendum" : "SOAP"}
                     </Button>
                   </Can>
                 </div>
@@ -188,77 +274,122 @@ export default function MedicalRecordsPage() {
         size="lg"
       >
         <div className="space-y-4">
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">S — Subjective</h3>
-            <Input
-              value={soapData.subjective}
-              onChange={(e) => setSoapData((s) => ({ ...s, subjective: e.target.value }))}
-              placeholder="Keluhan utama..."
-            />
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">O — Objective</h3>
-            <Input
-              value={soapData.objective}
-              onChange={(e) => setSoapData((s) => ({ ...s, objective: e.target.value }))}
-              placeholder="Hasil pemeriksaan fisik..."
-            />
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">A — Assessment</h3>
-            <div className="space-y-2">
-              <Select
-                label="Diagnosis ICD-10"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value && !selectedDiagnoses.includes(e.target.value)) {
-                    setSelectedDiagnoses((prev) => [...prev, e.target.value]);
-                  }
-                }}
-                placeholder="Pilih diagnosis..."
-                options={diagnoses.map((d) => ({ value: d.id, label: `${d.code} — ${d.description}` }))}
-              />
-              {selectedDiagnoses.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {selectedDiagnoses.map((id) => {
-                    const d = diagnoses.find((diag) => diag.id === id);
-                    return (
-                      <Badge key={id} variant="info" className="cursor-pointer" onClick={() => setSelectedDiagnoses((prev) => prev.filter((x) => x !== id))}>
-                        {d?.code} ✕
-                      </Badge>
-                    );
-                  })}
+          {visit?.status === "Locked" ? (
+            <>
+              <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">
+                <Lock className="inline size-4" /> Rekam medis ini sudah <strong>LOCKED</strong>. Perubahan ditambahkan melalui addendum.
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">Alasan Addendum</h3>
+                <Input
+                  value={addendumReason}
+                  onChange={(e) => setAddendumReason(e.target.value)}
+                  placeholder="Alasan perubahan setelah penguncian..."
+                />
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">Catatan Addendum</h3>
+                <Input
+                  value={addendumNote}
+                  onChange={(e) => setAddendumNote(e.target.value)}
+                  placeholder="Isi perubahan/addendum..."
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setShowModal(false)}>Tutup</Button>
+                <Can action="visits.edit-soap">
+                  <Button onClick={handleAddendum} loading={savingAddendum}>
+                    <PenLine className="size-3.5" />
+                    Simpan Addendum
+                  </Button>
+                </Can>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">S — Subjective</h3>
+                <Input
+                  value={soapData.subjective}
+                  onChange={(e) => setSoapData((s) => ({ ...s, subjective: e.target.value }))}
+                  placeholder="Keluhan utama..."
+                />
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">O — Objective</h3>
+                <Input
+                  value={soapData.objective}
+                  onChange={(e) => setSoapData((s) => ({ ...s, objective: e.target.value }))}
+                  placeholder="Hasil pemeriksaan fisik..."
+                />
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">A — Assessment</h3>
+                <div className="space-y-2">
+                  <Input
+                    label="Cari ICD-10 (backend)"
+                    value={icdQuery}
+                    onChange={(e) => handleIcdSearch(e.target.value)}
+                    placeholder="Ketik minimal 2 huruf..."
+                  />
+                  <Select
+                    label="Diagnosis ICD-10"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value && !selectedDiagnoses.includes(e.target.value)) {
+                        setSelectedDiagnoses((prev) => [...prev, e.target.value]);
+                      }
+                    }}
+                    placeholder="Pilih diagnosis..."
+                    options={diagnoses.map((d) => ({ value: d.id, label: `${d.code} — ${d.description}` }))}
+                  />
+                  {selectedDiagnoses.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {selectedDiagnoses.map((id) => {
+                        const d = diagnoses.find((diag) => diag.id === id);
+                        return (
+                          <Badge key={id} variant="info" className="cursor-pointer" onClick={() => setSelectedDiagnoses((prev) => prev.filter((x) => x !== id))}>
+                            {d?.code} ✕
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Input
+                    value={diagnosisNote}
+                    onChange={(e) => setDiagnosisNote(e.target.value)}
+                    placeholder="Catatan diagnosis..."
+                  />
                 </div>
-              )}
-              <Input
-                value={diagnosisNote}
-                onChange={(e) => setDiagnosisNote(e.target.value)}
-                placeholder="Catatan diagnosis..."
-              />
-            </div>
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">P — Plan</h3>
-            <Input
-              value={treatment}
-              onChange={(e) => setTreatment(e.target.value)}
-              placeholder="Rencana pengobatan..."
-            />
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">Catatan Dokter</h3>
-            <Input
-              value={doctorNote}
-              onChange={(e) => setDoctorNote(e.target.value)}
-              placeholder="Catatan tambahan..."
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-            <Can action="visits.edit-soap">
-              <Button onClick={handleSaveSOAP}>Simpan SOAP</Button>
-            </Can>
-          </div>
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">P — Plan</h3>
+                <Input
+                  value={treatment}
+                  onChange={(e) => setTreatment(e.target.value)}
+                  placeholder="Rencana pengobatan..."
+                />
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-slate-700">Catatan Dokter</h3>
+                <Input
+                  value={doctorNote}
+                  onChange={(e) => setDoctorNote(e.target.value)}
+                  placeholder="Catatan tambahan..."
+                />
+              </div>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
+                <Can action="visits.edit-soap">
+                  <Button variant="outline" onClick={handleFinalize} loading={finalizing}>
+                    <Lock className="size-3.5" />
+                    Finalize & Lock
+                  </Button>
+                  <Button onClick={handleSaveSOAP}>Simpan SOAP</Button>
+                </Can>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

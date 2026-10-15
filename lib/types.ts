@@ -47,6 +47,7 @@ export type VisitStatus =
   | "Awaiting Pharmacy"
   | "Completed"
   | "Referred"
+  | "Locked"
 
 export type CertificateStatus = "valid" | "revoked" | "expired"
 
