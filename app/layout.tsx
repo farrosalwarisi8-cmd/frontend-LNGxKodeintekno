@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export const metadata: Metadata = {
   title: "EMR PT Layar Nusantara Gas — Modul 01",
@@ -13,7 +14,7 @@ export default function RootLayout({
   return (
     <html lang="id" className="h-full antialiased" data-scroll-behavior="smooth">
       <body className="min-h-full bg-surface-page font-sans text-text-primary">
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
         <Toaster />
       </body>
     </html>

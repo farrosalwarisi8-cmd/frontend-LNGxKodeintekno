@@ -4,13 +4,13 @@ import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { syncAuditLogs, useSyncedModules } from "@/lib/remote-sync";
 import { iamService } from "@/lib/services/iam.service";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Input } from "@/shared/components/design-system/input";
-import { Button } from "@/shared/components/design-system/button";
-import { Select } from "@/shared/components/design-system/select";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { formatDateTime } from "@/lib/format";
 import { Search, History, ShieldCheck } from "lucide-react";
 

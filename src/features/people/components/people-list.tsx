@@ -8,12 +8,12 @@ import { useRouter } from "next/navigation";
 import { Search, UserRound, ChevronRight, Plus, Info } from "lucide-react";
 import type { ListPeopleParams } from "../api/people.types";
 import { usePeople } from "../hooks/use-people";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Card } from "@/shared/components/design-system/card";
-import { PeopleListSkeleton } from "@/shared/components/design-system/skeleton";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { PeopleListSkeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { formatRelativeTime } from "@/shared/utils/date";
 import { maskEmail } from "@/shared/utils/masking";
 

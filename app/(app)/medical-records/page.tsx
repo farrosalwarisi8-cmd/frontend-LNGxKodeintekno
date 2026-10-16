@@ -12,14 +12,15 @@ import {
 } from "@/lib/remote-sync";
 import { encounterService } from "@/lib/services/encounter.service";
 import { ApiError } from "@/lib/api-client";
-import { Card } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
-import { Modal } from "@/shared/components/design-system/modal";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
+import { Modal } from "@/components/ui/modal";
 import { formatDate } from "@/lib/format";
+import { toastSuccess, toastError } from "@/lib/use-toast";
 import { Search, FileText, Lock, PenLine } from "lucide-react";
 
 export default function MedicalRecordsPage() {
@@ -35,6 +36,7 @@ export default function MedicalRecordsPage() {
   const [addendumNote, setAddendumNote] = useState("");
   const [savingAddendum, setSavingAddendum] = useState(false);
   const [icdQuery, setIcdQuery] = useState("");
+  const [confirmFinalize, setConfirmFinalize] = useState<{ id: string; name: string } | null>(null);
 
   // Rekam medis — data pasien, kunjungan, dan katalog ICD-10 dari backend
   const { loading, error, refetch } = useSyncedModules(async () => {
@@ -83,48 +85,14 @@ export default function MedicalRecordsPage() {
     setShowModal(true);
   };
 
-  const handleSaveSOAP = async () => {
-    if (!selectedVisit) return;
-    setSaveMsg(null);
-    setConflictMsg(null);
-    const primaryCode = diagnoses.find((d) => d.id === selectedDiagnoses[0])?.code;
-
-    try {
-      // PUT /api/v1/clinic/encounters/:id/soap
-      await encounterService.saveSoap(selectedVisit, {
-        subjective: soapData.subjective || undefined,
-        objective: soapData.objective || undefined,
-        assessment: diagnosisNote || undefined,
-        plan: treatment || undefined,
-        primaryIcd10: primaryCode,
-      });
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 409) {
-        setConflictMsg("Data rekam medis telah berubah di backend. Muat ulang lalu coba lagi (409 Conflict).");
-      } else {
-        setSaveMsg(
-          e instanceof Error
-            ? e.message
-            : "SOAP tidak tersimpan di backend (kunjungan mungkin berasal dari antrean)."
-        );
-      }
-      return;
-    }
-
-    updateVisit(selectedVisit, {
-      chiefComplaint: soapData.subjective,
-      initialExam: soapData.objective,
-      diagnosisIds: selectedDiagnoses,
-      diagnosisNote,
-      treatment,
-      doctorNote,
-      status: visit?.status === "Locked" ? "Locked" : "Completed",
-    });
-    setShowModal(false);
-  };
-
   const handleFinalize = async () => {
     if (!selectedVisit) return;
+    const v = visit;
+    setConfirmFinalize({ id: selectedVisit, name: v?.visitNumber ?? selectedVisit });
+  };
+
+  const handleConfirmFinalize = async () => {
+    if (!confirmFinalize || !selectedVisit) return;
     setSaveMsg(null);
     setConflictMsg(null);
     setFinalizing(true);
@@ -132,13 +100,16 @@ export default function MedicalRecordsPage() {
       const res = await encounterService.finalize(selectedVisit);
       const nextStatus = String(res?.status ?? "").toUpperCase() === "LOCKED" ? "Locked" : "Completed";
       updateVisit(selectedVisit, { status: nextStatus });
-      setSaveMsg("Rekam medis berhasil difinalisasi dan dikunci.");
+      setConfirmFinalize(null);
       setShowModal(false);
+      toastSuccess("Rekam medis difinalisasi", `Kunjungan ${confirmFinalize.name} telah dikunci dan tidak dapat diubah.`);
     } catch (e) {
+      setConfirmFinalize(null);
       if (e instanceof ApiError && e.status === 409) {
         setConflictMsg("Data rekam medis telah berubah di backend. Muat ulang lalu coba lagi (409 Conflict).");
       } else {
         setSaveMsg(e instanceof Error ? e.message : "Gagal finalisasi rekam medis.");
+        toastError("Gagal finalisasi", e instanceof Error ? e.message : undefined);
       }
     } finally {
       setFinalizing(false);
@@ -381,11 +352,33 @@ export default function MedicalRecordsPage() {
               <div className="flex flex-wrap justify-end gap-2">
                 <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
                 <Can action="visits.edit-soap">
-                  <Button variant="outline" onClick={handleFinalize} loading={finalizing}>
+                  {confirmFinalize?.id === selectedVisit ? (
+                    <div className="rounded-lg bg-warning-50 p-2 text-xs text-warning-700">
+                      <p className="mb-1">Konfirmasi finalisasi kunjungan {confirmFinalize.name}?</p>
+                      <p className="text-xs text-warning-600">Data akan dikunci dan tidak dapat diubah.</p>
+                    </div>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    onClick={handleFinalize}
+                    loading={finalizing}
+                    disabled={confirmFinalize?.id === selectedVisit && finalizing}
+                  >
                     <Lock className="size-3.5" />
-                    Finalize & Lock
+                    {confirmFinalize?.id === selectedVisit ? "Konfirmasi Finalize" : "Finalize & Lock"}
                   </Button>
-                  <Button onClick={handleSaveSOAP}>Simpan SOAP</Button>
+                  <Button
+                    onClick={() => {
+                      if (confirmFinalize?.id === selectedVisit) {
+                        void handleConfirmFinalize();
+                      } else {
+                        handleFinalize();
+                      }
+                    }}
+                    disabled={savingAddendum || finalizing}
+                  >
+                    {confirmFinalize?.id === selectedVisit ? "Ya, Finalize" : "Simpan SOAP"}
+                  </Button>
                 </Can>
               </div>
             </>

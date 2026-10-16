@@ -22,12 +22,12 @@ import { apiUrl } from "@/lib/env";
 import { patientService } from "@/lib/services/patient.service";
 import { useDraft, EMPTY_DRAFT } from "../hooks/use-draft";
 import { useOnlineStatus } from "../hooks/use-online-status";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Card } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Modal } from "@/shared/components/design-system/modal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/ui/modal";
 import { ORGANIZATIONS, ORG_UNITS, SITES, JOB_TASKS } from "../fixtures/people.fixtures";
 import { maskIdentifier } from "@/shared/utils/masking";
 import {

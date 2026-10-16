@@ -1,12 +1,15 @@
 "use client";
 
 import { useStore, useCurrentUser } from "@/lib/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { Avatar } from "@/shared/components/design-system/avatar";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/format";
-import { UserRound, Building2, Phone, Mail, Calendar, FileText, HeartPulse } from "lucide-react";
+import { UserRound, Building2, Phone, FileText } from "lucide-react";
 
 function PageTitle() {
   return (
@@ -23,6 +26,13 @@ export default function MyProfilePage() {
   const companies = useStore((s) => s.companies);
   const departments = useStore((s) => s.departments);
   const locations = useStore((s) => s.locations);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!user) return null;
 
@@ -31,11 +41,20 @@ export default function MyProfilePage() {
     return (
       <div className="space-y-4">
         <PageTitle />
-        <EmptyState
-          icon={UserRound}
-          title="Data pekerja tidak ditemukan"
-          description="Akun Anda belum tertaut ke data pekerja. Hubungi admin klinik atau HR untuk menautkannya."
-        />
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : error ? (
+          <ErrorState title="Gagal memuat profil" message={error} onRetry={() => setError(null)} />
+        ) : (
+          <EmptyState
+            icon={UserRound}
+            title="Data pekerja tidak ditemukan"
+            description="Akun Anda belum tertaut ke data pekerja. Hubungi admin klinik atau HR untuk menautkannya."
+          />
+        )}
       </div>
     );
   }
@@ -46,9 +65,20 @@ export default function MyProfilePage() {
 
   return (
     <div className="space-y-4">
-      <PageTitle />
+      {loading && (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      )}
 
-      <Card className="p-6">
+      {!loading && !error && (
+        <>
+          <PageTitle />
+
+          <Card className="p-6">
         <div className="flex items-center gap-4">
           <Avatar name={employee.fullName} size="lg" />
           <div>
@@ -119,6 +149,8 @@ export default function MyProfilePage() {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

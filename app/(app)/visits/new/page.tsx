@@ -8,12 +8,11 @@ import { useStore } from "@/lib/store";
 import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { encounterService } from "@/lib/services/encounter.service";
 import type { ClinicVisit } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
-import { formatDate } from "@/lib/format";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
 import { UserRound, MapPin, FileText, ChevronLeft, ChevronRight, Check, HeartPulse, Stethoscope } from "lucide-react";
 
 const STEPS = [

@@ -15,12 +15,11 @@ import {
   type ReportDefinition,
   type TopDiseaseItem,
 } from "@/lib/services/reporting.service";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { formatDate } from "@/lib/format";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { BarChart3, Download, TrendingUp, Users, Activity, HeartPulse, Pill } from "lucide-react";
 
 export default function ReportsPage() {
@@ -90,11 +89,8 @@ export default function ReportsPage() {
   };
 
   const totalEmployees = employees.length;
-  const activeEmployees = employees.filter((e) => e.status === "Active").length;
-  const totalMCU = mcus.length;
   const approvedMCU = mcus.filter((m) => m.status === "Approved" || m.status === "Closed").length;
   const totalVisits = visits.length;
-  const completedVisits = visits.filter((v) => v.status === "Completed").length;
 
   const fitToWork = workHealthStatus.filter((w) => w.status === "Fit to Work").length;
   const fitWithRestriction = workHealthStatus.filter((w) => w.status === "Fit with Restriction").length;

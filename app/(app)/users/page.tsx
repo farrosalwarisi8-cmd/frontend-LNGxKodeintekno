@@ -7,16 +7,16 @@ import { useStore } from "@/lib/store";
 import { syncUsers, useSyncedModules } from "@/lib/remote-sync";
 import { iamService } from "@/lib/services/iam.service";
 import { backendRoleCode } from "@/lib/services/auth.service";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ROLES } from "@/lib/constants";
-import { Card } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
-import { Modal } from "@/shared/components/design-system/modal";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
+import { Modal } from "@/components/ui/modal";
 import { Search, Plus, KeyRound } from "lucide-react";
 
 export default function UsersPage() {

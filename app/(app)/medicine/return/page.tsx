@@ -2,14 +2,15 @@
 
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Modal } from "@/shared/components/design-system/modal";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toastSuccess, toastError } from "@/lib/use-toast";
 import { formatDate } from "@/lib/format";
 import {
   pharmacyService,
@@ -30,6 +31,7 @@ export default function ReturnMedicinePage() {
   const [returnReason, setReturnReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmReturn, setConfirmReturn] = useState<{ id: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +64,14 @@ export default function ReturnMedicinePage() {
       setActionError("Jumlah harus lebih dari 0.");
       return;
     }
+    const patientName =
+      selectedDispensing.prescription?.encounter?.patient?.full_name ?? "-";
+    setConfirmReturn({ id: selectedDispensing.id, name: patientName });
+  };
+
+  const handleConfirmReturn = async () => {
+    if (!confirmReturn || !selectedDispensing) return;
+    const qty = Number(returnQuantity);
     setSaving(true);
     setActionError(null);
     try {
@@ -72,12 +82,16 @@ export default function ReturnMedicinePage() {
         returnReason
       );
       setShowReturnModal(false);
+      setConfirmReturn(null);
       setReturnBatchId("");
       setReturnQuantity("");
       setReturnReason("");
       await load();
+      toastSuccess("Retur obat berhasil", `Obat untuk ${confirmReturn.name} telah dikembalikan ke stok.`);
     } catch (e) {
+      setConfirmReturn(null);
       setActionError(e instanceof Error ? e.message : "Gagal memproses retur.");
+      toastError("Gagal memproses retur", e instanceof Error ? e.message : undefined);
     } finally {
       setSaving(false);
     }
@@ -273,12 +287,23 @@ export default function ReturnMedicinePage() {
 
           {actionError && <p className="text-xs text-danger-600">{actionError}</p>}
 
+          {confirmReturn ? (
+            <div className="rounded-lg bg-warning-50 p-3 text-sm text-warning-700">
+              <p>
+                Konfirmasi retur obat untuk <span className="font-medium">{confirmReturn.name}</span>?
+                Tindakan akan mengembalikan stok dan tidak dapat diubah.
+              </p>
+            </div>
+          ) : null}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowReturnModal(false)}>
               Batal
             </Button>
-            <Button onClick={handleReturn} disabled={saving}>
-              {saving ? "Memproses..." : "Proses Retur"}
+            <Button
+              onClick={() => (confirmReturn ? handleConfirmReturn() : handleReturn())}
+              disabled={saving || !confirmReturn}
+            >
+              {saving ? "Memproses..." : confirmReturn ? "Konfirmasi Retur" : "Proses Retur"}
             </Button>
           </div>
         </div>

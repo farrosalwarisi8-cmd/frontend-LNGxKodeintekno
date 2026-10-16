@@ -3,17 +3,21 @@
 import { Can } from "@/components/can";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
-import { Modal } from "@/shared/components/design-system/modal";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
+import { Modal } from "@/components/ui/modal";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { daService } from "@/lib/services/da.service";
+import { toastSuccess, toastError } from "@/lib/use-toast";
 import { FlaskConical, Plus, CheckCircle, Clock, AlertTriangle } from "lucide-react";
 
 interface DATest {
@@ -59,10 +63,10 @@ export default function DAPage() {
   const employees = useStore((s) => s.employees);
   const [tests, setTests] = useState<DATest[]>(INITIAL_DA_TESTS);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
   // Modul 10 — daftar pekerja (pasien) dari backend untuk pendaftaran tes
-  useSyncedModules(() => syncPatients(1, 100));
+  const { loading: patientsLoading, error: patientsError, refetch: refetchPatients } =
+    useSyncedModules(() => syncPatients(1, 100));
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<{
@@ -87,11 +91,10 @@ export default function DAPage() {
    */
   const handleSubmit = async () => {
     if (!formData.employeeId) {
-      setMsg("Pilih pekerja terlebih dahulu.");
+      toastError("Validasi gagal", "Pilih pekerja terlebih dahulu.");
       return;
     }
     setBusy(true);
-    setMsg(null);
     try {
       const daTest = await daService.createTest(formData.employeeId, "RANDOM_INSPECTION");
       const sample = await daService.createSample(
@@ -110,9 +113,9 @@ export default function DAPage() {
       setTests((prev) => [newTest, ...prev]);
       setShowModal(false);
       setFormData({ employeeId: "", testDate: "", sampleType: "Urine", result: "NEGATIVE", confirmationTest: false, chainOfCustody: "" });
-      setMsg("Tes D&A terdaftar di backend.");
+      toastSuccess("Tes D&A terdaftar", "Tes D&A berhasil tercatat di backend.");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Gagal mendaftarkan tes ke backend.");
+      toastError("Gagal mendaftarkan tes", e instanceof Error ? e.message : undefined);
     } finally {
       setBusy(false);
     }
@@ -123,7 +126,6 @@ export default function DAPage() {
     const test = tests.find((t) => t.id === localId);
     if (!test?.backendId) return;
     setBusy(true);
-    setMsg(null);
     try {
       await daService.submitResults(
         test.backendId,
@@ -132,9 +134,9 @@ export default function DAPage() {
         test.confirmationTest
       );
       setTests((prev) => prev.map((t) => (t.id === localId ? { ...t, status: "VERIFIED" } : t)));
-      setMsg("Hasil uji tersimpan di backend.");
+      toastSuccess("Hasil uji tersimpan", "Hasil uji D&A berhasil dikirim ke backend.");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Gagal menyimpan hasil uji.");
+      toastError("Gagal menyimpan hasil", e instanceof Error ? e.message : undefined);
     } finally {
       setBusy(false);
     }
@@ -145,13 +147,12 @@ export default function DAPage() {
     const test = tests.find((t) => t.id === localId);
     if (!test?.backendId) return;
     setBusy(true);
-    setMsg(null);
     try {
       await daService.issueCertificate(test.backendId);
       setTests((prev) => prev.map((t) => (t.id === localId ? { ...t, status: "CERTIFIED" } : t)));
-      setMsg("Sertifikat D&A diterbitkan oleh backend.");
+      toastSuccess("Sertifikat diterbitkan", "Sertifikat D&A berhasil terbitkan oleh backend.");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Gagal menerbitkan sertifikat.");
+      toastError("Gagal menerbitkan sertifikat", e instanceof Error ? e.message : undefined);
     } finally {
       setBusy(false);
     }
@@ -172,11 +173,37 @@ export default function DAPage() {
         </Can>
       </div>
 
-      {msg && (
-        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{msg}</div>
+      {patientsError && (
+        <ErrorState title="Gagal memuat daftar pekerja" message={patientsError} onRetry={refetchPatients} />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      {patientsLoading && (
+        <div className="space-y-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      )}
+
+      {!patientsLoading && !patientsError && tests.length === 0 && (
+        <EmptyState
+          icon={FlaskConical}
+          title="Belum ada tes D&A"
+          description="Tambah tes D&A pertama untuk memulai pencatatan hasil uji."
+          action={
+            <Can action="da.manage">
+              <Button variant="outline" size="sm" onClick={() => setShowModal(true)}>
+                <Plus className="size-3.5" />
+                Tes Baru
+              </Button>
+            </Can>
+          }
+        />
+      )}
+
+      {!patientsLoading && !patientsError && tests.length > 0 && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex size-10 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
@@ -259,6 +286,8 @@ export default function DAPage() {
           );
         })}
       </div>
+        </>
+      )}
 
       <Modal
         open={showModal}

@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { HEALTH_STATUS } from "@/lib/constants";
 import { RestrictionAcknowledgementSection } from "@/features/mcu/components/restriction-acknowledgement";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
-import { Search, HeartPulse, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Search, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 
 export default function HealthStatusPage() {
   const workHealthStatus = useStore((s) => s.workHealthStatus);
@@ -18,6 +21,14 @@ export default function HealthStatusPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Simulasi jeda memuat agar pola Skeleton terlihat; data utama sudah ada di store.
+    const timer = setTimeout(() => setLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = workHealthStatus.filter((w) => {
     const emp = employees.find((e) => e.id === w.employeeId);
@@ -38,7 +49,26 @@ export default function HealthStatusPage() {
           permission `acknowledge-restriction` (route tetap view-health-status). */}
       <RestrictionAcknowledgementSection />
 
-      <Card className="p-4">
+      {loading && (
+        <div className="space-y-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      )}
+
+      {error && <ErrorState title="Gagal memuat status kesehatan" message={error} onRetry={() => setError(null)} />}
+
+      {!loading && !error && filtered.length === 0 && (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Belum ada data status kesehatan"
+          description="Data status kesehatan kerja akan muncul setelah Dokter OH menetapkan hasil MCU."
+        />
+      )}
+
+      {!loading && !error && (
+        <>
+          <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -107,6 +137,8 @@ export default function HealthStatusPage() {
           );
         })}
       </div>
+        </>
+      )}
     </div>
   );
 }

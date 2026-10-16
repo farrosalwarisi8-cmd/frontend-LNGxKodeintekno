@@ -10,15 +10,17 @@ import {
   syncPatients,
   useSyncedModules,
 } from "@/lib/remote-sync";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Modal } from "@/shared/components/design-system/modal";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Modal } from "@/components/ui/modal";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ApiError } from "@/lib/api-client";
+import { toastSuccess, toastError } from "@/lib/use-toast";
 import {
   masterDataService,
   type BackendDepartment,
@@ -65,6 +67,12 @@ export default function MasterDataPage() {
     siteType: "ONSHORE_PLANT",
     address: "",
   });
+  const [confirmToggle, setConfirmToggle] = useState<{
+    kind: FormKind;
+    id: string;
+    name: string;
+    nextActive: boolean;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -126,6 +134,7 @@ export default function MasterDataPage() {
       setShowCreate(null);
       resetForm();
       await load();
+      toastSuccess("Data disimpan", "Master data berhasil tersimpan ke backend.");
     } catch (e) {
       setActionError(
         e instanceof ApiError && e.status === 409
@@ -134,6 +143,7 @@ export default function MasterDataPage() {
             ? e.message
             : "Gagal menyimpan."
       );
+      toastError("Gagal menyimpan", e instanceof Error ? e.message : undefined);
     } finally {
       setSaving(false);
     }
@@ -158,21 +168,31 @@ export default function MasterDataPage() {
       setEditing(null);
       resetForm();
       await load();
+      toastSuccess("Data diperbarui", "Master data berhasil diperbarui.");
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Gagal memperbarui.");
+      toastError("Gagal memperbarui", e instanceof Error ? e.message : undefined);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleToggleStatus = async (
+  const handleToggleStatus = (
     kind: FormKind,
     id: string,
     nextActive: boolean,
-    currentActive: boolean
+    currentActive: boolean,
+    name: string
   ) => {
     if (nextActive === currentActive) return;
+    setConfirmToggle({ kind, id, name, nextActive });
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!confirmToggle) return;
+    const { kind, id, name, nextActive } = confirmToggle;
     setActionError(null);
+    setSaving(true);
     try {
       if (kind === "company") {
         await masterDataService.setOrganizationStatus(id, nextActive ? "ACTIVE" : "INACTIVE");
@@ -182,14 +202,23 @@ export default function MasterDataPage() {
         await masterDataService.setSiteStatus(id, nextActive);
       }
       await load();
+      setConfirmToggle(null);
+      toastSuccess(
+        nextActive ? "Data diaktifkan" : "Data dinonaktifkan",
+        `${name} telah ${nextActive ? "diaktifkan" : "dinonaktifkan"}.`
+      );
     } catch (e) {
+      setConfirmToggle(null);
       if (e instanceof ApiError && e.status === 409) {
         setActionError(
-          `${e.message} Konfirmasi dependency: kirim ulang dengan force. Histori tetap tersimpan.`
+          `${e instanceof Error ? e.message : "Gagal"} Konfirmasi dependency: kirim ulang dengan force. Histori tetap tersimpan.`
         );
       } else {
         setActionError(e instanceof Error ? e.message : "Gagal mengubah status.");
       }
+      toastError("Gagal mengubah status", e instanceof Error ? e.message : undefined);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -205,7 +234,12 @@ export default function MasterDataPage() {
     <Badge variant={active ? "success" : "default"}>{active ? "ACTIVE" : "INACTIVE"}</Badge>
   );
 
-  const renderRowActions = (kind: FormKind, id: string, active: boolean) => (
+  const renderRowActions = (
+    kind: FormKind,
+    id: string,
+    active: boolean,
+    name: string
+  ) => (
     <Can action="master-data.edit">
       <div className="flex gap-2">
         <Button
@@ -213,12 +247,7 @@ export default function MasterDataPage() {
           variant="outline"
           onClick={() => {
             setActionError(null);
-            const row =
-              kind === "company"
-                ? organizations.find((o) => o.id === id)
-                : kind === "department"
-                  ? departments.find((d) => d.id === id)
-                  : sites.find((s) => s.id === id);
+            const row = kind === "company" ? organizations.find((o) => o.id === id) : kind === "department" ? departments.find((d) => d.id === id) : sites.find((s) => s.id === id);
             if (!row) return;
             setForm({
               code: "code" in row ? row.code : "",
@@ -235,7 +264,7 @@ export default function MasterDataPage() {
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => handleToggleStatus(kind, id, !active, active)}
+          onClick={() => handleToggleStatus(kind, id, !active, active, name)}
         >
           {active ? "Nonaktifkan" : "Aktifkan"}
         </Button>
@@ -348,20 +377,39 @@ export default function MasterDataPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {organizations.map((c) => (
-                <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{c.name}</p>
-                    <p className="text-xs text-slate-500">{c.code}</p>
+            {organizations.length === 0 ? (
+              <EmptyState
+                icon={Building2}
+                title="Belum ada perusahaan"
+                description="Tambah perusahaan pertama untuk memulai master data organisasi."
+                action={
+                  <Can action="master-data.edit">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { resetForm(); setShowCreate("company"); }}
+                    >
+                      <Plus className="size-3.5" /> Tambah Perusahaan
+                    </Button>
+                  </Can>
+                }
+              />
+            ) : (
+              <div className="space-y-2">
+                {organizations.map((c) => (
+                  <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{c.name}</p>
+                      <p className="text-xs text-slate-500">{c.code}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {renderStatus(c.status === "ACTIVE")}
+                      {renderRowActions("company", c.id, c.status === "ACTIVE", c.name)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {renderStatus(c.status === "ACTIVE")}
-                    {renderRowActions("company", c.id, c.status === "ACTIVE")}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -380,22 +428,41 @@ export default function MasterDataPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {departments.map((d) => (
-                <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{d.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {d.code} · {d.organization?.name ?? "-"}
-                    </p>
+            {departments.length === 0 ? (
+              <EmptyState
+                icon={Building2}
+                title="Belum ada departemen"
+                description="Tambah departemen pertama untuk memulai master data organisasi."
+                action={
+                  <Can action="master-data.edit">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { resetForm(); setShowCreate("department"); }}
+                    >
+                      <Plus className="size-3.5" /> Tambah Departemen
+                    </Button>
+                  </Can>
+                }
+              />
+            ) : (
+              <div className="space-y-2">
+                {departments.map((d) => (
+                  <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{d.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {d.code} · {d.organization?.name ?? "-"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {renderStatus(d.active)}
+                      {renderRowActions("department", d.id, d.active, d.name)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {renderStatus(d.active)}
-                    {renderRowActions("department", d.id, d.active)}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -414,25 +481,44 @@ export default function MasterDataPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {sites.map((l) => (
-                <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{l.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {l.code} · {l.org_unit?.organization?.name ?? "-"}
-                    </p>
+            {sites.length === 0 ? (
+              <EmptyState
+                icon={MapPin}
+                title="Belum ada lokasi kerja"
+                description="Tambah lokasi kerja pertama untuk memulai master data organisasi."
+                action={
+                  <Can action="master-data.edit">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { resetForm(); setShowCreate("location"); }}
+                    >
+                      <Plus className="size-3.5" /> Tambah Lokasi
+                    </Button>
+                  </Can>
+                }
+              />
+            ) : (
+              <div className="space-y-2">
+                {sites.map((l) => (
+                  <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{l.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {l.code} · {l.org_unit?.organization?.name ?? "-"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default" className="capitalize">
+                        {l.site_type?.replace(/_/g, " ").toLowerCase() ?? "-"}
+                      </Badge>
+                      {renderStatus(l.active)}
+                      {renderRowActions("location", l.id, l.active, l.name)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="default" className="capitalize">
-                      {l.site_type?.replace(/_/g, " ").toLowerCase() ?? "-"}
-                    </Badge>
-                    {renderStatus(l.active)}
-                    {renderRowActions("location", l.id, l.active)}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -526,6 +612,38 @@ export default function MasterDataPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Dialog konfirmasi nonaktifkan/aktifkan master data */}
+      {confirmToggle && (
+        <Modal
+          open={true}
+          onClose={() => setConfirmToggle(null)}
+          title={`Konfirmasi ${confirmToggle.nextActive ? "Aktifkan" : "Nonaktifkan"} Data`}
+          size="md"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-700">
+              Apakah Anda yakin ingin{" "}
+              <span className="font-medium">
+                {confirmToggle.nextActive ? "mengaktifkan" : "menonaktifkan"}
+              </span>{" "}
+              {confirmToggle.name}? Data yang dinonaktifkan tidak akan muncul dalam daftar aktif.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setConfirmToggle(null)}>
+                Batal
+              </Button>
+              <Button
+                onClick={handleConfirmToggle}
+                disabled={saving}
+                variant={confirmToggle.nextActive ? "default" : "danger"}
+              >
+                {saving ? "Memproses..." : confirmToggle.nextActive ? "Aktifkan" : "Nonaktifkan"}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

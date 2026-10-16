@@ -3,15 +3,15 @@
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
 import { apiUrl } from "@/lib/env";
-import { Card, CardContent } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Modal } from "@/shared/components/design-system/modal";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/components/design-system/tabs";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { formatDate } from "@/lib/format";
 import {
   diagnosticService,
@@ -20,7 +20,7 @@ import {
   type BackendRadiologyOrder,
   type BackendRadiologyResult,
 } from "@/lib/services/diagnostic.service";
-import { FlaskConical, Plus, CheckCircle, Clock, XCircle, Search, FileText } from "lucide-react";
+import { FlaskConical, Plus, CheckCircle, Search, FileText } from "lucide-react";
 
 const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default" | "info"> = {
   ORDERED: "warning",

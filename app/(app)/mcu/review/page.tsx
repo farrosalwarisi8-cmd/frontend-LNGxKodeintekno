@@ -10,19 +10,20 @@ import {
   syncPatients,
   useSyncedModules,
 } from "@/lib/remote-sync";
-import { mcuService, type FtwStatus } from "@/lib/services/mcu.service";
+import { mcuService } from "@/lib/services/mcu.service";
 import type { HealthStatus } from "@/lib/types";
-import { MCU_STATUS, HEALTH_STATUS, HEALTH_STATUS_OPTIONS } from "@/lib/constants";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
-import { Modal } from "@/shared/components/design-system/modal";
-import { ErrorState } from "@/shared/components/design-system/error-state";
+import { MCU_STATUS, HEALTH_STATUS_OPTIONS } from "@/lib/constants";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
+import { Modal } from "@/components/ui/modal";
+import { ErrorState } from "@/components/ui/error-state";
 import { formatDate } from "@/lib/format";
-import { Search, CheckCircle, XCircle, Clock, FileText } from "lucide-react";
+import { toastSuccess, toastError } from "@/lib/use-toast";
+import { Search, CheckCircle, XCircle, FileText } from "lucide-react";
 
 export default function MCUReviewPage() {
   const mcus = useStore((s) => s.mcus);
@@ -39,6 +40,11 @@ export default function MCUReviewPage() {
 
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [confirmAction, setConfirmAction] = useState<{
+    type: "approve" | "reject" | "revision";
+    id: string;
+    name: string;
+  } | null>(null);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -80,17 +86,29 @@ export default function MCUReviewPage() {
     setShowModal(true);
   };
 
-  const handleAction = async () => {
+  const handleAction = () => {
     if (!selectedMCU || actionBusy) return;
+    // Validasi input sebelum konfirmasi
+    if (modalType === "approve") {
+      if (!decision) {
+        setActionError("Pilih keputusan kelaikan kerja terlebih dahulu.");
+        return;
+      }
+      if (decision === "Fit with Restriction" && (!restriction || !reviewDate)) {
+        setActionError("Restriksi dan tanggal review wajib diisi untuk keputusan Fit with Restriction.");
+        return;
+      }
+    }
+    const m = mcus.find((m) => m.id === selectedMCU);
+    setConfirmAction({ type: modalType, id: selectedMCU, name: m?.mcuNumber ?? selectedMCU });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction || !selectedMCU) return;
     setActionBusy(true);
     setActionError("");
     try {
-      if (modalType === "approve") {
-        if (!decision) throw new Error("Pilih keputusan kelaikan kerja terlebih dahulu.");
-        if (decision === "Fit with Restriction" && (!restriction || !reviewDate)) {
-          throw new Error("Restriksi dan tanggal review wajib diisi untuk keputusan Fit with Restriction.");
-        }
-        // POST /api/v1/mcu/cycles/:id/ftw-assessment
+      if (confirmAction.type === "approve") {
         await mcuService.assessFtw(
           selectedMCU,
           mapHealthToFtw(decision),
@@ -99,18 +117,34 @@ export default function MCUReviewPage() {
             ? { description: restriction, reviewDate }
             : undefined
         );
-        approveMCU(selectedMCU, decision as HealthStatus, note, { validFrom, validUntil, restriction, recommendation, reviewDate });
-      } else if (modalType === "reject") {
+        approveMCU(selectedMCU, decision as HealthStatus, note, {
+          validFrom,
+          validUntil,
+          restriction,
+          recommendation,
+          reviewDate,
+        });
+      } else if (confirmAction.type === "reject") {
         await mcuService.assessFtw(selectedMCU, "UNFIT", note || undefined);
         rejectMCU(selectedMCU, note);
       } else {
-        // Endpoint backend tidak memiliki alur "minta revisi" -> tetap lokal
         requestRevision(selectedMCU, note);
       }
       await syncMcu(1, 100);
+      setConfirmAction(null);
       setShowModal(false);
+      toastSuccess(
+        confirmAction.type === "approve"
+          ? "MCU disetujui"
+          : confirmAction.type === "reject"
+            ? "MCU ditolak"
+            : "Revisi MCU diminta",
+        `Keputusan untuk MCU ${confirmAction.name} telah tersimpan.`
+      );
     } catch (e) {
+      setConfirmAction(null);
       setActionError(e instanceof Error ? e.message : "Gagal menyimpan keputusan.");
+      toastError("Gagal menyimpan keputusan", e instanceof Error ? e.message : undefined);
     } finally {
       setActionBusy(false);
     }
@@ -238,16 +272,42 @@ export default function MCUReviewPage() {
           {actionError && (
             <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{actionError}</div>
           )}
+          {confirmAction?.id === selectedMCU ? (
+            <div className="rounded-lg bg-warning-50 p-3 text-sm text-warning-700">
+              <p className="mb-1">
+                Konfirmasi{" "}
+                {confirmAction.type === "approve"
+                  ? "persetujuan"
+                  : confirmAction.type === "reject"
+                    ? "penolakan"
+                    : "permintaan revisi"}
+                untuk MCU {confirmAction.name}?
+              </p>
+              <p className="text-xs text-warning-600">
+                Keputusan akan dikirim ke backend dan tidak dapat diubah.
+              </p>
+            </div>
+          ) : null}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
             <Can action={modalType === "approve" ? "mcu.approve" : "mcu.review"}>
               <Button
-                variant={modalType === "reject" ? "danger" : modalType === "revision" ? "outline" : "primary"}
-                onClick={handleAction}
+                variant={modalType === "reject" ? "danger" : modalType === "revision" ? "outline" : "default"}
+                onClick={() => {
+                  if (confirmAction?.id === selectedMCU) {
+                    void handleConfirmAction();
+                  } else {
+                    handleAction();
+                  }
+                }}
                 loading={actionBusy}
-                disabled={actionBusy || (modalType === "approve" ? !decision : !note)}
+                disabled={
+                  actionBusy ||
+                  (modalType === "approve" ? !decision : !note) ||
+                  (confirmAction?.id === selectedMCU && actionBusy)
+                }
               >
-                {modalType === "approve" ? "Approve" : modalType === "reject" ? "Tolak" : "Minta Revisi"}
+                {confirmAction?.id === selectedMCU ? "Ya, Simpan" : modalType === "approve" ? "Approve" : modalType === "reject" ? "Tolak" : "Minta Revisi"}
               </Button>
             </Can>
           </div>

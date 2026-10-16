@@ -8,13 +8,13 @@ import { useStore } from "@/lib/store";
 import { syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { documentService } from "@/lib/services/document.service";
 import { CERT_STATUS } from "@/lib/constants";
-import { Card, CardContent } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { formatDate } from "@/lib/format";
-import { Search, BadgeCheck, Plus, QrCode, ChevronRight } from "lucide-react";
+import { Search, BadgeCheck, Plus, QrCode } from "lucide-react";
 
 export default function CertificatesPage() {
   const certificates = useStore((s) => s.certificates);

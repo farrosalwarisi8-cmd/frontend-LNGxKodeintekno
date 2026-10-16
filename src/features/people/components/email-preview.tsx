@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal } from "@/shared/components/design-system/modal";
+import { Modal } from "@/components/ui/modal";
 import { FileCheck2, Clock3 } from "lucide-react";
 
 export interface EmailPreviewProps {

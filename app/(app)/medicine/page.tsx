@@ -3,19 +3,18 @@
 import { Can } from "@/components/can";
 
 import { useState } from "react";
-import Link from "next/link";
+
 import { useStore } from "@/lib/store";
 import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { formatDate } from "@/lib/format";
-import { Search, Plus, Pill, AlertTriangle, Package, ChevronRight } from "lucide-react";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Search, Plus, Pill, AlertTriangle, ChevronRight } from "lucide-react";
 
 export default function MedicinePage() {
   const medicines = useStore((s) => s.medicines);

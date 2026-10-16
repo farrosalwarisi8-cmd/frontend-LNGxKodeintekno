@@ -6,8 +6,9 @@ import { useStore, useCurrentUser } from "@/lib/store";
 import { can, type Permission } from "@/lib/rbac";
 import { useDemoMode } from "@/lib/demo-role";
 import type { Role } from "@/lib/types";
-import { PageLoading } from "./loading-spinner";
-import { AccessDenied } from "./access-denied";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ShieldAlert } from "lucide-react";
+import Link from "next/link";
 
 export interface RoutePermissionRule {
   pattern: RegExp;
@@ -127,13 +128,35 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
   }, [access, pathname, router]);
 
   if (access === "loading" || access === "login") {
-    return <PageLoading />;
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center p-6">
+        <Skeleton className="w-32 h-8 mx-auto" />
+      </div>
+    );
   }
 
-  // Tidak berizin: TETAP tampilkan AccessDenied (tanpa redirect otomatis) agar
+  // Tidak berizin: TETAP tampilkan halaman ditolak (tanpa redirect otomatis) agar
   // pengguna sempat membaca alasan dan bisa memilih kembali ke dashboard.
   if (access === "denied") {
-    return <AccessDenied />;
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <ShieldAlert className="size-6" />
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900">Akses Ditolak</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Anda tidak punya izin untuk membuka halaman ini.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-flex items-center justify-center rounded-xl border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            Kembali ke Dashboard
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

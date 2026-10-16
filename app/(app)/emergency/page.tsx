@@ -4,15 +4,23 @@ import { Can } from "@/components/can";
 
 import { useState } from "react";
 import { apiClient } from "@/lib/api-client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Modal } from "@/components/ui/modal";
 import { formatDate } from "@/lib/format";
-import { useStore } from "@/lib/store";
-import { WifiOff, Wifi, AlertTriangle, CheckCircle, Clock, RefreshCw, ShieldAlert } from "lucide-react";
+import { toastSuccess, toastError } from "@/lib/use-toast";
+import { Plus, Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, RefreshCw, ShieldAlert } from "lucide-react";
 
 interface EmergencyRecord {
   id: string;
@@ -54,16 +62,29 @@ function deviceFingerprint(): string {
   return `fp-${(hash >>> 0).toString(16)}-${fp.length}`;
 }
 
+const TYPE_LABEL: Record<EmergencyRecord["type"], string> = {
+  registration: "Registrasi",
+  visit: "Kunjungan",
+  mcu: "MCU",
+  prescription: "Resep",
+};
+
 export default function EmergencyPage() {
-  const employees = useStore((s) => s.employees);
   const [isOnline, setIsOnline] = useState(true);
   const [queue, setQueue] = useState<EmergencyRecord[]>(INITIAL_QUEUE);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState<{ type: EmergencyRecord["type"]; description: string }>({ type: "registration", description: "" });
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "synced" | "pending">("all");
 
   const pendingCount = queue.filter((q) => !q.synced).length;
+
+  const filteredQueue = queue.filter((q) => {
+    if (statusFilter === "synced") return q.synced;
+    if (statusFilter === "pending") return !q.synced;
+    return true;
+  });
 
   const handleSubmit = () => {
     const newRecord: EmergencyRecord = {
@@ -75,6 +96,7 @@ export default function EmergencyPage() {
     setQueue((prev) => [newRecord, ...prev]);
     setShowModal(false);
     setFormData({ type: "registration", description: "" });
+    toastSuccess("Catatan darurat disimpan", "Catatan telah ditambahkan ke antrean darurat.");
   };
 
   /**
@@ -118,11 +140,13 @@ export default function EmergencyPage() {
         text: `Sinkronisasi backend: ${syncedCount} synced${skipped ? `, ${skipped} sudah pernah terkirim (idempoten)` : ""}${conflicts ? `, ${conflicts} konflik perlu resolusi manual` : ""}.`,
       });
       setIsOnline(true);
+      toastSuccess("Sinkronisasi selesai", `${syncedCount} record tersinkronisasi ke backend.`);
     } catch (e) {
       setSyncMessage({
         type: "error",
         text: e instanceof Error ? e.message : "Sinkronisasi ke backend gagal. Antrian tetap pending.",
       });
+      toastError("Sinkronisasi gagal", e instanceof Error ? e.message : undefined);
     } finally {
       setSyncing(false);
     }
@@ -134,10 +158,13 @@ export default function EmergencyPage() {
 
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Emergency Mode</h1>
-          <p className="text-sm text-slate-500">Mode darurat offline dengan upgrade queue</p>
+          <p className="text-sm text-slate-500">
+            Mode darurat offline dengan antrean sinkronisasi ke backend
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant={isOnline ? "outline" : "danger"} onClick={toggleOnline}>
@@ -160,13 +187,14 @@ export default function EmergencyPage() {
             <div>
               <p className="font-medium text-warning-700">Mode Darurat Aktif</p>
               <p className="text-sm text-warning-600">
-                Sistem sedang offline. Semua data akan disimpan di upgrade queue dan disinkronkan otomatis saat koneksi pulih.
+                Sistem sedang offline. Semua data akan disimpan di antrean dan disinkronkan otomatis saat koneksi pulih.
               </p>
             </div>
           </div>
         </Card>
       )}
 
+      {/* Ringkasan status */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
@@ -203,11 +231,23 @@ export default function EmergencyPage() {
         </Card>
       </div>
 
+      {/* Filter bar */}
+      <Card className="p-4">
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | "synced" | "pending")}
+          placeholder="Filter status sinkronisasi"
+          options={[
+            { value: "all", label: "Semua" },
+            { value: "synced", label: "Tersinkronisasi" },
+            { value: "pending", label: "Belum Tersinkron" },
+          ]}
+        />
+      </Card>
+
       {syncMessage && (
         <div
-          className={`rounded-xl p-3 text-sm ${
-            syncMessage.type === "ok" ? "bg-success-50 text-success-700" : "bg-danger-50 text-danger-700"
-          }`}
+          className={`rounded-xl p-3 text-sm ${syncMessage.type === "ok" ? "bg-success-50 text-success-700" : "bg-danger-50 text-danger-700"}`}
         >
           {syncMessage.text}
         </div>
@@ -220,69 +260,72 @@ export default function EmergencyPage() {
         </Button>
       )}
 
+      {/* Tabel daftar antrean */}
       <Card>
         <CardHeader>
           <CardTitle>Upgrade Queue</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {queue.map((record) => (
-              <div key={record.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{record.description}</p>
-                  <p className="text-xs text-slate-500">
-                    {record.type} · {formatDate(record.createdAt)}
-                  </p>
-                </div>
-                <Badge variant={record.synced ? "success" : "warning"}>
-                  {record.synced ? "Synced" : "Pending"}
-                </Badge>
-              </div>
-            ))}
-          </div>
+          {filteredQueue.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-4">Tidak ada catatan antrean.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Deskripsi</TableHead>
+                  <TableHead className="text-center w-32">Tipe</TableHead>
+                  <TableHead>Waktu</TableHead>
+                  <TableHead className="text-center w-24">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredQueue.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell className="whitespace-normal">{record.description}</TableCell>
+                    <TableCell className="text-center whitespace-normal">{TYPE_LABEL[record.type]}</TableCell>
+                    <TableCell className="whitespace-normal">{formatDate(record.createdAt)}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={record.synced ? "success" : "warning"}>
+                        {record.synced ? "Synced" : "Pending"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Catatan Darurat</h2>
-            <div className="space-y-4">
-              <Select
-                label="Tipe"
-                value={formData.type}
-                onChange={(e) => setFormData((f) => ({ ...f, type: e.target.value as EmergencyRecord["type"] }))}
-                options={[
-                  { value: "registration", label: "Registrasi" },
-                  { value: "visit", label: "Kunjungan" },
-                  { value: "mcu", label: "MCU" },
-                  { value: "prescription", label: "Resep" },
-                ]}
-              />
-              <Input
-                label="Deskripsi"
-                value={formData.description}
-                onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Deskripsi catatan darurat..."
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-                <Can action="emergency.create">
-                  <Button onClick={handleSubmit}>Simpan</Button>
-                </Can>
-              </div>
-            </div>
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Catatan Darurat" size="md">
+        <div className="space-y-4">
+          <Select
+            label="Tipe"
+            value={formData.type}
+            onChange={(e) => setFormData((f) => ({ ...f, type: e.target.value as EmergencyRecord["type"] }))}
+            options={[
+              { value: "registration", label: "Registrasi" },
+              { value: "visit", label: "Kunjungan" },
+              { value: "mcu", label: "MCU" },
+              { value: "prescription", label: "Resep" },
+            ]}
+          />
+          <Input
+            label="Deskripsi"
+            value={formData.description}
+            onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
+            placeholder="Deskripsi catatan darurat..."
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowModal(false)}>
+              Batal
+            </Button>
+            <Can action="emergency.create">
+              <Button onClick={handleSubmit}>Simpan</Button>
+            </Can>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
-  );
-}
-
-function Plus({ className }: { className?: string }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14" /><path d="M12 5v14" />
-    </svg>
   );
 }

@@ -1,51 +1,54 @@
-import { mergeProps } from "@base-ui/react/merge-props"
-import { useRender } from "@base-ui/react/use-render"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+"use client";
 
-const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-        secondary:
-          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
-        destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
-        outline:
-          "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
-        ghost:
-          "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
+import { cn } from "cn";
+import type { ConsentStatus, EmploymentStatus } from "@/features/people/api/people.types";
 
-function Badge({
-  className,
-  variant = "default",
-  render,
-  ...props
-}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
-  return useRender({
-    defaultTagName: "span",
-    props: mergeProps<"span">(
-      {
-        className: cn(badgeVariants({ variant }), className),
-      },
-      props
-    ),
-    render,
-    state: {
-      slot: "badge",
-      variant,
-    },
-  })
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  variant?: "default" | "success" | "warning" | "danger" | "info" | "purple" | "outline";
 }
 
-export { Badge, badgeVariants }
+const variants: Record<NonNullable<BadgeProps["variant"]>, string> = {
+  default: "bg-slate-100 text-slate-700",
+  success: "bg-success-100 text-success-600",
+  warning: "bg-warning-100 text-warning-600",
+  danger: "bg-danger-100 text-danger-600",
+  info: "bg-info-100 text-info-600",
+  purple: "bg-purple-100 text-purple-600",
+  outline: "border border-slate-200 text-slate-600",
+};
+
+export function Badge({ className, variant = "default", ...props }: BadgeProps) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border border-transparent px-2.5 py-0.5 text-xs font-medium",
+        variants[variant ?? "default"],
+        className
+      )}
+      {...props}
+    />
+  );
+}
+Badge.displayName = "Badge";
+
+export function ConsentStatusBadge({ status }: { status: ConsentStatus }) {
+  const config: Record<ConsentStatus, { label: string; variant: BadgeProps["variant"] }> = {
+    PENDING: { label: "Pending", variant: "warning" },
+    APPROVED: { label: "Approved", variant: "success" },
+    REJECTED: { label: "Rejected", variant: "danger" },
+    EXPIRED: { label: "Expired", variant: "danger" },
+    DELIVERY_FAILED: { label: "Delivery Failed", variant: "danger" },
+  };
+  const { label, variant } = config[status];
+  return <Badge variant={variant}>{label}</Badge>;
+}
+
+export function EmploymentStatusBadge({ status }: { status: EmploymentStatus }) {
+  const config: Record<EmploymentStatus, { label: string; variant: BadgeProps["variant"] }> = {
+    ACTIVE: { label: "Aktif", variant: "success" },
+    INACTIVE: { label: "Nonaktif", variant: "default" },
+    ARCHIVED: { label: "Arsip", variant: "outline" },
+  };
+  const { label, variant } = config[status];
+  return <Badge variant={variant}>{label}</Badge>;
+}

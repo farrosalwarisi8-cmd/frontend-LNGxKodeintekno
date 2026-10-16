@@ -20,7 +20,6 @@ import {
   Pill,
   LogOut,
   User,
-  Bell,
   Menu,
   LayoutDashboard,
   ClipboardList,
@@ -118,7 +117,6 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const user = useCurrentUser();
   const logout = useStore((s) => s.logout);
-  const notifications = useStore((s) => s.notifications);
 
   // Badge profil mengikuti role efektif: demo role saat demo mode aktif,
   // selain itu role session.
@@ -133,8 +131,6 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const nav = getNavigation(role);
   const bottomNav = getBottomNavigation(role);
   const hasMoreNav = getOverflowNavigation(role).length > 0;
-
-  const unreadCount = user ? notifications.filter((n) => n.userId === user.id && !n.read).length : 0;
 
   const handleLogout = () => {
     logout();

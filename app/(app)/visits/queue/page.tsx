@@ -4,12 +4,11 @@ import { useStore } from "@/lib/store";
 import { syncQueues, useSyncedModules } from "@/lib/remote-sync";
 import { VISIT_STATUS } from "@/lib/constants";
 import type { VisitStatus } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Avatar } from "@/shared/components/design-system/avatar";
-import { Button } from "@/shared/components/design-system/button";
-import { formatDate } from "@/lib/format";
-import { ListOrdered, UserRound, Clock, CheckCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { ListOrdered, Clock, CheckCircle } from "lucide-react";
 
 export default function QueuePage() {
   const visits = useStore((s) => s.visits);
@@ -94,7 +93,7 @@ export default function QueuePage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {sorted.map((visit, index) => {
+          {sorted.map((visit) => {
             const emp = employees.find((e) => e.id === visit.employeeId);
             const loc = locations.find((l) => l.id === visit.locationId);
             const statusMeta = VISIT_STATUS[visit.status];

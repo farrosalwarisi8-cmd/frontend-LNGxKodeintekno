@@ -1,10 +1,13 @@
 "use client";
 
 import { useStore, useCurrentUser } from "@/lib/store";
+import { useEffect, useState } from "react";
 import { CERT_STATUS } from "@/lib/constants";
-import { Card, CardContent } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { BadgeCheck, QrCode } from "lucide-react";
 import Link from "next/link";
@@ -22,6 +25,13 @@ export default function MyCertificatesPage() {
   const user = useCurrentUser();
   const employees = useStore((s) => s.employees);
   const certificates = useStore((s) => s.certificates);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!user) return null;
 
@@ -30,11 +40,20 @@ export default function MyCertificatesPage() {
     return (
       <div className="space-y-4">
         <PageTitle />
-        <EmptyState
-          icon={BadgeCheck}
-          title="Sertifikat tidak ditemukan"
-          description="Akun Anda belum tertaut ke data pekerja, sehingga sertifikat belum bisa ditampilkan."
-        />
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : error ? (
+          <ErrorState title="Gagal memuat sertifikat" message={error} onRetry={() => setError(null)} />
+        ) : (
+          <EmptyState
+            icon={BadgeCheck}
+            title="Sertifikat tidak ditemukan"
+            description="Akun Anda belum tertaut ke data pekerja, sehingga sertifikat belum bisa ditampilkan."
+          />
+        )}
       </div>
     );
   }
@@ -43,51 +62,63 @@ export default function MyCertificatesPage() {
 
   return (
     <div className="space-y-4">
-      <PageTitle />
-
-      {myCerts.length === 0 ? (
-        <EmptyState
-          icon={BadgeCheck}
-          title="Belum ada sertifikat"
-          description="Sertifikat kesehatan kerja Anda akan tampil di sini setelah diterbitkan dokter."
-        />
-      ) : (
-        <div className="space-y-3">
-          {myCerts.map((cert) => {
-            const statusMeta = CERT_STATUS[cert.status];
-            return (
-              <Card key={cert.id} className="p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
-                      <BadgeCheck className="size-6" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-900">{cert.certNumber}</p>
-                      <p className="text-xs text-slate-500">
-                        {cert.healthStatus} · Berlaku s.d. {formatDate(cert.validUntil)}
-                      </p>
-                      {cert.restrictions && (
-                        <p className="text-xs text-warning-600">Restriction: {cert.restrictions}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={statusMeta?.color}>
-                      {statusMeta?.label}
-                    </Badge>
-                    <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
-                      <Badge variant="info" className="cursor-pointer">
-                        <QrCode className="size-3" />
-                        QR
-                      </Badge>
-                    </Link>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+      {loading && (
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-1/3" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
+      )}
+
+      {!loading && !error && (
+        <>
+          <PageTitle />
+
+          {myCerts.length === 0 ? (
+            <EmptyState
+              icon={BadgeCheck}
+              title="Belum ada sertifikat"
+              description="Sertifikat kesehatan kerja Anda akan tampil di sini setelah diterbitkan dokter."
+            />
+          ) : (
+            <div className="space-y-3">
+              {myCerts.map((cert) => {
+                const statusMeta = CERT_STATUS[cert.status];
+                return (
+                  <Card key={cert.id} className="p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                          <BadgeCheck className="size-6" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900">{cert.certNumber}</p>
+                          <p className="text-xs text-slate-500">
+                            {cert.healthStatus} · Berlaku s.d. {formatDate(cert.validUntil)}
+                          </p>
+                          {cert.restrictions && (
+                            <p className="text-xs text-warning-600">Restriction: {cert.restrictions}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={statusMeta?.color}>
+                          {statusMeta?.label}
+                        </Badge>
+                        <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
+                          <Badge variant="info" className="cursor-pointer">
+                            <QrCode className="size-3" />
+                            QR
+                          </Badge>
+                        </Link>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -3,21 +3,17 @@
 import { Can } from "@/components/can";
 
 import { useMemo, useState } from "react";
-import { Card } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Modal } from "@/shared/components/design-system/modal";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Modal } from "@/components/ui/modal";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
 import { resolveScope } from "@/lib/services/reference.service";
-import {
-  pharmacyService,
-  type BackendPrescription,
-  type BackendPrescriptionItem,
-} from "@/lib/services/pharmacy.service";
+import { pharmacyService, type BackendPrescriptionItem } from "@/lib/services/pharmacy.service";
 import { Pill, Search, CheckCircle, AlertTriangle } from "lucide-react";
 
 interface PendingRx {
