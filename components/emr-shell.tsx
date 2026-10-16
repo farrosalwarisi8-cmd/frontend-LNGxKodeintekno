@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -11,13 +11,11 @@ import {
   Users,
   Settings,
   Globe,
-  AlertTriangle,
   X,
   ChevronRight,
   LogOut,
   Menu,
   User,
-  type LucideIcon,
 } from "lucide-react";
 import { ICON_MAP } from "@/shared/components/icon-map";
 import { useDemoMode } from "@/lib/demo-role";
@@ -25,14 +23,13 @@ import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { ROLES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { PenLine } from "lucide-react";
 import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive } from "@/lib/navigation";
-import { INITIAL_ONLINE, onlineStateFromEvent } from "@/lib/online";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { EnvironmentBanner } from "@/components/environment-banner";
 import { NotificationBell } from "@/components/notification-bell";
 import { RouteTitle } from "@/components/route-title";
 import { ScopeSelector } from "@/components/scope-selector";
+import { toastError, toastSuccess } from "@/lib/use-toast";
 
 const ROLE_LABELS: Record<DemoRole, string> = {
   ADMIN_CLINIC: "Admin Klinik",
@@ -60,35 +57,49 @@ const ROLE_COLORS: Record<DemoRole, string> = {
 
 // Navigasi terpusat di `@/lib/navigation` (label, icon, permission, active route).
 
-function useOnline() {
-  // Nilai awal HARUS sama di server dan client (INITIAL_ONLINE = true) agar
-  // tidak terjadi hydration mismatch; status sesungguhnya disinkronkan
-  // setelah mount lewat navigator.onLine + event online/offline.
-  const [online, setOnline] = useState(INITIAL_ONLINE);
-  useEffect(() => {
-    const update = () => setOnline(navigator.onLine);
-    update();
-    const on = () => setOnline(onlineStateFromEvent("online"));
-    const off = () => setOnline(onlineStateFromEvent("offline"));
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
-    };
-  }, []);
-  return online;
-}
-
 export function EmrShell({ children }: { children: React.ReactNode }) {
   const { enabled: demoEnabled, demoRole, role } = useDemoMode();
   const pathname = usePathname();
   const router = useRouter();
-  const isOnline = useOnline();
+  const isOnline = useStore((s) => s.isOnline);
+  const setOnline = useStore((s) => s.setOnline);
+  const offlineQueueLength = useStore((s) => s.offlineQueue.length);
+  const replayOfflineQueue = useStore((s) => s.replayOfflineQueue);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const user = useCurrentUser();
   const logout = useStore((s) => s.logout);
+
+  const prevOnline = useRef(isOnline);
+
+  // Sinkronisasi status online/offline ke store (sumber kebenaran tunggal)
+  // diakses oleh seluruh komponen lewat store.
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, [setOnline]);
+
+  // Saat kembali online dari keadaan offline: proses ulang antrean aksi
+  // lokal dan beri tahu pengguna melalui toast.
+  useEffect(() => {
+    const wasOffline = !prevOnline.current && isOnline;
+    prevOnline.current = isOnline;
+    if (!wasOffline) return;
+    void replayOfflineQueue().then(({ ok, failed }) => {
+      if (ok > 0) {
+        toastSuccess("Tersambung kembali", `${ok} aksi disinkronkan.`);
+      }
+      if (failed > 0) {
+        toastError("Sinkronisasi gagal sebagian", `${failed} aksi masih menunggu.`);
+      }
+    });
+  }, [isOnline, replayOfflineQueue]);
 
   // Badge profil mengikuti role efektif: demo role saat demo mode aktif,
   // selain itu role session.
@@ -188,15 +199,6 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {!isOnline && (
-            <div className="border-t border-slate-100 p-4">
-              <div className="flex items-center gap-2 rounded-xl bg-warning-50 px-3 py-2.5 text-xs text-warning-700">
-                <WifiOff className="size-4 shrink-0" aria-hidden="true" />
-                <span>Offline — data belum dikirim</span>
-              </div>
-            </div>
-          )}
-
           <div className="border-t border-slate-100 px-4 py-3">
             <p className="text-[10px] text-slate-500">Kodein Klinik · EMR Okupasi</p>
           </div>
@@ -211,12 +213,6 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               <span className="text-sm font-semibold text-slate-900">Kodein Klinik</span>
             </div>
             <div className="flex items-center gap-2">
-              {!isOnline && (
-                <div className="flex items-center gap-1 rounded-full bg-warning-50 px-2 py-1 text-xs text-warning-600">
-                  <WifiOff className="size-3" aria-hidden="true" />
-                  <span className="hidden sm:inline">Offline</span>
-                </div>
-              )}
               <NotificationBell />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -345,6 +341,22 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
+
+          {/* Indikator offline (persisten di semua breakpoint) */}
+          {!isOnline && (
+            <div className="border-b border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700" role="status">
+              <div className="flex items-center gap-2">
+                <WifiOff className="size-4 shrink-0" aria-hidden="true" />
+                <span>Offline — aksi disimpan secara lokal</span>
+                {offlineQueueLength > 0 && (
+                  <span className="ml-auto shrink-0 flex items-center gap-1 rounded bg-warning-200 px-2 py-0.5 text-[10px] font-medium">
+                    {offlineQueueLength} antrean
+                  </span>
+                )}
+                <span className="text-warning-500">Akan disinkronkan saat tersambung kembali</span>
+              </div>
+            </div>
+          )}
 
           <main
             id="main-content"

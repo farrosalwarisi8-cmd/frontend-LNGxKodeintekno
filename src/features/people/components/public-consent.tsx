@@ -11,9 +11,9 @@ import {
   type ConsentPhase,
 } from "@/lib/consent-state";
 import { CONSENT_TEXT } from "../fixtures/people.fixtures";
-import { Button } from "@/shared/components/design-system/button";
-import { Card } from "@/shared/components/design-system/card";
-import { Modal } from "@/shared/components/design-system/modal";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Modal } from "@/components/ui/modal";
 
 /**
  * Halaman consent publik (tanpa login).
@@ -148,7 +148,7 @@ export function PublicConsent({ token }: { token: string }) {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button
-              variant="primary"
+              variant="default"
               className="flex-1"
               loading={phase === "deciding"}
               disabled={phase === "deciding" || !token}
@@ -190,7 +190,7 @@ export function PublicConsent({ token }: { token: string }) {
             Batal
           </Button>
           <Button
-            variant={showConfirm === "APPROVED" ? "primary" : "danger"}
+            variant={showConfirm === "APPROVED" ? "default" : "danger"}
             className="flex-1"
             onClick={() => showConfirm && decide(showConfirm)}
           >

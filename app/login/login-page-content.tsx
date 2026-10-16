@@ -5,10 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { resolveLoginRedirect } from "@/lib/navigation";
 import { ROLES } from "@/lib/constants";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { environmentLabel, getDemoPassword, isDemoModeEnabled } from "@/lib/env";
 import { Activity, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
 
@@ -38,7 +38,6 @@ const DEMO_PASSWORD = DEMO_MODE_ENABLED ? getDemoPassword() : "";
 const DEMO_ACCOUNTS_READY = DEMO_MODE_ENABLED && DEMO_PASSWORD.length > 0;
 
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 60_000;
 
 export default function LoginPageContent() {
   const router = useRouter();

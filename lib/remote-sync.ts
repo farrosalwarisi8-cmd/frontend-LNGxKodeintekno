@@ -482,7 +482,7 @@ export function mapNotification(n: BackendNotification): AppNotification {
     userId: n.user_id ?? "",
     title: template?.subject_template ?? n.related_type ?? "Notifikasi",
     message: template?.body_template ?? "",
-    read: n.status === "READ" || n.status === "SENT" || n.status === "DELIVERED",
+    read: n.status === "READ",
     createdAt: iso(n.created_at),
   };
 }

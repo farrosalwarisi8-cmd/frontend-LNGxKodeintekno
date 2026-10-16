@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 import type { DemoRole } from "../api/people.types";
 import { DEMO_ROLE_LABELS, useDemoMode } from "@/lib/demo-role";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ROLES: { role: DemoRole; label: string; description: string; icon: typeof UserRound }[] = [
   { role: "ADMIN_CLINIC", label: "Admin Klinik", description: "Akses penuh ke registrasi dan consent", icon: ShieldCheck },

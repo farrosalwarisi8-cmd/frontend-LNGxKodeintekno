@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
-import { Button } from "@/shared/components/design-system/button";
+import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
@@ -24,8 +24,8 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error) {
-    console.error("ErrorBoundary caught:", error);
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
   }
 
   render() {
@@ -33,8 +33,8 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="flex min-h-[400px] items-center justify-center p-6">
-          <div className="w-full max-w-md rounded-2xl border border-danger-100 bg-danger-50/50 p-8 text-center">
+        <div className="flex min-h-[400px] flex-col items-center justify-center p-6">
+          <div className="rounded-2xl border border-danger-100 bg-danger-50/50 p-8 text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-danger-100">
               <AlertTriangle className="size-6 text-danger-600" />
             </div>

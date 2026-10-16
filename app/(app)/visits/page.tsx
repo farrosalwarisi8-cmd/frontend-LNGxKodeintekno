@@ -7,17 +7,17 @@ import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { syncQueues, useSyncedModules } from "@/lib/remote-sync";
 import { VISIT_STATUS } from "@/lib/constants";
-import { Card, CardContent } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
-import { Button } from "@/shared/components/design-system/button";
-import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
-import { Avatar } from "@/shared/components/design-system/avatar";
-import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { ErrorState } from "@/shared/components/design-system/error-state";
-import { Skeleton } from "@/shared/components/design-system/skeleton";
-import { formatDate } from "@/lib/format";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Avatar } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, ClipboardList, ChevronRight } from "lucide-react";
+import { useDebounce } from "@/shared/utils/use-debounce";
 
 export default function VisitsPage() {
   const visits = useStore((s) => s.visits);
@@ -28,12 +28,13 @@ export default function VisitsPage() {
   const { loading, error, refetch } = useSyncedModules(() => syncQueues());
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
 
   const filtered = visits.filter((v) => {
     const emp = employees.find((e) => e.id === v.employeeId);
-    const q = search.toLowerCase();
+    const q = debouncedSearch.toLowerCase();
     const matchSearch =
       !q ||
       v.visitNumber.toLowerCase().includes(q) ||
