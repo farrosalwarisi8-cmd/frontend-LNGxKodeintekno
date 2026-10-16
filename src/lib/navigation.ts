@@ -26,8 +26,11 @@ export interface NavigationItem {
 export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "layout-dashboard", end: true },
   { label: "Demo", href: "/demo", icon: "flask" },
-  { label: "People", href: "/people", icon: "users", permission: "manage-employees" },
-  { label: "Pekerja", href: "/employees", icon: "users", permission: "manage-employees" },
+  // Registrasi & Consent (MPI Modul 01) sengaja dipisah tegas dari
+  // Direktori Pekerja (/employees, data master pekerja dari backend) supaya
+  // tidak ada dua menu "daftar orang" yang tampak sama.
+  { label: "Registrasi & Consent", href: "/people", icon: "users", permission: "manage-employees" },
+  { label: "Direktori Pekerja", href: "/employees", icon: "users", permission: "manage-employees" },
   { label: "MCU & FTW", href: "/mcu", icon: "activity", permission: "view-mcu" },
   { label: "Review MCU", href: "/mcu/review", icon: "stethoscope", permission: "review-mcu" },
   { label: "Kunjungan", href: "/visits", icon: "clipboard-list", permission: "view-visits" },
@@ -57,8 +60,9 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
 export const ROUTE_LABELS: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/demo": "Demo",
-  "/people": "People",
-  "/employees": "Pekerja",
+  "/people": "Registrasi & Consent",
+  "/people/new": "Pendaftaran Pekerja",
+  "/employees": "Direktori Pekerja",
   "/mcu": "MCU & FTW",
   "/mcu/new": "Buat MCU",
   "/mcu/review": "Review MCU",
@@ -81,10 +85,11 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/lab": "Lab & Radiologi",
   "/signatures": "Tanda Tangan",
   "/documents": "Dokumen",
-  "/my": "Profil Saya",
+  "/my": "Akun Saya",
   "/my/profile": "Profil Saya",
   "/my/mcu": "MCU Saya",
   "/my/certificates": "Sertifikat Saya",
+  "/my/notifications": "Notifikasi Saya",
 };
 
 const SEGMENT_FALLBACK: Record<string, string> = {

@@ -266,7 +266,7 @@ export default function WaiverPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             placeholder="Cari nama visitor / perusahaan..."
             value={search}

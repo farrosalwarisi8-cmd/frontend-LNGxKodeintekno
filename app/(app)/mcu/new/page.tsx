@@ -17,6 +17,12 @@ import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Avatar } from "@/shared/components/design-system/avatar";
+import {
+  VITAL_SPECS,
+  assessVitals,
+  vitalFieldError,
+  vitalWarningCount,
+} from "@/shared/validation/vital-signs";
 import { formatDate } from "@/lib/format";
 import {
   UserRound,
@@ -145,6 +151,18 @@ export default function MCUNewPage() {
 
   const selectedEmployee = employees.find((e) => e.id === employeeId);
 
+  // Validasi rentang TTV (sama dengan alur kunjungan klinik).
+  const vitals = assessVitals(
+    {
+      systolicBp: systolic,
+      diastolicBp: diastolic,
+      pulse: heartRate,
+      weightKg: weightKg,
+      heightCm: heightCm,
+    },
+    ["systolicBp", "diastolicBp", "pulse", "weightKg", "heightCm"]
+  );
+
   const bmi = calculateBMI(parseFloat(heightCm), parseFloat(weightKg));
   const bp = classifyBloodPressure(parseInt(systolic), parseInt(diastolic));
   const framingham = calculateFramingham(
@@ -170,7 +188,8 @@ export default function MCUNewPage() {
   const canProceed = () => {
     if (currentStep === 1) return !!employeeId;
     if (currentStep === 2) return !!mcuType && !!examDate && !!facility;
-    if (currentStep === 3) return !!systolic && !!diastolic && !!heartRate && !!heightCm && !!weightKg;
+    // Langkah TTV: wajib terisi DAN semua nilai dalam rentang wajar.
+    if (currentStep === 3) return vitals.canProceed;
     return true;
   };
 
@@ -227,12 +246,12 @@ export default function MCUNewPage() {
                       ? "border-primary-600 bg-primary-600 text-white"
                       : isActive
                         ? "border-primary-600 bg-white text-primary-600"
-                        : "border-slate-200 bg-white text-slate-400"
+                        : "border-slate-200 bg-white text-slate-500"
                   }`}
                 >
                   {isCompleted ? <Check className="size-4" /> : <Icon className="size-4" />}
                 </div>
-                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-slate-400"}`}>
+                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-slate-500"}`}>
                   {s.label}
                 </span>
               </div>
@@ -308,45 +327,69 @@ export default function MCUNewPage() {
         {currentStep === 3 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">Vital Sign</h2>
+            <p className="text-sm text-slate-500">
+              Nilai di luar rentang wajar ditandai sebelum disimpan.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Sistolik (mmHg)"
                 type="number"
+                inputMode="numeric"
                 value={systolic}
                 onChange={(e) => setSystolic(e.target.value)}
                 placeholder="120"
+                error={vitalFieldError(vitals.byField.systolicBp)}
+                helper={VITAL_SPECS.systolicBp.hint}
               />
               <Input
                 label="Diastolik (mmHg)"
                 type="number"
+                inputMode="numeric"
                 value={diastolic}
                 onChange={(e) => setDiastolic(e.target.value)}
                 placeholder="80"
+                error={vitalFieldError(vitals.byField.diastolicBp)}
+                helper={VITAL_SPECS.diastolicBp.hint}
               />
             </div>
             <Input
               label="Heart Rate (bpm)"
               type="number"
+              inputMode="numeric"
               value={heartRate}
               onChange={(e) => setHeartRate(e.target.value)}
               placeholder="72"
+              error={vitalFieldError(vitals.byField.pulse)}
+              helper={VITAL_SPECS.pulse.hint}
             />
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Tinggi Badan (cm)"
                 type="number"
+                inputMode="numeric"
                 value={heightCm}
                 onChange={(e) => setHeightCm(e.target.value)}
                 placeholder="170"
+                error={vitalFieldError(vitals.byField.heightCm)}
+                helper={VITAL_SPECS.heightCm.hint}
               />
               <Input
                 label="Berat Badan (kg)"
                 type="number"
+                inputMode="decimal"
+                step="0.1"
                 value={weightKg}
                 onChange={(e) => setWeightKg(e.target.value)}
                 placeholder="65"
+                error={vitalFieldError(vitals.byField.weightKg)}
+                helper={VITAL_SPECS.weightKg.hint}
               />
             </div>
+            {vitalWarningCount(vitals) > 0 && (
+              <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700" role="status">
+                {vitalWarningCount(vitals)} nilai perlu perhatian — data tetap dapat disimpan.
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Visus"

@@ -218,7 +218,7 @@ export default function NotificationsPage() {
                                     {d.status}
                                   </Badge>
                                   {d.sent_at && (
-                                    <span className="text-slate-400">
+                                    <span className="text-slate-500">
                                       {formatDate(d.sent_at)}
                                     </span>
                                   )}
@@ -232,7 +232,7 @@ export default function NotificationsPage() {
 
                     {/* Related entity */}
                     {n.related_type && (
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         Related: {n.related_type} #{n.related_id?.slice(0, 8)}
                       </p>
                     )}

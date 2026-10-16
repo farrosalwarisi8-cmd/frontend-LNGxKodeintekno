@@ -6,6 +6,7 @@ import { findMyEmployee } from "@/lib/services/auth.service";
 import { CERT_STATUS } from "@/lib/constants";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
@@ -43,8 +44,13 @@ export default function MyCertificatesPage() {
         <PageTitle />
         <EmptyState
           icon={BadgeCheck}
-          title="Sertifikat tidak ditemukan"
-          description="Akun Anda belum tertaut ke data pekerja, sehingga sertifikat belum bisa ditampilkan."
+          title="Belum ada sertifikat untuk akun ini"
+          description="Akun Anda belum tertaut ke data pekerja (MPI), sehingga sertifikat belum bisa ditampilkan."
+          action={
+            <Link href="/my/profile">
+              <Button variant="outline" size="sm">Buka Profil Saya</Button>
+            </Link>
+          }
         />
       </div>
     );

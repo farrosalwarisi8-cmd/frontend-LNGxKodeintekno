@@ -53,7 +53,7 @@ const CUSTODY_ACTION_LABEL: Record<string, string> = {
 function CustodyTimeline({ entries }: { entries: BackendCustodyEntry[] }) {
   if (entries.length === 0) {
     return (
-      <p className="text-xs text-slate-400 italic">Belum ada chain of custody tercatat.</p>
+      <p className="text-xs text-slate-500 italic">Belum ada chain of custody tercatat.</p>
     );
   }
   return (
@@ -81,7 +81,7 @@ function CustodyTimeline({ entries }: { entries: BackendCustodyEntry[] }) {
             <p className="text-xs text-slate-500">
               {entry.from_party} → {entry.to_party}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               {formatDate(entry.event_at)} ·{" "}
               <span className="font-mono text-[10px]">
                 #{entry.signature_hash.slice(0, 12)}…
@@ -294,7 +294,7 @@ export default function DAPage() {
       {/* Search & Filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             placeholder="Cari pekerja / MRN / ID tes..."
             value={search}
@@ -303,6 +303,7 @@ export default function DAPage() {
           />
         </div>
         <Select
+          aria-label="Filter status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           options={[

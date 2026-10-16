@@ -49,8 +49,14 @@ export default function EmployeesPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Pekerja</h1>
-          <p className="text-sm text-slate-500">Kelola data pekerja dan employment</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Direktori Pekerja</h1>
+          <p className="text-sm text-slate-500">Data pekerja dari backend untuk HR &amp; admin</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Ingin mendaftarkan pekerja baru atau mengelola consent?{" "}
+            <Link href="/people" className="font-medium text-primary-600 hover:underline">
+              Buka Registrasi &amp; Consent
+            </Link>
+          </p>
         </div>
         <Can action="people.create">
           {/* /employees/new tidak ada — registrasi pekerja memakai wizard /people/new */}
@@ -66,7 +72,7 @@ export default function EmployeesPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari nama, Employee ID, MRN..."
               value={search}
@@ -138,7 +144,7 @@ export default function EmployeesPage() {
                   const loc = locations.find((l) => l.id === emp.locationId);
                   const statusMeta = EMPLOYEE_STATUS[emp.status];
                   return (
-                    <tr key={emp.id} className="cursor-pointer transition-colors hover:bg-slate-50">
+                    <tr key={emp.id} className="transition-colors hover:bg-slate-50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar name={emp.fullName} size="sm" />
@@ -159,7 +165,7 @@ export default function EmployeesPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <ChevronRight className="size-4 text-slate-400" />
+                        <ChevronRight className="size-4 text-slate-500" />
                       </td>
                     </tr>
                   );

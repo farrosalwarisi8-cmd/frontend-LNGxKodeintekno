@@ -120,7 +120,7 @@ export function ScopeSelector({ className }: { className?: string }) {
         ))}
       </select>
       {activeSiteName && (
-        <span className="hidden text-xs text-slate-400 xl:inline">
+        <span className="hidden text-xs text-slate-500 xl:inline">
           Menampilkan: {activeSiteName}
         </span>
       )}

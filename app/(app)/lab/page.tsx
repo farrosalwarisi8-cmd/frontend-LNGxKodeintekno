@@ -250,7 +250,7 @@ export default function LabRadiologyPage() {
         <TabsContent value="lab" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Cari order atau tes..."
                 value={search}
@@ -368,7 +368,7 @@ export default function LabRadiologyPage() {
         <TabsContent value="rad" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Cari order radiologi..."
                 value={search}
@@ -502,6 +502,7 @@ export default function LabRadiologyPage() {
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
+                  aria-label="Tandai abnormal"
                   checked={v.abnormalFlag}
                   onChange={(e) =>
                     setLabResultValues((prev) =>
@@ -550,8 +551,9 @@ export default function LabRadiologyPage() {
             </p>
           )}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Findings</label>
+            <label htmlFor="rad-findings" className="mb-1 block text-sm font-medium text-slate-700">Findings</label>
             <textarea
+              id="rad-findings"
               className="w-full rounded-lg border border-slate-200 p-2 text-sm"
               rows={3}
               value={radFindings}
@@ -560,8 +562,9 @@ export default function LabRadiologyPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Impression</label>
+            <label htmlFor="rad-impression" className="mb-1 block text-sm font-medium text-slate-700">Impression</label>
             <textarea
+              id="rad-impression"
               className="w-full rounded-lg border border-slate-200 p-2 text-sm"
               rows={2}
               value={radImpression}

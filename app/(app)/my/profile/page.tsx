@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useStore, useCurrentUser } from "@/lib/store";
+import { ROLES } from "@/lib/constants";
 import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { authService, findMyEmployee } from "@/lib/services/auth.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
@@ -139,7 +141,7 @@ export default function MyProfilePage() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <ShieldCheck className="size-4 text-slate-400" />
+          <ShieldCheck className="size-4 text-slate-500" />
           Keamanan Akun
         </CardTitle>
       </CardHeader>
@@ -225,7 +227,7 @@ export default function MyProfilePage() {
                 </Button>
               </div>
             </form>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Environment demo/non-production mengizinkan kode OTP demo <strong>123456</strong>.
             </p>
           </div>
@@ -240,10 +242,29 @@ export default function MyProfilePage() {
     </Card>
   );
 
+  // Kartu akun selalu tampil: profil akun (nama, username, peran) berasal dari
+  // sesi login dan tidak bergantung pada keterkaitan ke data pekerja. Ini
+  // mencegah /my/profile menjadi halaman buntu "data tidak ditemukan".
+  const accountCard = (
+    <Card className="p-6">
+      <div className="flex items-center gap-4">
+        <Avatar name={user.name} size="lg" />
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">{user.name}</h2>
+          <p className="text-sm text-slate-500">@{user.username}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <Badge variant="default">{ROLES[user.role]?.label ?? user.title}</Badge>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+
   if (!employee) {
     return (
       <div className="space-y-4">
         <PageTitle />
+        {accountCard}
         {securityCard}
         {error && (
           <ErrorState
@@ -261,8 +282,21 @@ export default function MyProfilePage() {
         {!loading && !error && (
           <EmptyState
             icon={UserRound}
-            title="Data pekerja tidak ditemukan"
-            description="Akun Anda belum tertaut ke data pekerja. Hubungi admin klinik atau HR untuk menautkannya."
+            title="Detail pekerja belum tertaut"
+            description="Akun Anda aktif, tetapi belum ditautkan ke data pekerja (MPI). Profil akun dan keamanan tetap tersedia — hubungi HR atau admin klinik bila Anda seorang pekerja."
+            action={
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Link href="/my/mcu">
+                  <Button variant="outline" size="sm">MCU Saya</Button>
+                </Link>
+                <Link href="/my/certificates">
+                  <Button variant="outline" size="sm">Sertifikat Saya</Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm">Ke Dashboard</Button>
+                </Link>
+              </div>
+            }
           />
         )}
       </div>
@@ -297,7 +331,7 @@ export default function MyProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="size-4 text-slate-400" />
+              <Building2 className="size-4 text-slate-500" />
               Employment
             </CardTitle>
           </CardHeader>
@@ -313,7 +347,7 @@ export default function MyProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Phone className="size-4 text-slate-400" />
+              <Phone className="size-4 text-slate-500" />
               Kontak
             </CardTitle>
           </CardHeader>
@@ -328,7 +362,7 @@ export default function MyProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="size-4 text-slate-400" />
+            <FileText className="size-4 text-slate-500" />
             Dokumen
           </CardTitle>
         </CardHeader>

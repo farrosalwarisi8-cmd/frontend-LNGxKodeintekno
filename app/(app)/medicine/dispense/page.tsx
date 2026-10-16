@@ -19,11 +19,16 @@ import {
   dispensingGuard,
   resolvePharmacySiteScope,
   CrossSiteActionError,
-  type BackendPrescription,
   type BackendPrescriptionItem,
   type PharmacySiteContext,
 } from "@/lib/services/pharmacy.service";
 import { Pill, Search, CheckCircle, AlertTriangle, TrendingDown, ScrollText } from "lucide-react";
+import {
+  buildStockHints,
+  summarizeDispenseWarnings,
+  FEFO_WARN_DAYS,
+} from "@/features/pharmacy/stock-hints";
+import { todayIso } from "@/shared/utils/due-soon";
 import { diffStockLedger, type BackendInventoryItem, type StockLedgerEntry } from "@/lib/services/pharmacy.service";
 
 interface PendingRx {
@@ -74,6 +79,22 @@ export default function DispensePage() {
       (p) => !q || p.visitNumber.toLowerCase().includes(q) || p.patientName.toLowerCase().includes(q)
     );
   }, [prescriptions, search]);
+
+  // Peringatan stok & FEFO dihitung dari snapshot inventaris site ini,
+  // memakai jumlah yang sedang diisi apoteker (bukan jumlah resep asli).
+  const stockHints = selectedRx
+    ? buildStockHints(
+        selectedRx.items.map((item) => ({
+          itemId: item.id,
+          name: item.medication?.generic_name,
+          quantity: quantities[item.id] ?? item.quantity ?? 0,
+        })),
+        stockSnapshot,
+        { today: todayIso() }
+      )
+    : [];
+  const warnings = summarizeDispenseWarnings(stockHints);
+  const hintFor = (itemId: string) => stockHints.find((h) => h.itemId === itemId);
 
   const openDispense = (rx: PendingRx) => {
     setSelectedRx(rx);
@@ -229,7 +250,7 @@ export default function DispensePage() {
                   <span className="font-mono text-xs text-slate-500">
                     {entry.before}
                   </span>
-                  <span className="text-slate-400">→</span>
+                  <span className="text-slate-500">→</span>
                   <span className="font-mono text-xs font-semibold text-slate-900">
                     {entry.after}
                   </span>
@@ -246,7 +267,7 @@ export default function DispensePage() {
 
       <Card className="p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             placeholder="Cari resep / pasien..."
             value={search}
@@ -326,6 +347,40 @@ export default function DispensePage() {
         size="lg"
       >
         <div className="space-y-4">
+          {/* Peringatan stok/FEFO ditempatkan paling atas: apoteker harus
+              melihatnya sebelum menekan tombol proses. */}
+          {selectedRx && (
+            <div
+              role="status"
+              className={`rounded-xl p-3 text-sm ${
+                warnings.blocked
+                  ? "bg-danger-50 text-danger-700"
+                  : warnings.expiringSoon.length > 0 || warnings.lowStock.length > 0
+                    ? "bg-warning-50 text-warning-700"
+                    : "bg-success-50 text-success-700"
+              }`}
+            >
+              <p className="flex items-start gap-2 font-medium">
+                {warnings.blocked ? (
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                ) : (
+                  <CheckCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                )}
+                {warnings.summary}
+              </p>
+              {warnings.blocked && (
+                <p className="mt-1 text-xs">
+                  Transaksi ini pasti ditolak backend. Kurangi jumlah atau terima stok dulu.
+                </p>
+              )}
+              {warnings.expiringSoon.length > 0 && (
+                <p className="mt-1 text-xs">
+                  FEFO memakai batch dengan kadaluarsa terdekat (≤ {FEFO_WARN_DAYS} hari).
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             {selectedRx?.items.map((item) => (
               <div
@@ -339,6 +394,28 @@ export default function DispensePage() {
                   <p className="text-xs text-slate-500">
                     {item.medication?.strength ?? ""} {item.dosage ?? ""}
                   </p>
+                  {(() => {
+                    const hint = hintFor(item.id);
+                    if (!hint) return null;
+                    return (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <Badge variant={hint.currentStock === null ? "outline" : hint.shortfall > 0 ? "danger" : "success"}>
+                          Stok: {hint.currentStock ?? "tidak diketahui"}
+                        </Badge>
+                        {hint.nearestExpiryDate && (
+                          <Badge variant={hint.expiresSoon ? "warning" : "outline"}>
+                            FEFO {formatDate(hint.nearestExpiryDate)}
+                          </Badge>
+                        )}
+                        {hint.shortfall > 0 && (
+                          <Badge variant="danger">Kurang {hint.shortfall}</Badge>
+                        )}
+                        {hint.isLowStock && hint.shortfall === 0 && (
+                          <Badge variant="warning">Stok minimum</Badge>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <Input
                   label=""
@@ -377,7 +454,11 @@ export default function DispensePage() {
               Batal
             </Button>
             <Can action="pharmacy.dispense">
-              <Button onClick={handleDispense} loading={busy} disabled={busy}>
+              <Button
+                onClick={handleDispense}
+                loading={busy}
+                disabled={busy || warnings.blocked}
+              >
                 <CheckCircle className="size-4" />
                 Proses Dispensing
               </Button>

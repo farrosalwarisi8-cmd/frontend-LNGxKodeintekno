@@ -358,7 +358,7 @@ export default function DocumentsPage() {
                             )}
                             {doc.signature?.retry_count != null &&
                               doc.signature.retry_count > 0 && (
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-slate-500">
                                   Retry: {doc.signature.retry_count}x
                                 </span>
                               )}

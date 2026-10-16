@@ -10,9 +10,11 @@ import { Button } from "@/shared/components/design-system/button";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
+import { Input } from "@/shared/components/design-system/input";
+import { useSavedFilters } from "@/shared/hooks/use-saved-filters";
 import { formatDate } from "@/lib/format";
 import { encounterService, type BackendQueueTicket } from "@/lib/services/encounter.service";
-import { ListOrdered, UserRound, Clock, CheckCircle, PhoneCall } from "lucide-react";
+import { ListOrdered, Clock, CheckCircle, PhoneCall, Search, X } from "lucide-react";
 
 const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default" | "info"> = {
   WAITING: "warning",
@@ -75,6 +77,29 @@ export default function QueuePage() {
   const inService = tickets.filter((t) => t.status === "CALLED" || t.status === "IN_SERVICE");
   const completed = tickets.filter((t) => t.status === "COMPLETED");
 
+  // Pencarian cepat: nama/MRN/nomor tiket. Filter tersimpan supaya perawat
+  // tidak perlu mengetik ulang setiap membuka halaman.
+  const { filters, setFilter, reset, active: filterActive } = useSavedFilters(
+    "visits-queue",
+    { search: "", waitingOnly: "0" }
+  );
+  const needle = filters.search.trim().toLowerCase();
+  const waitingOnly = filters.waitingOnly === "1";
+  const visible = tickets.filter((ticket) => {
+    if (waitingOnly && ticket.status !== "WAITING") return false;
+    if (!needle) return true;
+    const name = ticket.appointment?.patient?.full_name ?? "";
+    const mrn = ticket.appointment?.patient?.medical_record_no ?? "";
+    return (
+      name.toLowerCase().includes(needle) ||
+      mrn.toLowerCase().includes(needle) ||
+      (ticket.ticket_no ?? "").toLowerCase().includes(needle)
+    );
+  });
+
+  // Tindakan paling sering perawat: memanggil pasien berikutnya dari antrean.
+  const nextWaiting = waiting[0];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -84,10 +109,25 @@ export default function QueuePage() {
             Kelola antrean pasien real-time dari backend
           </p>
         </div>
-        <Button variant="outline" onClick={load} disabled={loading}>
-          <ListOrdered className="size-4" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Can action="visits.call-ticket">
+            <Button
+              onClick={() =>
+                nextWaiting && handleCallTicket(nextWaiting.id, nextWaiting.counter_id ?? undefined)
+              }
+              disabled={!nextWaiting || callingId !== null}
+              loading={callingId === nextWaiting?.id && callingId !== null}
+            >
+              <PhoneCall className="size-4" />
+              Panggil berikutnya
+              {nextWaiting ? ` (#${nextWaiting.ticket_no})` : ""}
+            </Button>
+          </Can>
+          <Button variant="outline" onClick={load} disabled={loading}>
+            <ListOrdered className="size-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {callError && (
@@ -95,6 +135,39 @@ export default function QueuePage() {
           {callError}
         </div>
       )}
+
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search
+              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
+              aria-hidden="true"
+            />
+            <Input
+              placeholder="Cari nama, MRN, atau nomor tiket..."
+              aria-label="Cari antrean"
+              value={filters.search}
+              onChange={(e) => setFilter("search", e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            variant={waitingOnly ? "primary" : "outline"}
+            aria-pressed={waitingOnly}
+            size="sm"
+            onClick={() => setFilter("waitingOnly", waitingOnly ? "0" : "1")}
+          >
+            <Clock className="size-4" />
+            Hanya menunggu ({waiting.length})
+          </Button>
+          {filterActive && (
+            <Button variant="ghost" size="sm" onClick={reset}>
+              <X className="size-4" />
+              Reset filter
+            </Button>
+          )}
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
@@ -143,17 +216,21 @@ export default function QueuePage() {
         </div>
       )}
 
-      {!loading && !error && tickets.length === 0 && (
+      {!loading && !error && visible.length === 0 && (
         <EmptyState
-          title="Tidak ada antrean"
-          description="Belum ada tiket antrean pada site ini."
+          title={tickets.length === 0 ? "Tidak ada antrean" : "Tidak ada tiket yang cocok"}
+          description={
+            tickets.length === 0
+              ? "Belum ada tiket antrean pada site ini."
+              : "Ubah kata kunci pencarian atau reset filter."
+          }
           icon={ListOrdered}
         />
       )}
 
-      {!loading && !error && tickets.length > 0 && (
+      {!loading && !error && visible.length > 0 && (
         <div className="space-y-3">
-          {tickets.map((ticket) => {
+          {visible.map((ticket) => {
             const patientName =
               ticket.appointment?.patient?.full_name ?? "Pasien";
             const mrn = ticket.appointment?.patient?.medical_record_no ?? "—";

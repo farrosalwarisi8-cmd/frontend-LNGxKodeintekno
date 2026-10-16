@@ -2,31 +2,40 @@
 
 import { Can } from "@/components/can";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import {
   syncMasterData,
   syncPatients,
   syncQueues,
+  syncWorkHealthStatus,
   useSyncedModules,
 } from "@/lib/remote-sync";
 import { encounterService } from "@/lib/services/encounter.service";
-import { patientService, type BackendClinicalEncounter } from "@/lib/services/patient.service";
+import { patientService } from "@/lib/services/patient.service";
 import type { ClinicVisit } from "@/lib/types";
 import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
-import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Modal } from "@/shared/components/design-system/modal";
+import { Icd10Search } from "@/features/medical-records/components/icd10-search";
+import {
+  isSoapDraftEmpty,
+  parseSoapDraft,
+  serializeSoapDraft,
+  soapDraftKey,
+  soapDraftLabel,
+} from "@/features/medical-records/soap-draft";
 import { formatDate } from "@/lib/format";
-import { Search, FileText, Lock } from "lucide-react";
+import { Search, FileText, Lock, History, CheckCircle } from "lucide-react";
 
 export default function MedicalRecordsPage() {
   const visits = useStore((s) => s.visits);
   const employees = useStore((s) => s.employees);
   const diagnoses = useStore((s) => s.diagnoses);
+  const workHealthStatus = useStore((s) => s.workHealthStatus);
   const updateVisit = useStore((s) => s.updateVisit);
 
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -40,7 +49,12 @@ export default function MedicalRecordsPage() {
     await syncPatients(1, 100);
     await syncQueues();
     await syncMasterData();
+    await syncWorkHealthStatus(1, 100);
   });
+
+  // Status autosave draft SOAP (per kunjungan).
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [draftRestored, setDraftRestored] = useState(false);
 
   const [search, setSearch] = useState("");
   const [selectedVisit, setSelectedVisit] = useState<string | null>(null);
@@ -82,11 +96,76 @@ export default function MedicalRecordsPage() {
     setTreatment(v.treatment || "");
     setDoctorNote(v.doctorNote || "");
     setFormError(null);
+
+    // Pulihkan draft lokal bila dokter sebelumnya mengetik tanpa menyimpan.
+    const restored = loadSoapDraft(visitId);
+    if (restored && !isSoapDraftEmpty(restored)) {
+      setSoapData({
+        subjective: restored.subjective,
+        objective: restored.objective,
+        assessment: restored.assessment,
+        plan: restored.plan,
+      });
+      setSelectedDiagnoses(restored.diagnosisIds);
+      setDiagnosisNote(restored.assessment);
+      setTreatment(restored.plan);
+      setDraftSavedAt(restored.savedAt);
+      setDraftRestored(true);
+    } else {
+      setDraftSavedAt(null);
+      setDraftRestored(false);
+    }
+
     setShowModal(true);
+  };
+
+  /** Baca draft SOAP tersimpan untuk satu kunjungan. */
+  const loadSoapDraft = (visitId: string) => {
+    if (typeof window === "undefined") return null;
+    return parseSoapDraft(window.localStorage.getItem(soapDraftKey(visitId)));
+  };
+
+  const clearSoapDraft = (visitId: string) => {
+    if (typeof window !== "undefined") window.localStorage.removeItem(soapDraftKey(visitId));
+    setDraftSavedAt(null);
+    setDraftRestored(false);
   };
 
   const selectedVisitRecord = visits.find((v) => v.id === selectedVisit);
   const isLocked = selectedVisitRecord?.recordStatus === "LOCKED";
+
+  // Autosave draft SOAP (debounce 800 ms) selama modal terbuka dan record belum
+  // terkunci. Draft lokal tidak pernah dianggap tersimpan di backend.
+  useEffect(() => {
+    if (!showModal || isLocked || !selectedVisit) return;
+    const payload = {
+      visitId: selectedVisit,
+      subjective: soapData.subjective,
+      objective: soapData.objective,
+      assessment: diagnosisNote,
+      plan: treatment,
+      diagnosisIds: selectedDiagnoses,
+    };
+    if (isSoapDraftEmpty(payload)) return;
+
+    const visitId = selectedVisit;
+    const timer = setTimeout(() => {
+      const savedAt = new Date().toISOString();
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(soapDraftKey(visitId), serializeSoapDraft({ ...payload, savedAt }));
+      }
+      setDraftSavedAt(savedAt);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [showModal, isLocked, selectedVisit, soapData, diagnosisNote, treatment, selectedDiagnoses]);
+
+  // Riwayat ringkas pasien: kunjungan sebelumnya + status FTW terkini.
+  const historyVisits = visitEmployee
+    ? visits.filter((v) => v.employeeId === visitEmployee.id && v.id !== visit?.id).slice(0, 3)
+    : [];
+  const patientFtw = visitEmployee
+    ? workHealthStatus.find((w) => w.employeeId === visitEmployee.id)
+    : undefined;
 
   const applyEncounter = (
     visitId: string,
@@ -181,6 +260,8 @@ export default function MedicalRecordsPage() {
     try {
       const encounterId = await persistSoap(v);
       updateVisit(v.id, localSoapPatch());
+      // Data resmi sudah aman di backend → draft lokal tidak diperlukan lagi.
+      clearSoapDraft(v.id);
       setSaveMsg(`SOAP tersimpan di backend — encounter ${encounterId}.`);
       setShowModal(false);
     } catch (e) {
@@ -214,7 +295,10 @@ export default function MedicalRecordsPage() {
           ? `Rekam medis dikunci permanen (LOCKED) — encounter ${encounterId}. Perubahan lanjutan wajib lewat Addendum.`
           : `Backend tidak mengunci rekam medis (status ${locked?.status ?? "unknown"}).`
       );
-      if (recordStatus === "LOCKED") setShowModal(false);
+      if (recordStatus === "LOCKED") {
+        clearSoapDraft(v.id);
+        setShowModal(false);
+      }
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Finalize gagal — record tidak dikunci.");
     } finally {
@@ -244,7 +328,7 @@ export default function MedicalRecordsPage() {
 
       <Card className="p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             placeholder="Cari nomor kunjungan, nama pasien..."
             value={search}
@@ -321,7 +405,53 @@ export default function MedicalRecordsPage() {
         size="lg"
       >
         <div className="space-y-4">
-          {/* Fase 3 — record terkunci hanya bisa dibaca, tidak bisa diedit. */}
+          {/* Ringkasan riwayat pasien — konteks cepat sebelum menulis SOAP. */}
+          {visitEmployee && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <History className="size-4 text-slate-500" aria-hidden="true" />
+                <p className="text-sm font-medium text-slate-800">Riwayat {visitEmployee.fullName}</p>
+                {patientFtw && (
+                  <Badge
+                    variant={
+                      patientFtw.status === "Fit to Work"
+                        ? "success"
+                        : patientFtw.status === "Fit with Restriction"
+                          ? "warning"
+                          : "danger"
+                    }
+                  >
+                    {patientFtw.status}
+                  </Badge>
+                )}
+              </div>
+              {patientFtw?.restriction && (
+                <p className="mb-2 text-xs text-warning-700">Restriction: {patientFtw.restriction}</p>
+              )}
+              {historyVisits.length === 0 ? (
+                <p className="text-xs text-slate-500">Belum ada kunjungan sebelumnya.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {historyVisits.map((h) => (
+                    <li key={h.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                      <span className="font-medium">{formatDate(h.date)}</span>
+                      <span>{h.visitNumber}</span>
+                      {h.chiefComplaint && <span className="truncate">— {h.chiefComplaint}</span>}
+                      {diagnoses
+                        .filter((d) => h.diagnosisIds?.includes(d.id))
+                        .map((d) => (
+                          <Badge key={d.id} variant="info">
+                            {d.code}
+                          </Badge>
+                        ))}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Indikator terkunci — record final hanya bisa dibaca. */}
           {isLocked && (
             <div className="flex items-start gap-2 rounded-xl bg-slate-100 p-3 text-sm text-slate-600">
               <Lock className="mt-0.5 size-4 shrink-0" />
@@ -354,17 +484,13 @@ export default function MedicalRecordsPage() {
           <div>
             <h3 className="mb-2 text-sm font-medium text-slate-700">A — Assessment</h3>
             <div className="space-y-2">
-              <Select
-                label="Diagnosis ICD-10"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value && !selectedDiagnoses.includes(e.target.value)) {
-                    setSelectedDiagnoses((prev) => [...prev, e.target.value]);
-                  }
-                }}
-                placeholder="Pilih diagnosis..."
+              {/* Pencarian ICD-10 cepat (kode maupun nama) — bukan daftar gulir. */}
+              <Icd10Search
+                options={diagnoses.map((d) => ({ id: d.id, code: d.code, description: d.description }))}
+                onSelect={(id) =>
+                  setSelectedDiagnoses((prev) => (prev.includes(id) ? prev : [...prev, id]))
+                }
                 disabled={isLocked}
-                options={diagnoses.map((d) => ({ value: d.id, label: `${d.code} — ${d.description}` }))}
               />
               {selectedDiagnoses.length > 0 && (
                 <div className="flex flex-wrap gap-1">
@@ -374,11 +500,28 @@ export default function MedicalRecordsPage() {
                       <Badge
                         key={id}
                         variant="info"
-                        className={isLocked ? "" : "cursor-pointer"}
+                        className={
+                          isLocked
+                            ? ""
+                            : "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        }
+                        role={isLocked ? undefined : "button"}
+                        tabIndex={isLocked ? undefined : 0}
+                        aria-label={isLocked ? undefined : `Hapus diagnosis ${d?.code ?? ""}`}
                         onClick={
                           isLocked
                             ? undefined
                             : () => setSelectedDiagnoses((prev) => prev.filter((x) => x !== id))
+                        }
+                        onKeyDown={
+                          isLocked
+                            ? undefined
+                            : (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedDiagnoses((prev) => prev.filter((x) => x !== id));
+                                }
+                              }
                         }
                       >
                         {d?.code}
@@ -414,6 +557,13 @@ export default function MedicalRecordsPage() {
               disabled={isLocked}
             />
           </div>
+
+          {!isLocked && (
+            <p className="flex items-center gap-1.5 text-xs text-slate-500" role="status">
+              <CheckCircle className="size-3.5 text-success-600" aria-hidden="true" />
+              {draftRestored ? `${soapDraftLabel(draftSavedAt)} (draft dipulihkan)` : soapDraftLabel(draftSavedAt)}
+            </p>
+          )}
 
           {formError && (
             <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{formError}</div>

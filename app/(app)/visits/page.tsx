@@ -64,7 +64,7 @@ export default function VisitsPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari nomor kunjungan, nama pasien..."
               value={search}
@@ -129,7 +129,7 @@ export default function VisitsPage() {
                   const loc = locations.find((l) => l.id === visit.locationId);
                   const statusMeta = VISIT_STATUS[visit.status];
                   return (
-                    <tr key={visit.id} className="cursor-pointer transition-colors hover:bg-slate-50">
+                    <tr key={visit.id} className="transition-colors hover:bg-slate-50">
                       <td className="px-4 py-3">
                         <div className="font-mono text-sm font-medium text-slate-900">{visit.visitNumber}</div>
                         <div className="text-xs text-slate-500">Antrean #{visit.queueNumber}</div>
@@ -151,7 +151,7 @@ export default function VisitsPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <ChevronRight className="size-4 text-slate-400" />
+                        <ChevronRight className="size-4 text-slate-500" />
                       </td>
                     </tr>
                   );
@@ -179,7 +179,7 @@ export default function VisitsPage() {
                         </Badge>
                       </div>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-slate-400" />
+                    <ChevronRight className="size-4 shrink-0 text-slate-500" />
                   </div>
                 </Card>
               );

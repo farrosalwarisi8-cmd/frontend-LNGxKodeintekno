@@ -13,6 +13,7 @@ import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
+import { Modal } from "@/shared/components/design-system/modal";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { formatDate } from "@/lib/format";
 import { Search, Plus, Pill, AlertTriangle, Package, ChevronRight } from "lucide-react";
@@ -79,7 +80,7 @@ export default function MedicinePage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari obat..."
               value={search}
@@ -131,7 +132,7 @@ export default function MedicinePage() {
                   const batches = getStockForMedicine(med.id);
                   const isLow = totalStock < med.minStock;
                   return (
-                    <tr key={med.id} className="cursor-pointer transition-colors hover:bg-slate-50">
+                    <tr key={med.id} className="transition-colors hover:bg-slate-50">
                       <td className="px-4 py-3">
                         <div className="font-medium text-slate-900">{med.name}</div>
                         <div className="text-xs text-slate-500">{med.unit}</div>
@@ -151,7 +152,7 @@ export default function MedicinePage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <ChevronRight className="size-4 text-slate-400" />
+                        <ChevronRight className="size-4 text-slate-500" />
                       </td>
                     </tr>
                   );
@@ -177,7 +178,7 @@ export default function MedicinePage() {
                         <span className="text-xs text-slate-500">Total: {totalStock} {med.unit}</span>
                       </div>
                     </div>
-                    <ChevronRight className="size-4 text-slate-400" />
+                    <ChevronRight className="size-4 text-slate-500" />
                   </div>
                 </Card>
               );
@@ -186,54 +187,54 @@ export default function MedicinePage() {
         </>
       ) : null}
 
-      {showReceiveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Terima Stok Obat</h2>
-            <div className="space-y-4">
-              <Select
-                label="Obat"
-                value={receiveData.medicineId}
-                onChange={(e) => setReceiveData((d) => ({ ...d, medicineId: e.target.value }))}
-                placeholder="Pilih obat"
-                options={medicines.map((m) => ({ value: m.id, label: m.name }))}
-              />
-              <Select
-                label="Lokasi"
-                value={receiveData.locationId}
-                onChange={(e) => setReceiveData((d) => ({ ...d, locationId: e.target.value }))}
-                placeholder="Pilih lokasi"
-                options={locations.map((l) => ({ value: l.id, label: l.name }))}
-              />
-              <Input
-                label="Nomor Batch"
-                value={receiveData.batchNumber}
-                onChange={(e) => setReceiveData((d) => ({ ...d, batchNumber: e.target.value }))}
-                placeholder="BN-202601-A"
-              />
-              <Input
-                label="Jumlah"
-                type="number"
-                value={receiveData.quantity}
-                onChange={(e) => setReceiveData((d) => ({ ...d, quantity: e.target.value }))}
-                placeholder="100"
-              />
-              <Input
-                label="Kedaluwarsa"
-                type="date"
-                value={receiveData.expiresAt}
-                onChange={(e) => setReceiveData((d) => ({ ...d, expiresAt: e.target.value }))}
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setShowReceiveModal(false)}>Batal</Button>
-                <Can action="pharmacy.receive-stock">
-                  <Button onClick={handleReceive}>Terima</Button>
-                </Can>
-              </div>
-            </div>
+      <Modal
+        open={showReceiveModal}
+        onClose={() => setShowReceiveModal(false)}
+        title="Terima Stok Obat"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Obat"
+            value={receiveData.medicineId}
+            onChange={(e) => setReceiveData((d) => ({ ...d, medicineId: e.target.value }))}
+            placeholder="Pilih obat"
+            options={medicines.map((m) => ({ value: m.id, label: m.name }))}
+          />
+          <Select
+            label="Lokasi"
+            value={receiveData.locationId}
+            onChange={(e) => setReceiveData((d) => ({ ...d, locationId: e.target.value }))}
+            placeholder="Pilih lokasi"
+            options={locations.map((l) => ({ value: l.id, label: l.name }))}
+          />
+          <Input
+            label="Nomor Batch"
+            value={receiveData.batchNumber}
+            onChange={(e) => setReceiveData((d) => ({ ...d, batchNumber: e.target.value }))}
+            placeholder="BN-202601-A"
+          />
+          <Input
+            label="Jumlah"
+            type="number"
+            value={receiveData.quantity}
+            onChange={(e) => setReceiveData((d) => ({ ...d, quantity: e.target.value }))}
+            placeholder="100"
+          />
+          <Input
+            label="Kedaluwarsa"
+            type="date"
+            value={receiveData.expiresAt}
+            onChange={(e) => setReceiveData((d) => ({ ...d, expiresAt: e.target.value }))}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowReceiveModal(false)}>Batal</Button>
+            <Can action="pharmacy.receive-stock">
+              <Button onClick={handleReceive}>Terima</Button>
+            </Can>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

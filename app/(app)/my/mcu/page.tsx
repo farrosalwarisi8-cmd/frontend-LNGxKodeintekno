@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { syncMcu, syncPatients, syncWorkHealthStatus, useSyncedModules } from "@/lib/remote-sync";
 import { findMyEmployee } from "@/lib/services/auth.service";
 import { MCU_STATUS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
@@ -43,8 +45,13 @@ export default function MyMCUPage() {
         <PageTitle />
         <EmptyState
           icon={Activity}
-          title="Data MCU tidak ditemukan"
-          description="Akun Anda belum tertaut ke data pekerja, sehingga riwayat MCU belum bisa ditampilkan."
+          title="Belum ada data MCU untuk akun ini"
+          description="Akun Anda belum tertaut ke data pekerja (MPI), sehingga riwayat MCU belum bisa ditampilkan."
+          action={
+            <Link href="/my/profile">
+              <Button variant="outline" size="sm">Buka Profil Saya</Button>
+            </Link>
+          }
         />
       </div>
     );

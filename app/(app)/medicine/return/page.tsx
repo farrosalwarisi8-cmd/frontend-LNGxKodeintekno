@@ -206,7 +206,7 @@ export default function ReturnMedicinePage() {
       )}
 
       <div className="relative w-full sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
         <Input
           placeholder="Cari dispensing / pasien / obat..."
           value={search}
@@ -246,7 +246,7 @@ export default function ReturnMedicinePage() {
                   <span className="font-mono text-xs text-slate-500">
                     {entry.before}
                   </span>
-                  <span className="text-slate-400">→</span>
+                  <span className="text-slate-500">→</span>
                   <span className="font-mono text-xs font-semibold text-slate-900">
                     {entry.after}
                   </span>
@@ -406,10 +406,11 @@ export default function ReturnMedicinePage() {
 
           {selectedDispensing?.dispensing_items && selectedDispensing.dispensing_items.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="return-batch" className="mb-1 block text-sm font-medium text-slate-700">
                 Pilih Batch
               </label>
               <select
+                id="return-batch"
                 className="w-full rounded-lg border border-slate-200 p-2 text-sm"
                 value={returnBatchId}
                 onChange={(e) => setReturnBatchId(e.target.value)}
@@ -424,23 +425,58 @@ export default function ReturnMedicinePage() {
             </div>
           )}
 
+          {/* Kasus paling sering = mengembalikan item pertama apa adanya,
+              jadi satu klik mengisi batch + jumlah sekaligus. */}
+          {selectedDispensing?.dispensing_items && selectedDispensing.dispensing_items.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                const first = selectedDispensing.dispensing_items![0];
+                setReturnBatchId(first.stock_batch_id ?? "");
+                setReturnQuantity(String(first.quantity ?? ""));
+              }}
+            >
+              <Undo2 className="size-4" aria-hidden="true" />
+              Isi dari item pertama
+            </Button>
+          )}
+
           <Input
             label="Jumlah Retur"
             type="number"
+            inputMode="numeric"
             value={returnQuantity}
             onChange={(e) => setReturnQuantity(e.target.value)}
             placeholder="0"
           />
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Alasan Retur</label>
+            <label htmlFor="return-reason" className="mb-1 block text-sm font-medium text-slate-700">Alasan Retur</label>
             <textarea
+              id="return-reason"
               className="w-full rounded-lg border border-slate-200 p-2 text-sm"
               rows={2}
               value={returnReason}
               onChange={(e) => setReturnReason(e.target.value)}
               placeholder="Contoh: Obat tidak digunakan, kedaluwarsa, dll."
             />
+            {/* Alasan tersering sebagai tombol — menghindari mengetik ulang. */}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {["Tidak digunakan", "Kedaluwarsa", "Salah obat", "Pasien menolak"].map((reason) => (
+                <Button
+                  key={reason}
+                  type="button"
+                  size="sm"
+                  variant={returnReason === reason ? "primary" : "outline"}
+                  aria-pressed={returnReason === reason}
+                  onClick={() => setReturnReason(reason)}
+                >
+                  {reason}
+                </Button>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-start gap-2 rounded-lg bg-warning-50 p-3 text-xs text-warning-700">

@@ -233,7 +233,7 @@ export default function SignaturesPage() {
       {/* Search & Filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             placeholder="Cari ID dokumen / provider..."
             value={search}
@@ -324,7 +324,7 @@ export default function SignaturesPage() {
                           </span>
                         )}
                         {sig.retry_count && sig.retry_count > 0 && (
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-slate-500">
                             Retry: {sig.retry_count}x
                           </span>
                         )}

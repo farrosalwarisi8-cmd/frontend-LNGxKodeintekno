@@ -8,12 +8,17 @@ import { useStore } from "@/lib/store";
 import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { encounterService } from "@/lib/services/encounter.service";
 import type { ClinicVisit } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import {
+  VITAL_SPECS,
+  assessVitals,
+  vitalFieldError,
+  vitalWarningCount,
+} from "@/shared/validation/vital-signs";
+import { Card } from "@/shared/components/design-system/card";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
-import { formatDate } from "@/lib/format";
 import { UserRound, MapPin, FileText, ChevronLeft, ChevronRight, Check, HeartPulse, Stethoscope } from "lucide-react";
 
 const STEPS = [
@@ -50,12 +55,25 @@ export default function VisitNewPage() {
   const selectedEmployee = employees.find((e) => e.id === employeeId);
   const selectedLocation = locations.find((l) => l.id === locationId);
 
+  // Validasi rentang TTV — dipakai untuk menandai salah ketik sebelum disimpan.
+  const vitals = assessVitals(
+    {
+      systolicBp: systolic,
+      diastolicBp: diastolic,
+      pulse: heartRate,
+      temperature,
+      weightKg: weight,
+      heightCm: height,
+    },
+    ["systolicBp", "diastolicBp", "pulse", "weightKg", "heightCm"]
+  );
+
   const canProceed = () => {
     if (currentStep === 1) return !!employeeId;
     if (currentStep === 2) return !!locationId;
     if (currentStep === 3) return !!chiefComplaint;
-    if (currentStep === 4)
-      return !!systolic && !!diastolic && !!heartRate && !!weight && !!height;
+    // Langkah TTV: wajib terisi DAN semua nilai dalam rentang wajar.
+    if (currentStep === 4) return vitals.canProceed;
     return true;
   };
 
@@ -135,12 +153,12 @@ export default function VisitNewPage() {
                       ? "border-primary-600 bg-primary-600 text-white"
                       : isActive
                         ? "border-primary-600 bg-white text-primary-600"
-                        : "border-slate-200 bg-white text-slate-400"
+                        : "border-slate-200 bg-white text-slate-500"
                   }`}
                 >
                   {isCompleted ? <Check className="size-4" /> : <Icon className="size-4" />}
                 </div>
-                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-slate-400"}`}>
+                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-slate-500"}`}>
                   {s.label}
                 </span>
               </div>
@@ -233,18 +251,84 @@ export default function VisitNewPage() {
         {currentStep === 4 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">Vital Sign</h2>
+            <p className="text-sm text-slate-500">
+              Nilai di luar rentang wajar ditandai sebelum disimpan (mis. salah ketik).
+            </p>
+            {/* Validasi rentang: `error` memblokir langkah berikutnya,
+                peringatan klinis hanya ditampilkan sebagai catatan. */}
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Sistolik (mmHg)" type="number" value={systolic} onChange={(e) => setSystolic(e.target.value)} placeholder="120" />
-              <Input label="Diastolik (mmHg)" type="number" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} placeholder="80" />
+              <Input
+                label="Sistolik (mmHg)"
+                type="number"
+                inputMode="numeric"
+                value={systolic}
+                onChange={(e) => setSystolic(e.target.value)}
+                placeholder="120"
+                error={vitalFieldError(vitals.byField.systolicBp)}
+                helper={VITAL_SPECS.systolicBp.hint}
+              />
+              <Input
+                label="Diastolik (mmHg)"
+                type="number"
+                inputMode="numeric"
+                value={diastolic}
+                onChange={(e) => setDiastolic(e.target.value)}
+                placeholder="80"
+                error={vitalFieldError(vitals.byField.diastolicBp)}
+                helper={VITAL_SPECS.diastolicBp.hint}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Heart Rate (bpm)" type="number" value={heartRate} onChange={(e) => setHeartRate(e.target.value)} placeholder="72" />
-              <Input label="Suhu (°C)" type="number" value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder="36.5" />
+              <Input
+                label="Heart Rate (bpm)"
+                type="number"
+                inputMode="numeric"
+                value={heartRate}
+                onChange={(e) => setHeartRate(e.target.value)}
+                placeholder="72"
+                error={vitalFieldError(vitals.byField.pulse)}
+                helper={VITAL_SPECS.pulse.hint}
+              />
+              <Input
+                label="Suhu (°C)"
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={temperature}
+                onChange={(e) => setTemperature(e.target.value)}
+                placeholder="36.5"
+                error={vitalFieldError(vitals.byField.temperature)}
+                helper={VITAL_SPECS.temperature.hint}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Tinggi Badan (cm)" type="number" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="170" />
-              <Input label="Berat Badan (kg)" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="65" />
+              <Input
+                label="Tinggi Badan (cm)"
+                type="number"
+                inputMode="numeric"
+                value={height}
+                onChange={(e) => setHeight(e.target.value)}
+                placeholder="170"
+                error={vitalFieldError(vitals.byField.heightCm)}
+                helper={VITAL_SPECS.heightCm.hint}
+              />
+              <Input
+                label="Berat Badan (kg)"
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                placeholder="65"
+                error={vitalFieldError(vitals.byField.weightKg)}
+                helper={VITAL_SPECS.weightKg.hint}
+              />
             </div>
+            {vitalWarningCount(vitals) > 0 && (
+              <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700" role="status">
+                {vitalWarningCount(vitals)} nilai perlu perhatian — data tetap dapat disimpan.
+              </div>
+            )}
           </div>
         )}
 

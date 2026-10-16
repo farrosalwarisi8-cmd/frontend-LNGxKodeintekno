@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type SelectHTMLAttributes } from "react";
+import { forwardRef, useId, type SelectHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 
@@ -14,7 +14,11 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, helper, id, options, placeholder, ...props }, ref) => {
-    const selectId = id ?? props.name ?? label;
+    const autoId = useId();
+    const selectId = id ?? props.name ?? `select-${autoId}`;
+    // Nama aksesibel: label terlihat bila ada; selain itu aria-label eksplisit
+    // atau placeholder — sehingga tidak ada select tanpa nama (WCAG 4.1.2).
+    const ariaLabel = label ? undefined : (props["aria-label"] ?? placeholder);
     return (
       <div className="space-y-1.5">
         {label && (
@@ -31,6 +35,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               error ? "border-danger-500" : "border-slate-200",
               className
             )}
+            aria-label={ariaLabel}
             aria-invalid={error ? "true" : undefined}
             aria-describedby={error ? `${selectId}-error` : helper ? `${selectId}-helper` : undefined}
             {...props}
@@ -46,7 +51,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
         </div>
         {error && (
           <p id={`${selectId}-error`} className="text-sm text-danger-600">

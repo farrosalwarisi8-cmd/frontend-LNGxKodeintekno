@@ -1,0 +1,134 @@
+﻿
+> kodein-klinik@0.1.0 test
+> vitest run
+
+node.exe : [33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is 
+planned to become the default in a future major version of Vite:
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33m(!) Your V...ersion of Vite::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": 
+"module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90mC:/Users/User/Downloads/kodein-klinik-demo[39m
+
+[90mstdout[2m | src/lib/services/__tests__/live-backend.integration.test.ts
+[22m[39m[live-backend] backend tidak terjangkau ΓÇö integrasi dilewati
+
+ [2m[90mΓåô[39m[22m src/lib/services/__tests__/live-backend.integration.test.ts [2m([22m[2m19 tests[22m[2m | [22m[33m19 skipped[39m[2m)[22m
+ [32mΓ£ô[39m src/shared/utils/__tests__/date.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/hse-acknowledgement.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/services/__tests__/api-client.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 131[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/services/__tests__/pharmacy-guard.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 228[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/services/__tests__/people-contract.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 247[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/services/__tests__/module-endpoints.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 298[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/services/__tests__/fase4-guards.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 448[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/navigation.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/rbac.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+[90mstderr[2m | src/lib/__tests__/auth-store.test.ts[2m > [22m[2mstore.login()[2m > [22m[2mlogin sukses 
+menyimpan sesi, user, dan cookie middleware
+[22m[39m[zustand persist middleware] Unable to update item 'kodein-klinik-store', the given storage is currently 
+unavailable.
+
+[90mstderr[2m | src/lib/__tests__/auth-store.test.ts[2m > [22m[2mstore.verifyMfa()[2m > [22m[2mMFA sukses 
+membuat sesi
+[22m[39m[zustand persist middleware] Unable to update item 'kodein-klinik-store', the given storage is currently 
+unavailable.
+
+[90mstderr[2m | src/lib/__tests__/auth-store.test.ts[2m > [22m[2msession restore & logout[2m > 
+[22m[2mlogout menghapus sesi, token, dan cookie
+[22m[39m[zustand persist middleware] Unable to update item 'kodein-klinik-store', the given storage is currently 
+unavailable.
+
+ [32mΓ£ô[39m src/lib/__tests__/auth-store.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/frontend-config-audit.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 754[2mms[22m[39m
+   [32mΓ£ô[39m audit konfigurasi frontend (static) [2m(9)[22m
+     [33m[2mΓ£ô[22m[39m tidak ada literal URL localhost pada source runtime (tidak ada fallback localhost)[33m 321[2mms[22m[39m
+ [32mΓ£ô[39m src/shared/utils/__tests__/validation.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+[90mstderr[2m | src/lib/__tests__/store.test.ts[2m > [22m[2mstore auth state[2m > [22m[2mlogout clears 
+session
+[22m[39m[zustand persist middleware] Unable to update item 'kodein-klinik-store', the given storage is currently 
+unavailable.
+
+[90mstderr[2m | src/lib/__tests__/store.test.ts[2m > [22m[2mstore notification state[2m > 
+[22m[2mmarkNotificationRead updates notification
+[22m[39m[zustand persist middleware] Unable to update item 'kodein-klinik-store', the given storage is currently 
+unavailable.
+
+[90mstderr[2m | src/lib/__tests__/store.test.ts[2m > [22m[2mstore notification state[2m > 
+[22m[2mmarkAllNotificationsRead marks all as read
+[22m[39m[zustand persist middleware] Unable to update item 'kodein-klinik-store', the given storage is currently 
+unavailable.
+
+[90mstderr[2m | src/lib/__tests__/store.test.ts[2m > [22m[2mstore scope state[2m > [22m[2msetOrgScope 
+updates scope
+[22m[39m[zustand persist middleware] Unable to update item 'kodein-klinik-store', the given storage is currently 
+unavailable.
+
+ [32mΓ£ô[39m src/lib/__tests__/store.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/demo-role.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/error-mapping.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/env.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/notification-utils.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32mΓ£ô[39m src/shared/utils/__tests__/masking.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/actions.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/public-paths.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/rbac-consistency.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/consent-state.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/online.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/route-existence.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/store-import-consistency.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1420[2mms[22m[39m
+   [32mΓ£ô[39m store import consistency [2m(3)[22m
+     [33m[2mΓ£ô[22m[39m import store memakai alias resmi @/lib/store[33m 306[2mms[22m[39m
+   [32mΓ£ô[39m legacy permission & navigation model [2m(5)[22m
+     [33m[2mΓ£ô[22m[39m canLegacy() sudah dihapus dan tidak dipakai[33m 442[2mms[22m[39m
+ [32mΓ£ô[39m src/lib/__tests__/route-guard.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/features/people/api/__tests__/people.mock-service.test.ts [2m([22m[2m27 tests[22m[2m)[22m[33m 33390[2mms[22m[39m
+   [32mΓ£ô[39m peopleMockService [2m(27)[22m
+     [32mΓ£ô[39m listPeople [2m(5)[22m
+       [33m[2mΓ£ô[22m[39m returns paginated list[33m 779[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m filters by search term[33m 657[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m filters by organization[33m 966[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m filters by consent status[33m 903[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m returns empty array for non-matching search[33m 871[2mms[22m[39m
+     [32mΓ£ô[39m getPerson [2m(2)[22m
+       [33m[2mΓ£ô[22m[39m returns person by id[33m 1615[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m throws for non-existent person[33m 737[2mms[22m[39m
+     [32mΓ£ô[39m duplicateCheck [2m(3)[22m
+       [33m[2mΓ£ô[22m[39m returns NONE for unique identifier[33m 715[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m returns BLOCK for duplicate active identifier[33m 2142[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m returns BLOCK when duplicateScenario is enabled[33m 722[2mms[22m[39m
+     [32mΓ£ô[39m createPerson [2m(4)[22m
+       [33m[2mΓ£ô[22m[39m creates person with MRN and consent[33m 1122[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m increments MRN for each new person[33m 1939[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m returns SIMULATED_FAILED when emailFailure is enabled[33m 1125[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m throws when simulateOffline is enabled[33m 1124[2mms[22m[39m
+     [32mΓ£ô[39m uploadDocument [2m(3)[22m
+       [33m[2mΓ£ô[22m[39m accepts valid PDF file[33m 920[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m rejects files larger than 5 MB[33m 936[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m rejects unsupported file types[33m 917[2mms[22m[39m
+     [32mΓ£ô[39m getConsentByToken [2m(4)[22m
+       [33m[2mΓ£ô[22m[39m returns INVALID for unknown token[33m 731[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m returns EXPIRED for expired token[33m 713[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m returns DELIVERY_FAILED for delivery failed token[33m 716[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m returns VALID for valid token[33m 1526[2mms[22m[39m
+     [32mΓ£ô[39m decideConsent [2m(2)[22m
+       [33m[2mΓ£ô[22m[39m approves consent[33m 1729[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m rejects consent[33m 1736[2mms[22m[39m
+     [32mΓ£ô[39m getConsentEvents [2m(1)[22m
+       [33m[2mΓ£ô[22m[39m returns events for consent[33m 1751[2mms[22m[39m
+     [32mΓ£ô[39m resendConsent [2m(2)[22m
+       [33m[2mΓ£ô[22m[39m resends consent successfully[33m 2202[2mms[22m[39m
+       [33m[2mΓ£ô[22m[39m fails when emailFailure is enabled[33m 2014[2mms[22m[39m
+     [32mΓ£ô[39m resetDemoData [2m(1)[22m
+       [33m[2mΓ£ô[22m[39m resets data to initial state[33m 2067[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m27 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (28)[39m
+[2m      Tests [22m [1m[32m377 passed[39m[22m[2m | [22m[33m19 skipped[39m[90m (396)[39m
+[2m   Start at [22m 13:05:42
+[2m   Duration [22m 34.14s[2m (tests 87%, transform 6%, import 5%, worker 1%)[22m
+

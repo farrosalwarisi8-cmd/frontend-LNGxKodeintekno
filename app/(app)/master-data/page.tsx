@@ -389,7 +389,7 @@ export default function MasterDataPage() {
             >
               <Icon className="size-4" />
               {tab.label}
-              <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === tab.id ? "bg-white/20" : "bg-slate-100"}`}>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === tab.id ? "bg-primary-700 text-white" : "bg-slate-100 text-slate-600"}`}>
                 {tab.count}
               </span>
             </button>

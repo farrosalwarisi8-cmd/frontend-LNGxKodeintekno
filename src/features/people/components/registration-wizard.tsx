@@ -339,7 +339,7 @@ export function RegistrationWizard() {
                         ? "border-primary-600 bg-primary-600 text-white"
                         : isActive
                           ? "border-primary-600 bg-white text-primary-600"
-                          : "border-slate-200 bg-white text-slate-400"
+                          : "border-slate-200 bg-white text-slate-500"
                     }`}
                     aria-current={isActive ? "step" : undefined}
                   >
@@ -348,7 +348,7 @@ export function RegistrationWizard() {
                   {/* Label hanya di layar >= sm; di mobile cukup indikator + keterangan di bawah. */}
                   <span
                     className={`mt-1 hidden max-w-24 text-center text-xs font-medium leading-tight sm:block ${
-                      isActive ? "text-primary-600" : "text-slate-400"
+                      isActive ? "text-primary-600" : "text-slate-500"
                     }`}
                   >
                     {s.label}
@@ -565,7 +565,7 @@ export function RegistrationWizard() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">Dokumen Pendukung</h2>
             <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
-              <Upload className="mx-auto mb-3 size-8 text-slate-400" />
+              <Upload className="mx-auto mb-3 size-8 text-slate-500" />
               <p className="text-sm font-medium text-slate-700">Upload dokumen pendukung</p>
               <p className="mt-1 text-xs text-slate-500">PDF, JPG, PNG · Maksimum 5 MB per file</p>
               <input
@@ -591,7 +591,7 @@ export function RegistrationWizard() {
               <div className="space-y-2">
                 {uploadedFiles.map((file) => (
                   <div key={file.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                    <FileText className="size-5 shrink-0 text-slate-400" />
+                    <FileText className="size-5 shrink-0 text-slate-500" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-700">{file.name}</p>
                       <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
@@ -601,7 +601,7 @@ export function RegistrationWizard() {
                     </Badge>
                     <button
                       onClick={() => removeFile(file.id)}
-                      className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                      className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600"
                       aria-label="Hapus file"
                     >
                       <X className="size-4" />
@@ -710,7 +710,7 @@ export function RegistrationWizard() {
       </Card>
 
       {hasSavedDraft && savedAt && (
-        <p className="mt-3 text-center text-xs text-slate-400">
+        <p className="mt-3 text-center text-xs text-slate-500">
           Draft tersimpan otomatis · {formatDate(savedAt)}
         </p>
       )}

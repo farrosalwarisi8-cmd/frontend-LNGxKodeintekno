@@ -91,7 +91,7 @@ export function PublicConsent({ token }: { token: string }) {
               ? "Consent ini sudah pernah diputus sebelumnya. Untuk mengubah keputusan, minta admin mengirim tautan baru."
               : "Tautan consent tidak dapat digunakan. Silakan minta tautan baru dari admin klinik."}
           </p>
-          {errorMessage && <p className="mt-3 text-xs text-slate-400">{errorMessage}</p>}
+          {errorMessage && <p className="mt-3 text-xs text-slate-500">{errorMessage}</p>}
         </Card>
       </div>
     );

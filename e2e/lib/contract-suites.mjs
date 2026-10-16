@@ -187,7 +187,7 @@ export async function runContractPeople(ctx) {
       "F2D-01",
       "frontend-contract-test",
       "daftar pekerja terbuka untuk HR/PIC",
-      /People & Medical Record/i.test(await bodyText(page)) ? "PASS" : "FAIL",
+      /Registrasi & Consent/i.test(await bodyText(page)) ? "PASS" : "FAIL",
       `queries=${state.patientsQueries.length}`
     );
 

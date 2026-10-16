@@ -9,6 +9,7 @@ import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
+import { Modal } from "@/shared/components/design-system/modal";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { formatDate } from "@/lib/format";
 import { useStore } from "@/lib/store";
@@ -243,38 +244,38 @@ export default function EmergencyPage() {
         </CardContent>
       </Card>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Catatan Darurat</h2>
-            <div className="space-y-4">
-              <Select
-                label="Tipe"
-                value={formData.type}
-                onChange={(e) => setFormData((f) => ({ ...f, type: e.target.value as EmergencyRecord["type"] }))}
-                options={[
-                  { value: "registration", label: "Registrasi" },
-                  { value: "visit", label: "Kunjungan" },
-                  { value: "mcu", label: "MCU" },
-                  { value: "prescription", label: "Resep" },
-                ]}
-              />
-              <Input
-                label="Deskripsi"
-                value={formData.description}
-                onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Deskripsi catatan darurat..."
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
-                <Can action="emergency.create">
-                  <Button onClick={handleSubmit}>Simpan</Button>
-                </Can>
-              </div>
-            </div>
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Catatan Darurat"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Tipe"
+            value={formData.type}
+            onChange={(e) => setFormData((f) => ({ ...f, type: e.target.value as EmergencyRecord["type"] }))}
+            options={[
+              { value: "registration", label: "Registrasi" },
+              { value: "visit", label: "Kunjungan" },
+              { value: "mcu", label: "MCU" },
+              { value: "prescription", label: "Resep" },
+            ]}
+          />
+          <Input
+            label="Deskripsi"
+            value={formData.description}
+            onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
+            placeholder="Deskripsi catatan darurat..."
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
+            <Can action="emergency.create">
+              <Button onClick={handleSubmit}>Simpan</Button>
+            </Can>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

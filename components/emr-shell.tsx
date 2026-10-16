@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
-  UserRound,
   MoreHorizontal,
   WifiOff,
   ShieldCheck,
@@ -15,23 +14,12 @@ import {
   AlertTriangle,
   X,
   ChevronRight,
-  FlaskConical,
-  FileText,
-  Pill,
   LogOut,
-  User,
-  Bell,
   Menu,
-  LayoutDashboard,
-  ClipboardList,
-  BadgeCheck,
-  BarChart3,
-  Database,
-  History,
-  HeartPulse,
-  Stethoscope,
+  User,
   type LucideIcon,
 } from "lucide-react";
+import { ICON_MAP } from "@/shared/components/icon-map";
 import { useDemoMode } from "@/lib/demo-role";
 import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
@@ -41,7 +29,9 @@ import { PenLine } from "lucide-react";
 import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive } from "@/lib/navigation";
 import { INITIAL_ONLINE, onlineStateFromEvent } from "@/lib/online";
 import { Breadcrumb } from "@/components/breadcrumb";
+import { EnvironmentBanner } from "@/components/environment-banner";
 import { NotificationBell } from "@/components/notification-bell";
+import { RouteTitle } from "@/components/route-title";
 import { ScopeSelector } from "@/components/scope-selector";
 
 const ROLE_LABELS: Record<DemoRole, string> = {
@@ -65,29 +55,8 @@ const ROLE_COLORS: Record<DemoRole, string> = {
   PUBLIC_WORKER: "bg-slate-100 text-slate-600",
 };
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  "layout-dashboard": LayoutDashboard,
-  users: Users,
-  activity: Activity,
-  "clipboard-list": ClipboardList,
-  "file-text": FileText,
-  pill: Pill,
-  "badge-check": BadgeCheck,
-  "bar-chart": BarChart3,
-  "shield-check": ShieldCheck,
-  database: Database,
-  history: History,
-  "heart-pulse": HeartPulse,
-  stethoscope: Stethoscope,
-  "user-plus": UserRound,
-  "list-ordered": ClipboardList,
-  user: User,
-  flask: FlaskConical,
-  "alert-triangle": AlertTriangle,
-  settings: Settings,
-  globe: Globe,
-  "pen-line": PenLine,
-};
+// Peta nama ikon → komponen lucide dipakai bersama dashboard
+// (`@/shared/components/icon-map`) supaya nama ikon tidak pernah menyimpang.
 
 // Navigasi terpusat di `@/lib/navigation` (label, icon, permission, active route).
 
@@ -116,12 +85,10 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isOnline = useOnline();
-  const [demoBannerVisible, setDemoBannerVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const user = useCurrentUser();
   const logout = useStore((s) => s.logout);
-  const notifications = useStore((s) => s.notifications);
 
   // Badge profil mengikuti role efektif: demo role saat demo mode aktif,
   // selain itu role session.
@@ -137,8 +104,6 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const bottomNav = getBottomNavigation(role);
   const hasMoreNav = getOverflowNavigation(role).length > 0;
 
-  const unreadCount = user ? notifications.filter((n) => n.userId === user.id && !n.read).length : 0;
-
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -146,24 +111,14 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      {demoEnabled && demoBannerVisible && (
-        <div className="relative z-50 border-b border-warning-200 bg-warning-50 px-4 py-2">
-          <div className="mx-auto flex max-w-screen-xl items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-xs text-warning-700">
-              <AlertTriangle className="size-3.5 shrink-0" aria-hidden="true" />
-              <span className="font-medium">Demo mode</span>
-              <span className="hidden sm:inline">— data dan permission disimulasikan di frontend.</span>
-            </div>
-            <button
-              onClick={() => setDemoBannerVisible(false)}
-              className="flex size-11 shrink-0 items-center justify-center rounded-lg text-warning-600 hover:bg-warning-100"
-              aria-label="Tutup banner demo"
-            >
-              <X className="size-3.5" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      )}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+      >
+        Lewati ke konten utama
+      </a>
+      <RouteTitle />
+      <EnvironmentBanner />
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex" aria-label="Navigasi utama">
@@ -173,7 +128,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-900">Kodein Klinik</p>
-              <p className="text-[10px] text-slate-500">EMR Modul 01</p>
+              <p className="text-[10px] text-slate-500">EMR Okupasi</p>
             </div>
           </div>
 
@@ -182,7 +137,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               <RoleIcon className="size-4 shrink-0" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="truncate text-xs font-semibold">{roleLabel}</p>
-                <p className="text-[10px] opacity-70">{demoEnabled ? "Demo role aktif" : "Peran sesi"}</p>
+                <p className="text-[10px]">{demoEnabled ? "Demo role aktif" : "Peran sesi"}</p>
               </div>
               <Link
                 href="/demo"
@@ -208,7 +163,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon className="size-4 shrink-0" aria-hidden="true" />
                     <span className="min-w-0 truncate">{item.label}</span>
-                    <span className="ml-auto shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-normal text-slate-400">
+                    <span className="ml-auto shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-normal text-slate-500">
                       Segera
                     </span>
                   </span>
@@ -243,7 +198,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           )}
 
           <div className="border-t border-slate-100 px-4 py-3">
-            <p className="text-[10px] text-slate-400">Kodein Klinik · EMR Demo</p>
+            <p className="text-[10px] text-slate-500">Kodein Klinik · EMR Okupasi</p>
           </div>
         </aside>
 
@@ -285,7 +240,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               <div className="scrollbar-subtle fixed right-0 top-0 h-full w-72 overflow-y-auto bg-white p-4 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-semibold text-slate-900">Menu</span>
-                  <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                  <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-1 text-slate-500 hover:bg-slate-100">
                     <X className="size-5" />
                   </button>
                 </div>
@@ -306,7 +261,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                         >
                           <Icon className="size-4" />
                           {item.label}
-                          <span className="ml-auto text-[10px] text-slate-400">Segera hadir</span>
+                          <span className="ml-auto text-[10px] text-slate-500">Segera hadir</span>
                         </span>
                       );
                     }
@@ -362,7 +317,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                     <span className="block text-xs font-semibold leading-tight text-slate-900">{user?.name}</span>
                     <span className="block text-[10px] leading-tight text-slate-500">{user?.title}</span>
                   </span>
-                  <ChevronRight className="size-3.5 rotate-90 text-slate-400" aria-hidden="true" />
+                  <ChevronRight className="size-3.5 rotate-90 text-slate-500" aria-hidden="true" />
                 </button>
                 {userMenuOpen && (
                   <>
@@ -391,7 +346,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="scrollbar-subtle flex-1 overflow-y-auto px-4 py-5 pb-24 md:px-6 lg:pb-6">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="scrollbar-subtle flex-1 overflow-y-auto px-4 py-5 pb-24 focus:outline-none md:px-6 lg:pb-6"
+          >
             <div className="mx-auto max-w-6xl">
               {children}
             </div>
@@ -412,11 +371,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors",
-                active ? "text-primary-600" : "text-slate-400 hover:text-slate-700"
+                active ? "text-primary-600" : "text-slate-500 hover:text-slate-700"
               )}
               aria-current={active ? "page" : undefined}
             >
-              <Icon className={cn("size-5", active ? "text-primary-600" : "text-slate-400")} aria-hidden="true" />
+              <Icon className={cn("size-5", active ? "text-primary-600" : "text-slate-500")} aria-hidden="true" />
               <span>{item.label}</span>
             </Link>
           );
@@ -424,7 +383,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
         {hasMoreNav && (
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-slate-400 hover:text-slate-700"
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-slate-500 hover:text-slate-700"
             aria-label="Menu lainnya"
           >
             <MoreHorizontal className="size-5" aria-hidden="true" />

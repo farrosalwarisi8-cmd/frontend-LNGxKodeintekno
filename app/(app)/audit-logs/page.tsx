@@ -60,7 +60,7 @@ export default function AuditLogsPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari action, user, object..."
               value={search}
@@ -118,16 +118,16 @@ export default function AuditLogsPage() {
                       {log.userName} · {log.objectType} · {log.objectId}
                     </p>
                     {log.before && (
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         {log.before} → {log.after}
                       </p>
                     )}
                     {log.reason && (
-                      <p className="text-xs text-slate-400">Alasan: {log.reason}</p>
+                      <p className="text-xs text-slate-500">Alasan: {log.reason}</p>
                     )}
                   </div>
                 </div>
-                <span className="text-xs text-slate-400">{formatDateTime(log.at)}</span>
+                <span className="text-xs text-slate-500">{formatDateTime(log.at)}</span>
               </div>
             ))}
           </div>

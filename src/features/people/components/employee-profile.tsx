@@ -173,7 +173,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="size-4 text-slate-400" />
+                <Building2 className="size-4 text-slate-500" />
                 Employment
               </CardTitle>
             </CardHeader>
@@ -189,7 +189,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Phone className="size-4 text-slate-400" />
+                <Phone className="size-4 text-slate-500" />
                 Kontak
               </CardTitle>
             </CardHeader>
@@ -204,7 +204,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldCheck className="size-4 text-slate-400" />
+                <ShieldCheck className="size-4 text-slate-500" />
                 Consent Status
               </CardTitle>
             </CardHeader>
@@ -229,7 +229,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
                 </p>
               )}
               {/* Kejujuran data: keputusan consent tidak diekspos API. */}
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Keputusan consent (pending/granted/expired) belum tersedia dari API — endpoint baca consent per
                 pekerja belum ada.
               </p>
@@ -239,7 +239,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="size-4 text-slate-400" />
+                <FileText className="size-4 text-slate-500" />
                 Dokumen
               </CardTitle>
             </CardHeader>
@@ -393,7 +393,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
               <div className="space-y-2">
                 {person.documents.map((doc) => (
                   <div key={doc.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-                    <FileText className="size-5 shrink-0 text-slate-400" />
+                    <FileText className="size-5 shrink-0 text-slate-500" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-slate-700">{doc.name}</p>
                       <p className="text-xs text-slate-500">{doc.type} · {(doc.size / 1024).toFixed(1)} KB</p>

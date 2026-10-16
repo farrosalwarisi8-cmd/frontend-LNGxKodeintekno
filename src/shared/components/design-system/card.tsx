@@ -21,9 +21,11 @@ export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
 );
 CardHeader.displayName = "CardHeader";
 
+// h2 (bukan h3): judul kartu adalah seksi di bawah judul halaman (h1),
+// sehingga urutan heading tidak melompat (axe `heading-order`).
 export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-lg font-semibold text-slate-900", className)} {...props} />
+    <h2 ref={ref} className={cn("text-lg font-semibold text-slate-900", className)} {...props} />
   )
 );
 CardTitle.displayName = "CardTitle";

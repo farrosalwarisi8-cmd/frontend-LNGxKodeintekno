@@ -54,7 +54,7 @@ export function EmailPreview({ open, onClose, recipientName, recipientEmail, con
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-slate-500">
           Simulated email preview — tidak mengirim email sungguhan.
         </p>
       </div>
