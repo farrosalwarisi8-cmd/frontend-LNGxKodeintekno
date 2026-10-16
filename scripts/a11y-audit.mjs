@@ -164,9 +164,12 @@ async function main() {
 
         // Kriteria "semua input berlabel": setiap field harus punya nama
         // aksesibel (label terlihat, label tersembunyi, aria-label, atau title).
+        // `aria-hidden="true"` dihapus dari pohon aksesibilitas, jadi kontrol
+        // tersembunyi milik primitif (mis. hidden input Base UI Select) tidak
+        // perlu nama aksesibel dan tidak boleh dihitung sebagai field.
         const fields = Array.from(
           document.querySelectorAll(
-            'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), select, textarea'
+            'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]):not([aria-hidden="true"]), select:not([aria-hidden="true"]), textarea:not([aria-hidden="true"])'
           )
         );
         const unlabeled = [];
