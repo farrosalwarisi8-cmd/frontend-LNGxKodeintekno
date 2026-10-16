@@ -69,6 +69,7 @@ export default function AuditLogsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
+              label="Cari action, user, object..."
               placeholder="Cari action, user, object..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -76,6 +77,7 @@ export default function AuditLogsPage() {
             />
           </div>
           <Select
+            label="Action"
             placeholder="Action"
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
@@ -86,7 +88,7 @@ export default function AuditLogsPage() {
 
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-slate-500">{filtered.length} log entries</p>
-        <Button size="sm" variant="outline" onClick={handleVerifyChain} loading={verifying}>
+        <Button size="sm" variant="outline" onClick={handleVerifyChain} loading={verifying} aria-label="Verifikasi rantai hash SHA-256">
           Verifikasi Rantai Hash
         </Button>
       </div>
