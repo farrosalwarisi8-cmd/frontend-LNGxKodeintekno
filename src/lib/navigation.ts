@@ -48,6 +48,11 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   // pada modul da-test), bukan HSE yang hanya menerima hasilnya.
   { label: "D&A", href: "/da", icon: "flask", permission: "manage-da" },
   { label: "Emergency", href: "/emergency", icon: "alert-triangle", permission: "view-emergency" },
+  // System Administrator controls
+  { label: "Sistem", href: "/system-config", icon: "settings", permission: "manage-system-config" },
+  { label: "API Key", href: "/api-keys", icon: "key", permission: "manage-api-keys" },
+  { label: "TTE Monitoring", href: "/tte", icon: "monitor", permission: "view-tte" },
+  { label: "Emergency Mode", href: "/emergency-detail", icon: "alert-triangle", permission: "monitor-emergency" },
   { label: "User", href: "/users", icon: "users", permission: "manage-users" },
   { label: "Master Data", href: "/master-data", icon: "database", permission: "manage-master-data" },
   { label: "Audit Log", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
