@@ -86,6 +86,25 @@ const ALL_PERMISSIONS: readonly Permission[] = [
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   admin: [
     "view-dashboard",
+    "manage-employees",
+    "upload-document",
+    "view-mcu",
+    "create-mcu",
+    "input-mcu-result",
+    "approve-mcu",
+    "view-visits",
+    "register-patient",
+    "edit-visit",
+    "view-clinical-notes",
+    "view-diagnosis",
+    "manage-stock",
+    "dispense-medicine",
+    "manage-users",
+    "manage-master-data",
+    "manage-hse",
+    "manage-da",
+    // Ditambahkan pada 7c985d8: kontrol sistem (navigasi Sistem, API Key,
+    // TTE Monitoring, Emergency Mode).
     "manage-system-config",
     "manage-api-keys",
     "view-tte",
@@ -96,6 +115,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-health-status",
     "view-profile",
     "view-audit-logs",
+    "input-lab-result",
     // Audit log hanya bisa dilihat, tidak bisa diubah/hapus
     // (backend tetap meng-enforce, tapi UI hanya menampilkan read-only)
     // MFA wajib untuk setiap user (backend enforcement)
