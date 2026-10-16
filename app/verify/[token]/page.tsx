@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { BadgeCheck, ShieldX, QrCode, Loader2 } from "lucide-react";
+import { BadgeCheck, ShieldX, QrCode, Loader2, FileText, User, Calendar, Award } from "lucide-react";
 import { documentService, type PublicVerifyResult } from "@/lib/services/document.service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,8 @@ import { formatDate, formatDateTime } from "@/lib/format";
 /**
  * Modul 9 — Verifikasi publik dokumen medis via QR token.
  * Backend: GET /api/v1/public/verify/:qrToken (zero medical disclosure).
+ *
+ * Fase 6 — Enhanced: tampilan signature detail dengan certificate serial.
  */
 export default function VerifyPage() {
   const params = useParams<{ token: string }>();
@@ -22,7 +24,6 @@ export default function VerifyPage() {
 
   useEffect(() => {
     let alive = true;
-    // Sinkronisasi state di task berikutnya (hindari setState sinkron di effect)
     const timer = setTimeout(() => {
       if (!token) {
         if (alive) setLoading(false);
@@ -104,15 +105,37 @@ export default function VerifyPage() {
               <Row label="Jenis Dokumen" value={result.documentType ?? ""} />
               <Row label="Penerbit" value={result.issuer ?? ""} />
               <Row label="Tanggal Terbit" value={formatDateTime(result.issuedAt)} />
-              {(result.signatures ?? []).map((sig, i) => (
-                <Row
-                  key={i}
-                  label={`Tanda Tangan ${i + 1}`}
-                  value={`${sig.type ?? "-"} · ${sig.certificateSerial ?? "-"} ${
-                    sig.signedAt ? `· ${formatDate(sig.signedAt)}` : ""
-                  }`}
-                />
-              ))}
+
+              {/* Fase 6 — Signature detail */}
+              {result.signatures && result.signatures.length > 0 && (
+                <div className="space-y-2 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Tanda Tangan Digital
+                  </p>
+                  {result.signatures.map((sig, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Award className="size-4 text-primary" />
+                        <div>
+                          <p className="text-xs font-medium">{sig.type ?? "PSrE"}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            {sig.certificateSerial ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                      {sig.signedAt && (
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(sig.signedAt)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex items-center justify-center pt-2">
                 <Badge
                   variant="outline"

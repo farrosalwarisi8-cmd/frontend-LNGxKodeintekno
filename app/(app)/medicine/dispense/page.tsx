@@ -3,18 +3,33 @@
 import { Can } from "@/components/can";
 
 import { useMemo, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
-import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { Input } from "@/shared/components/design-system/input";
+import { Modal } from "@/shared/components/design-system/modal";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
+import { useStore } from "@/lib/store";
 import { resolveScope } from "@/lib/services/reference.service";
-import { pharmacyService, type BackendPrescriptionItem } from "@/lib/services/pharmacy.service";
-import { Pill, Search, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  pharmacyService,
+  dispensingGuard,
+  resolvePharmacySiteScope,
+  CrossSiteActionError,
+  type BackendPrescriptionItem,
+  type PharmacySiteContext,
+} from "@/lib/services/pharmacy.service";
+import { Pill, Search, CheckCircle, AlertTriangle, TrendingDown, ScrollText } from "lucide-react";
+import {
+  buildStockHints,
+  summarizeDispenseWarnings,
+  FEFO_WARN_DAYS,
+} from "@/features/pharmacy/stock-hints";
+import { todayIso } from "@/shared/utils/due-soon";
+import { diffStockLedger, type BackendInventoryItem, type StockLedgerEntry } from "@/lib/services/pharmacy.service";
 
 interface PendingRx {
   id: string;
@@ -33,9 +48,14 @@ export default function DispensePage() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  // Fase 5 — snapshot inventory sebelum dispensing untuk membuktikan perubahan stok
+  const [stockSnapshot, setStockSnapshot] = useState<BackendInventoryItem[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<StockLedgerEntry[]>([]);
 
   const load = async () => {
-    const rows = await pharmacyService.getPendingPrescriptions();
+    // Fase 4 — resep pending di-scope ke site aktif (query ?siteId=).
+    const siteId = useStore.getState().activeSiteId ?? undefined;
+    const rows = await pharmacyService.getPendingPrescriptions(siteId);
     const mapped: PendingRx[] = rows.map((p) => ({
       id: p.id,
       visitNumber: `RX-${p.id.slice(0, 8).toUpperCase()}`,
@@ -46,6 +66,9 @@ export default function DispensePage() {
     }));
     setPrescriptions(mapped);
     await syncInventory();
+    // Fase 5 — snapshot inventory untuk stock ledger dispensing
+    const inventory = await pharmacyService.getInventory(siteId);
+    setStockSnapshot(inventory);
   };
 
   const { loading, error, refetch } = useSyncedModules(load);
@@ -56,6 +79,22 @@ export default function DispensePage() {
       (p) => !q || p.visitNumber.toLowerCase().includes(q) || p.patientName.toLowerCase().includes(q)
     );
   }, [prescriptions, search]);
+
+  // Peringatan stok & FEFO dihitung dari snapshot inventaris site ini,
+  // memakai jumlah yang sedang diisi apoteker (bukan jumlah resep asli).
+  const stockHints = selectedRx
+    ? buildStockHints(
+        selectedRx.items.map((item) => ({
+          itemId: item.id,
+          name: item.medication?.generic_name,
+          quantity: quantities[item.id] ?? item.quantity ?? 0,
+        })),
+        stockSnapshot,
+        { today: todayIso() }
+      )
+    : [];
+  const warnings = summarizeDispenseWarnings(stockHints);
+  const hintFor = (itemId: string) => stockHints.find((h) => h.itemId === itemId);
 
   const openDispense = (rx: PendingRx) => {
     setSelectedRx(rx);
@@ -68,13 +107,37 @@ export default function DispensePage() {
    * Alur dispensing backend:
    *  1. POST /api/v1/pharmacy/dispensing/recommend-batches (engine FEFO per obat)
    *  2. POST /api/v1/pharmacy/dispensing (transaksi atomik + pessimistic lock)
+   *
+   * Fase 3 — dispensing tidak terjadi dua kali:
+   *  - DispensingGuard menolak permintaan kedua untuk resep yang sama
+   *    (in-flight atau sudah selesai) SEBELUM request dikirim.
+   *  - Cross-site guard memastikan FEFO/dispensing hanya menargetkan
+   *    site dalam cakupan apoteker.
+   *  - Setelah sukses, resep dihapus dari antrean lokal + refetch
+   *    (backend juga menyembunyikan resep yang sudah ada dispensing-nya).
    */
   const handleDispense = async () => {
     if (!selectedRx) return;
+    // Anti double-submit: guard menolak bila resep sudah/m sedang diproses.
+    if (!dispensingGuard.begin(selectedRx.id)) {
+      setMessage({
+        type: "error",
+        text: dispensingGuard.isDispensed(selectedRx.id)
+          ? "Resep ini sudah didispensasi — tidak dapat diproses dua kali."
+          : "Dispensing resep ini sedang berjalan. Tunggu hingga selesai.",
+      });
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
       const scope = await resolveScope();
+      // Cakupan site apoteker — aksi lintas site ditolak di sini.
+      const siteContext: PharmacySiteContext = {
+        siteId: scope.siteId,
+        siteName: scope.siteName,
+      };
+      await resolvePharmacySiteScope(); // pastikan cakupan terverifikasi
       const byBatch = new Map<string, number>();
 
       for (const item of selectedRx.items) {
@@ -86,7 +149,8 @@ export default function DispensePage() {
         const rec = await pharmacyService.recommendBatches(
           medicationId,
           scope.siteId,
-          qty
+          qty,
+          siteContext
         );
         if (!rec.isFullyAllocatable) {
           throw new Error(
@@ -107,18 +171,40 @@ export default function DispensePage() {
         quantity,
       }));
 
-      await pharmacyService.dispense(selectedRx.id, allocations);
+      await pharmacyService.dispense(selectedRx.id, allocations, siteContext);
+      // Resep resmi selesai didispensasi — terkunci untuk sesi ini.
+      dispensingGuard.commit(selectedRx.id);
 
-      setMessage({ type: "ok", text: "Dispensing berhasil diproses oleh backend." });
+      // Fase 5 — hitung selisih stok (DISPENSING) dari snapshot sebelum/sesudah
+      const siteId = useStore.getState().activeSiteId ?? undefined;
+      const newInventory = await pharmacyService.getInventory(siteId);
+      const entries = diffStockLedger(stockSnapshot, newInventory, "DISPENSING");
+      setLedgerEntries((prev) => [...entries, ...prev]);
+      setStockSnapshot(newInventory);
+
+      const entrySummary =
+        entries.length > 0
+          ? ` Stok berkurang: ${entries.map((e) => `${e.genericName} (${e.before}→${e.after})`).join(", ")}.`
+          : "";
+      setMessage({
+        type: "ok",
+        text: `Dispensing berhasil diproses oleh backend.${entrySummary}`,
+      });
       setPrescriptions((prev) => prev.filter((p) => p.id !== selectedRx.id));
       setTimeout(() => {
         setShowModal(false);
         refetch();
       }, 900);
     } catch (e) {
+      dispensingGuard.rollback(selectedRx.id);
       setMessage({
         type: "error",
-        text: e instanceof Error ? e.message : "Dispensing gagal.",
+        text:
+          e instanceof CrossSiteActionError
+            ? e.message
+            : e instanceof Error
+              ? e.message
+              : "Dispensing gagal.",
       });
     } finally {
       setBusy(false);
@@ -134,9 +220,54 @@ export default function DispensePage() {
         </p>
       </div>
 
+      {/* Fase 5 — Stock Ledger: bukti perubahan stok (DISPENSING) */}
+      {ledgerEntries.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ScrollText className="size-4 text-slate-500" />
+            <h2 className="text-sm font-semibold text-slate-900">
+              Stock Ledger — Dispensing
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {ledgerEntries.map((entry, i) => (
+              <div
+                key={`${entry.recordedAt}-${i}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900">
+                    {entry.genericName}{" "}
+                    <span className="text-xs font-normal text-slate-500">
+                      ({entry.medicationCode}) · {entry.siteName}
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {formatDate(entry.recordedAt)} · movement: {entry.movement}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-slate-500">
+                    {entry.before}
+                  </span>
+                  <span className="text-slate-500">→</span>
+                  <span className="font-mono text-xs font-semibold text-slate-900">
+                    {entry.after}
+                  </span>
+                  <Badge variant="danger">
+                    <TrendingDown className="size-3" />
+                    {entry.delta}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card className="p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
           <Input
             placeholder="Cari resep / pasien..."
             value={search}
@@ -183,9 +314,20 @@ export default function DispensePage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="warning">Menunggu</Badge>
+                  {dispensingGuard.isDispensed(rx.id) ? (
+                    <Badge variant="success">Terdispensasi</Badge>
+                  ) : (
+                    <Badge variant="warning">Menunggu</Badge>
+                  )}
                   <Can action="pharmacy.dispense">
-                    <Button size="sm" onClick={() => openDispense(rx)}>
+                    <Button
+                      size="sm"
+                      onClick={() => openDispense(rx)}
+                      disabled={
+                        dispensingGuard.isDispensed(rx.id) ||
+                        dispensingGuard.isInProgress(rx.id)
+                      }
+                    >
                       <Pill className="size-3.5" />
                       Dispense
                     </Button>
@@ -205,6 +347,40 @@ export default function DispensePage() {
         size="lg"
       >
         <div className="space-y-4">
+          {/* Peringatan stok/FEFO ditempatkan paling atas: apoteker harus
+              melihatnya sebelum menekan tombol proses. */}
+          {selectedRx && (
+            <div
+              role="status"
+              className={`rounded-xl p-3 text-sm ${
+                warnings.blocked
+                  ? "bg-danger-50 text-danger-700"
+                  : warnings.expiringSoon.length > 0 || warnings.lowStock.length > 0
+                    ? "bg-warning-50 text-warning-700"
+                    : "bg-success-50 text-success-700"
+              }`}
+            >
+              <p className="flex items-start gap-2 font-medium">
+                {warnings.blocked ? (
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                ) : (
+                  <CheckCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                )}
+                {warnings.summary}
+              </p>
+              {warnings.blocked && (
+                <p className="mt-1 text-xs">
+                  Transaksi ini pasti ditolak backend. Kurangi jumlah atau terima stok dulu.
+                </p>
+              )}
+              {warnings.expiringSoon.length > 0 && (
+                <p className="mt-1 text-xs">
+                  FEFO memakai batch dengan kadaluarsa terdekat (≤ {FEFO_WARN_DAYS} hari).
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             {selectedRx?.items.map((item) => (
               <div
@@ -218,6 +394,28 @@ export default function DispensePage() {
                   <p className="text-xs text-slate-500">
                     {item.medication?.strength ?? ""} {item.dosage ?? ""}
                   </p>
+                  {(() => {
+                    const hint = hintFor(item.id);
+                    if (!hint) return null;
+                    return (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <Badge variant={hint.currentStock === null ? "outline" : hint.shortfall > 0 ? "danger" : "success"}>
+                          Stok: {hint.currentStock ?? "tidak diketahui"}
+                        </Badge>
+                        {hint.nearestExpiryDate && (
+                          <Badge variant={hint.expiresSoon ? "warning" : "outline"}>
+                            FEFO {formatDate(hint.nearestExpiryDate)}
+                          </Badge>
+                        )}
+                        {hint.shortfall > 0 && (
+                          <Badge variant="danger">Kurang {hint.shortfall}</Badge>
+                        )}
+                        {hint.isLowStock && hint.shortfall === 0 && (
+                          <Badge variant="warning">Stok minimum</Badge>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <Input
                   label=""
@@ -256,7 +454,11 @@ export default function DispensePage() {
               Batal
             </Button>
             <Can action="pharmacy.dispense">
-              <Button onClick={handleDispense} loading={busy} disabled={busy}>
+              <Button
+                onClick={handleDispense}
+                loading={busy}
+                disabled={busy || warnings.blocked}
+              >
                 <CheckCircle className="size-4" />
                 Proses Dispensing
               </Button>

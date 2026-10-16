@@ -20,7 +20,12 @@ interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<{ ok: boolean; mfaRequired?: boolean; userId?: string }>;
+  login: (username: string, password: string) => Promise<{
+    ok: boolean;
+    mfaRequired?: boolean;
+    mfaSetupRequired?: boolean;
+    userId?: string;
+  }>;
   verifyMfa: (userId: string, code: string) => Promise<boolean>;
   logout: () => void;
 }
@@ -71,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await authService.login(username, password);
       if (res.mfaRequired) {
-        return { ok: false, mfaRequired: true, userId: res.userId };
+        return { ok: false, mfaRequired: true, mfaSetupRequired: res.mfaSetupRequired, userId: res.userId };
       }
       if (res.accessToken && res.user) {
         setUser(toSessionUser(res.user));

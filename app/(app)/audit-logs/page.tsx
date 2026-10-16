@@ -67,7 +67,7 @@ export default function AuditLogsPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari action, user, object..."
               value={search}
@@ -116,7 +116,7 @@ export default function AuditLogsPage() {
             <VirtualList
               items={filtered}
               itemHeight={104}
-              renderItem={(log, index, style) => (
+              renderItem={(log, _index, style) => (
                 <div
                   key={log.id}
                   style={style}

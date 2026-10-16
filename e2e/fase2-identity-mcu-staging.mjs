@@ -441,7 +441,7 @@ async function f201() {
       await page.goto(`${BASE}/people`, { waitUntil: "domcontentloaded" });
       await page.waitForLoadState("networkidle").catch(() => {});
 
-      const heading = await page.getByRole("heading", { name: /People & Medical Record/i }).isVisible().catch(() => false);
+      const heading = await page.getByRole("heading", { name: /Registrasi & Consent/i }).isVisible().catch(() => false);
       const rows = await page.locator("table tbody tr").count();
       record(
         "F2-01-01",

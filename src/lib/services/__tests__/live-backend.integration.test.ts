@@ -101,13 +101,29 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
     const { setToken, setRefreshToken } = await import("@/lib/api-client");
     // Password seed disamakan untuk semua akun uji dev/staging (lihat prisma/seed.ts)
     const res = await authService.login("admin", "KlinikLNG2026!");
-    const accessToken = res.accessToken ?? "";
-    const refreshToken = res.refreshToken ?? "";
+
+    // Kebijakan backend mewajibkan MFA untuk SYSTEM_ADMIN/DOCTOR_OH. Pada
+    // deployment demo (NODE_ENV != production) backend mengizinkan bypass OTP
+    // `123456` lewat `/auth/mfa/verify`, sehingga alur MFA di bawah adalah
+    // jalur resmi yang juga dipakai UI, bukan shortcut palsu.
+    let accessToken = res.accessToken ?? "";
+    let refreshToken = res.refreshToken ?? "";
+
+    if (!accessToken && res.mfaRequired && res.userId) {
+      const verify = await authService.verifyMfa(res.userId, "123456");
+      accessToken = verify.accessToken ?? "";
+      refreshToken = verify.refreshToken ?? "";
+    }
+
     expect(accessToken).toBeTruthy();
     expect(refreshToken).toBeTruthy();
-    expect(res.user?.roles).toContain("SYSTEM_ADMIN");
     setToken(accessToken);
     setRefreshToken(refreshToken);
+
+    // Roles dibaca dari JWT yang benar-benar diterbitkan backend.
+    const { decodeJwtPayload } = await import("@/lib/api-client");
+    const payload = decodeJwtPayload(accessToken);
+    expect(payload?.roles).toContain("SYSTEM_ADMIN");
   });
 
   it("Modul 1 — refresh token menghasilkan access token baru", async () => {
@@ -125,29 +141,41 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
     expect(users.meta?.total).toBeGreaterThanOrEqual(users.data.length);
   });
 
-  it("Modul 7 — buat user baru via POST /iam/users lalu nonaktifkan (Tahap 3)", async () => {
-    const stamp = Date.now();
-    const created = await iamService.createUser({
-      username: `live.uji.${stamp}`,
-      email: `live.uji.${stamp}@layargas.co.id`,
-      password: "LiveUjiTahap3!",
-      roleCode: "NURSE",
-    });
-    expect(created.id).toBeTruthy();
-    expect(created.username).toBe(`live.uji.${stamp}`);
+  it("Modul 7 — GET /iam/users/:id mengembalikan detail akun (Tahap 3)", async () => {
+    const list = await iamService.listUsers(1, 10);
+    expect(list.data.length).toBeGreaterThan(0);
+    const first = list.data[0];
 
-    // Duplikat harus ditolak backend (409) — bukan fake success
+    const detail = await iamService.getUser(first.id);
+    expect(detail.id).toBe(first.id);
+    expect(detail.username).toBe(first.username);
+  });
+
+  it("Modul 7 — create/update user ditolak eksplisit (route belum ada di backend)", async () => {
+    // Backend `iam/users` hanya read-only + unlock. Test ini mengunci kontrak:
+    // bila backend kelak menambah POST/PATCH, test ini gagal dan harus
+    // diperbarui bersama mapper UI — bukan diam-diam lolos.
     await expect(
       iamService.createUser({
-        username: `live.uji.${stamp}`,
-        email: `live.uji.${stamp}@layargas.co.id`,
+        username: `live.uji.${Date.now()}`,
+        email: `live.uji.${Date.now()}@layargas.co.id`,
         password: "LiveUjiTahap3!",
         roleCode: "NURSE",
       })
-    ).rejects.toThrow();
+    ).rejects.toThrow(/belum tersedia di backend/i);
 
-    const updated = await iamService.updateUser(created.id, { active: false });
-    expect(updated.id).toBe(created.id);
+    await expect(
+      iamService.updateUser("00000000-0000-0000-0000-000000000000", { active: false })
+    ).rejects.toThrow(/belum tersedia di backend/i);
+  });
+
+  it("Modul 7 — POST /iam/users/:id/unlock tersedia (route backend nyata)", async () => {
+    const list = await iamService.listUsers(1, 1);
+    const target = list.data[0];
+    expect(target?.id).toBeTruthy();
+    // Unlock akun yang tidak terkunci tetap sukses idempoten di backend.
+    const res = await iamService.unlockUser(target.id);
+    expect(res.success).toBe(true);
   });
 
   it("Modul 11 — offline sync: register device + push idempotent (Tahap 3)", async () => {
@@ -276,9 +304,19 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
     const result = await mcuService.assessFtw(cycle.id, "FIT", "Laik kerja tanpa restriksi");
     expect(result.assessment.ftw_status).toBe("FIT");
 
-    const list = await mcuService.list({ page: 1, limit: 50 });
-    expect(list.data.some((c) => c.id === cycle.id)).toBe(true);
-    expect(list.data.find((c) => c.id === cycle.id)?.ftw_assessment).toBeTruthy();
+    // Data uji menumpuk antar run sehingga total siklus melebihi satu halaman
+    // (page 1 berisi siklus TERLAMA, bukan yang baru dibuat). Telusuri semua
+    // halaman sampai ketemu — assertion tetap sama: siklus + FTW assessment
+    // harus terbaca dari backend.
+    const firstPage = await mcuService.list({ page: 1, limit: 50 });
+    const totalPages = firstPage.meta?.totalPages ?? 1;
+    let found = firstPage.data.find((c) => c.id === cycle.id);
+    for (let page = 2; !found && page <= totalPages; page++) {
+      const next = await mcuService.list({ page, limit: 50 });
+      found = next.data.find((c) => c.id === cycle.id);
+    }
+    expect(found).toBeTruthy();
+    expect(found?.ftw_assessment).toBeTruthy();
   });
 
   it("Modul 5 — inventaris farmasi dan resep pending terbaca", async () => {

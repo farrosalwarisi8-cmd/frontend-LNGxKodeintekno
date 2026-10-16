@@ -3,15 +3,16 @@
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
 import { apiUrl } from "@/lib/env";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useStore } from "@/lib/store";
+import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { Input } from "@/shared/components/design-system/input";
+import { Modal } from "@/shared/components/design-system/modal";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/components/design-system/tabs";
 import { formatDate } from "@/lib/format";
 import {
   diagnosticService,
@@ -20,7 +21,7 @@ import {
   type BackendRadiologyOrder,
   type BackendRadiologyResult,
 } from "@/lib/services/diagnostic.service";
-import { FlaskConical, Plus, CheckCircle, Search, FileText } from "lucide-react";
+import { FlaskConical, Plus, CheckCircle, Clock, XCircle, Search, FileText } from "lucide-react";
 
 const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default" | "info"> = {
   ORDERED: "warning",
@@ -58,6 +59,8 @@ export default function LabRadiologyPage() {
 
   const [showRadResultModal, setShowRadResultModal] = useState(false);
   const [selectedRadOrder, setSelectedRadOrder] = useState<BackendRadiologyOrder | null>(null);
+  // Fase 4 — scope site aktif: halaman ikut memuat ulang saat user berpindah scope.
+  const scopeVersion = useStore((s) => s.scopeVersion);
   const [radFindings, setRadFindings] = useState("");
   const [radImpression, setRadImpression] = useState("");
   const [savingRadResult, setSavingRadResult] = useState(false);
@@ -129,7 +132,9 @@ export default function LabRadiologyPage() {
     // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
-  }, [load]);
+    // Fase 4 — refetch saat user berpindah scope site (data scope lama
+    // diganti skeleton saat loading, sehingga baris lama tidak tampil).
+  }, [load, scopeVersion]);
 
   const handleSubmitLabResult = async () => {
     if (!selectedLabOrder) return;
@@ -245,7 +250,7 @@ export default function LabRadiologyPage() {
         <TabsContent value="lab" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Cari order atau tes..."
                 value={search}
@@ -363,7 +368,7 @@ export default function LabRadiologyPage() {
         <TabsContent value="rad" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Cari order radiologi..."
                 value={search}
@@ -497,6 +502,7 @@ export default function LabRadiologyPage() {
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
+                  aria-label="Tandai abnormal"
                   checked={v.abnormalFlag}
                   onChange={(e) =>
                     setLabResultValues((prev) =>
@@ -545,8 +551,9 @@ export default function LabRadiologyPage() {
             </p>
           )}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Findings</label>
+            <label htmlFor="rad-findings" className="mb-1 block text-sm font-medium text-slate-700">Findings</label>
             <textarea
+              id="rad-findings"
               className="w-full rounded-lg border border-slate-200 p-2 text-sm"
               rows={3}
               value={radFindings}
@@ -555,8 +562,9 @@ export default function LabRadiologyPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Impression</label>
+            <label htmlFor="rad-impression" className="mb-1 block text-sm font-medium text-slate-700">Impression</label>
             <textarea
+              id="rad-impression"
               className="w-full rounded-lg border border-slate-200 p-2 text-sm"
               rows={2}
               value={radImpression}

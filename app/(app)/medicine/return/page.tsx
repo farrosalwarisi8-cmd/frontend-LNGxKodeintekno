@@ -2,27 +2,44 @@
 
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toastSuccess, toastError } from "@/lib/use-toast";
+import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { Input } from "@/shared/components/design-system/input";
+import { Modal } from "@/shared/components/design-system/modal";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
+import { ApiError } from "@/lib/api-client";
 import {
   pharmacyService,
+  resolvePharmacySiteScope,
+  CrossSiteActionError,
+  diffStockLedger,
   type DispensingHistoryItem,
+  type BackendInventoryItem,
+  type StockLedgerEntry,
 } from "@/lib/services/pharmacy.service";
-import { Undo2, Search, AlertTriangle } from "lucide-react";
+import { Undo2, Search, AlertTriangle, ScrollText } from "lucide-react";
+import { useStore } from "@/lib/store";
 
 export default function ReturnMedicinePage() {
   const [history, setHistory] = useState<DispensingHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Fase 6 — `GET /pharmacy/dispensing/history` BELUM ada di backend (404).
+  // Dibedakan dari kegagalan lain: inventory tetap dimuat & ditampilkan,
+  // tombol retur disembunyikan (tanpa baris dispensing tidak ada yang bisa
+  // dipilih), dan empty state menjelaskan apa yang kurang.
+  const [historyMissing, setHistoryMissing] = useState(false);
+  const [inventory, setInventory] = useState<BackendInventoryItem[]>([]);
   const [search, setSearch] = useState("");
+
+  // Fase 3 — stock ledger: snapshot inventory sebelum retur agar
+  // perubahan stok (RETURN movement) dapat dibuktikan dari UI.
+  const [stockSnapshot, setStockSnapshot] = useState<BackendInventoryItem[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<StockLedgerEntry[]>([]);
 
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedDispensing, setSelectedDispensing] = useState<DispensingHistoryItem | null>(null);
@@ -31,27 +48,76 @@ export default function ReturnMedicinePage() {
   const [returnReason, setReturnReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [confirmReturn, setConfirmReturn] = useState<{ id: string; name: string } | null>(null);
+
+  // Fase 4 — scope site aktif: riwayat & snapshot inventory dimuat ulang saat
+  // user berpindah scope, sehingga baris scope lama tidak tetap tampil.
+  const scopeVersion = useStore((s) => s.scopeVersion);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setHistoryMissing(false);
+    const siteId = useStore.getState().activeSiteId ?? undefined;
+    // Inventory diambil TERLEBIH DAHULU & terpisah dari riwayat: bila
+    // `GET /pharmacy/dispensing/history` 404, inventory tetap tampil dan
+    // stok tetap bisa dipantau (halaman tidak mati karena satu endpoint).
+    let inventoryData: BackendInventoryItem[];
     try {
-      const data = await pharmacyService.getDispensingHistory();
-      setHistory(data);
+      inventoryData = await pharmacyService.getInventory(siteId);
+      setInventory(inventoryData);
+      setStockSnapshot(inventoryData);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat riwayat dispensing.");
-    } finally {
+      setError(e instanceof Error ? e.message : "Gagal memuat inventory farmasi.");
       setLoading(false);
+      return;
     }
+
+    let historyData: DispensingHistoryItem[];
+    try {
+      historyData = await pharmacyService.getDispensingHistory();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) {
+        // Route backend belum tersedia — bukan kesalahan pengguna.
+        setHistory([]);
+        setHistoryMissing(true);
+      } else {
+        setError(e instanceof Error ? e.message : "Gagal memuat riwayat dispensing.");
+      }
+      setLoading(false);
+      return;
+    }
+    // Fase 4 — snapshot inventory sudah site-scoped ( ?siteId= ). Baris
+    // riwayat dibuang bila batch-nya tidak termasuk inventory site aktif
+    // (fail-closed: tanpa info site di baris -> dianggap luar scope).
+    const scopedInventoryIds = new Set(inventoryData.map((i) => i.id));
+    const scopedHistory = siteId
+        ? historyData.filter((d) => {
+            const items = d.dispensing_items ?? [];
+            if (items.length === 0) return false;
+            return items.every((it) => {
+              const invId = it.stock_batch?.inventory_item_id;
+              return invId ? scopedInventoryIds.has(invId) : false;
+            });
+          })
+        : historyData;
+    setHistory(scopedHistory);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     // Defer agar setState tidak dipanggil sinkron di dalam effect
     // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
-    const timer = setTimeout(() => void load(), 0);
+    const timer = setTimeout(() => {
+      // Buang baris scope lama lebih dahulu supaya tidak sempat tampil
+      // selama refetch scope baru berlangsung.
+      setHistory([]);
+      setStockSnapshot([]);
+      setLedgerEntries([]);
+      void load();
+    }, 0);
     return () => clearTimeout(timer);
-  }, [load]);
+    // scopeVersion: refetch saat user berpindah scope site.
+  }, [load, scopeVersion]);
 
   const handleReturn = async () => {
     if (!selectedDispensing) return;
@@ -64,34 +130,49 @@ export default function ReturnMedicinePage() {
       setActionError("Jumlah harus lebih dari 0.");
       return;
     }
-    const patientName =
-      selectedDispensing.prescription?.encounter?.patient?.full_name ?? "-";
-    setConfirmReturn({ id: selectedDispensing.id, name: patientName });
-  };
-
-  const handleConfirmReturn = async () => {
-    if (!confirmReturn || !selectedDispensing) return;
-    const qty = Number(returnQuantity);
     setSaving(true);
     setActionError(null);
     try {
+      // Cross-site guard: riwayat dispensing sudah di-scope backend
+      // ke site pengguna — retur hanya sah untuk site dalam cakupan.
+      const siteScope = await resolvePharmacySiteScope();
+      const siteContext = siteScope.unrestricted
+        ? undefined
+        : { siteId: siteScope.siteIds[0], siteName: siteScope.siteNames[0] };
+
       await pharmacyService.returnMedication(
         selectedDispensing.id,
         returnBatchId,
         qty,
-        returnReason
+        returnReason,
+        siteContext
       );
+
+      // Refetch inventory (tetap site-scoped), lalu hitung selisih stock
+      // ledger. Riwayat hanya di-refresh bila route-nya memang tersedia,
+      // supaya retur tetap tercatat di ledger walau history 404.
+      const activeSiteId = useStore.getState().activeSiteId ?? undefined;
+      const newInventory = await pharmacyService.getInventory(activeSiteId);
+      const entries = diffStockLedger(stockSnapshot, newInventory, "RETURN");
+      setLedgerEntries((prev) => [...entries, ...prev]);
+      setStockSnapshot(newInventory);
+      if (!historyMissing) {
+        const newHistory = await pharmacyService.getDispensingHistory().catch(() => [] as DispensingHistoryItem[]);
+        setHistory(newHistory);
+      }
+
       setShowReturnModal(false);
-      setConfirmReturn(null);
       setReturnBatchId("");
       setReturnQuantity("");
       setReturnReason("");
-      await load();
-      toastSuccess("Retur obat berhasil", `Obat untuk ${confirmReturn.name} telah dikembalikan ke stok.`);
     } catch (e) {
-      setConfirmReturn(null);
-      setActionError(e instanceof Error ? e.message : "Gagal memproses retur.");
-      toastError("Gagal memproses retur", e instanceof Error ? e.message : undefined);
+      setActionError(
+        e instanceof CrossSiteActionError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Gagal memproses retur."
+      );
     } finally {
       setSaving(false);
     }
@@ -125,7 +206,7 @@ export default function ReturnMedicinePage() {
       )}
 
       <div className="relative w-full sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
         <Input
           placeholder="Cari dispensing / pasien / obat..."
           value={search}
@@ -133,6 +214,49 @@ export default function ReturnMedicinePage() {
           className="pl-10"
         />
       </div>
+
+      {/* Fase 3 — Stock Ledger: riwayat perubahan stok (RETURN)
+          yang dibuktikan dari selisih snapshot inventory. */}
+      {ledgerEntries.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ScrollText className="size-4 text-slate-500" />
+            <h2 className="text-sm font-semibold text-slate-900">
+              Stock Ledger — Retur
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {ledgerEntries.map((entry, i) => (
+              <div
+                key={`${entry.recordedAt}-${i}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900">
+                    {entry.genericName}{" "}
+                    <span className="text-xs font-normal text-slate-500">
+                      ({entry.medicationCode}) · {entry.siteName}
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {formatDate(entry.recordedAt)} · movement: {entry.movement}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-slate-500">
+                    {entry.before}
+                  </span>
+                  <span className="text-slate-500">→</span>
+                  <span className="font-mono text-xs font-semibold text-slate-900">
+                    {entry.after}
+                  </span>
+                  <Badge variant="success">+{entry.delta}</Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {loading && (
         <div className="space-y-3">
@@ -143,12 +267,54 @@ export default function ReturnMedicinePage() {
 
       {!loading && error && <ErrorState title="Gagal memuat data" message={error} onRetry={load} />}
 
-      {!loading && !error && filtered.length === 0 && (
+      {!loading && !error && historyMissing && (
+        <EmptyState
+          title="Riwayat dispensing belum tersedia"
+          description="GET /pharmacy/dispensing/history belum tersedia di backend (404), jadi daftar retur belum bisa ditampilkan. Inventory di bawah tetap dimuat dari backend."
+          icon={ScrollText}
+        />
+      )}
+
+      {!loading && !error && !historyMissing && filtered.length === 0 && (
         <EmptyState
           title="Belum ada riwayat dispensing"
           description="Belum ada data dispensing pada scope Anda."
           icon={Undo2}
         />
+      )}
+
+      {!loading && !error && inventory.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ScrollText className="size-4 text-slate-500" />
+            <h2 className="text-sm font-semibold text-slate-900">
+              Inventory Saat Ini
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {inventory.map((item) => (
+              <div
+                key={item.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900">
+                    {item.genericName}{" "}
+                    <span className="text-xs font-normal text-slate-500">
+                      {item.medicationCode}
+                    </span>
+                  </p>
+                  <p className="text-xs text-slate-500">{item.siteName}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={item.currentStock <= item.minimumStock ? "warning" : "success"}>
+                    {item.currentStock}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {!loading && !error && (
@@ -176,7 +342,9 @@ export default function ReturnMedicinePage() {
                     ))}
                     {hasReturns && (
                       <div className="mt-1">
-                        <Badge variant="warning">Sudah ada retur</Badge>
+                        <Badge variant="warning">
+                          {d.medication_returns?.length ?? 0} retur
+                        </Badge>
                         {d.medication_returns?.map((r) => (
                           <p key={r.id} className="text-xs text-slate-500">
                             Retur: {r.quantity} · {r.reason} · {formatDate(r.returned_at ?? "")}
@@ -190,22 +358,20 @@ export default function ReturnMedicinePage() {
                       {d.status}
                     </Badge>
                     <Can action="pharmacy.dispense">
-                      {!hasReturns && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDispensing(d);
-                            setShowReturnModal(true);
-                            setActionError(null);
-                            setReturnBatchId("");
-                            setReturnQuantity("");
-                            setReturnReason("");
-                          }}
-                        >
-                          <Undo2 className="size-3.5" />
-                          Retur
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDispensing(d);
+                          setShowReturnModal(true);
+                          setActionError(null);
+                          setReturnBatchId("");
+                          setReturnQuantity("");
+                          setReturnReason("");
+                        }}
+                      >
+                        <Undo2 className="size-3.5" />
+                        Retur
+                      </Button>
                     </Can>
                   </div>
                 </div>
@@ -240,10 +406,11 @@ export default function ReturnMedicinePage() {
 
           {selectedDispensing?.dispensing_items && selectedDispensing.dispensing_items.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="return-batch" className="mb-1 block text-sm font-medium text-slate-700">
                 Pilih Batch
               </label>
               <select
+                id="return-batch"
                 className="w-full rounded-lg border border-slate-200 p-2 text-sm"
                 value={returnBatchId}
                 onChange={(e) => setReturnBatchId(e.target.value)}
@@ -258,23 +425,58 @@ export default function ReturnMedicinePage() {
             </div>
           )}
 
+          {/* Kasus paling sering = mengembalikan item pertama apa adanya,
+              jadi satu klik mengisi batch + jumlah sekaligus. */}
+          {selectedDispensing?.dispensing_items && selectedDispensing.dispensing_items.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                const first = selectedDispensing.dispensing_items![0];
+                setReturnBatchId(first.stock_batch_id ?? "");
+                setReturnQuantity(String(first.quantity ?? ""));
+              }}
+            >
+              <Undo2 className="size-4" aria-hidden="true" />
+              Isi dari item pertama
+            </Button>
+          )}
+
           <Input
             label="Jumlah Retur"
             type="number"
+            inputMode="numeric"
             value={returnQuantity}
             onChange={(e) => setReturnQuantity(e.target.value)}
             placeholder="0"
           />
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Alasan Retur</label>
+            <label htmlFor="return-reason" className="mb-1 block text-sm font-medium text-slate-700">Alasan Retur</label>
             <textarea
+              id="return-reason"
               className="w-full rounded-lg border border-slate-200 p-2 text-sm"
               rows={2}
               value={returnReason}
               onChange={(e) => setReturnReason(e.target.value)}
               placeholder="Contoh: Obat tidak digunakan, kedaluwarsa, dll."
             />
+            {/* Alasan tersering sebagai tombol — menghindari mengetik ulang. */}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {["Tidak digunakan", "Kedaluwarsa", "Salah obat", "Pasien menolak"].map((reason) => (
+                <Button
+                  key={reason}
+                  type="button"
+                  size="sm"
+                  variant={returnReason === reason ? "primary" : "outline"}
+                  aria-pressed={returnReason === reason}
+                  onClick={() => setReturnReason(reason)}
+                >
+                  {reason}
+                </Button>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-start gap-2 rounded-lg bg-warning-50 p-3 text-xs text-warning-700">
@@ -287,24 +489,16 @@ export default function ReturnMedicinePage() {
 
           {actionError && <p className="text-xs text-danger-600">{actionError}</p>}
 
-          {confirmReturn ? (
-            <div className="rounded-lg bg-warning-50 p-3 text-sm text-warning-700">
-              <p>
-                Konfirmasi retur obat untuk <span className="font-medium">{confirmReturn.name}</span>?
-                Tindakan akan mengembalikan stok dan tidak dapat diubah.
-              </p>
-            </div>
-          ) : null}
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowReturnModal(false)}>
+            <Button variant="ghost" onClick={() => setShowReturnModal(false)} disabled={saving}>
               Batal
             </Button>
-            <Button
-              onClick={() => (confirmReturn ? handleConfirmReturn() : handleReturn())}
-              disabled={saving || !confirmReturn}
-            >
-              {saving ? "Memproses..." : confirmReturn ? "Konfirmasi Retur" : "Proses Retur"}
-            </Button>
+            {/* Hanya apoteker (dispense-medicine) yang boleh memproses retur. */}
+            <Can action="pharmacy.dispense">
+              <Button onClick={handleReturn} disabled={saving}>
+                {saving ? "Memproses..." : "Proses Retur"}
+              </Button>
+            </Can>
           </div>
         </div>
       </Modal>

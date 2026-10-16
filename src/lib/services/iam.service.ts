@@ -22,6 +22,8 @@ export interface BackendUserRow {
   username: string;
   email?: string;
   active?: boolean;
+  /** "TOTP" | "NONE" — metode MFA terdaftar pada akun (GET /iam/users). */
+  mfa_method?: string | null;
   last_login_at?: string | null;
   created_at?: string;
   user_roles?: BackendUserRole[];
@@ -60,13 +62,51 @@ export interface UpdateUserInput {
   siteCode?: string;
 }
 
+/**
+ * Dilempar saat frontend memanggil operasi IAM user yang BELUM tersedia di
+ * backend (mis. create/update user). Dipisahkan dari ApiError supaya UI dapat
+ * menampilkan pesan kebijakan yang jelas, bukan 404 "Cannot POST" yang ambigu.
+ */
+export class IamOperationUnsupportedError extends Error {
+  constructor(operation: string, detail: string) {
+    super(
+      `Operasi IAM "${operation}" belum tersedia di backend saat ini: ${detail}`
+    );
+    this.name = "IamOperationUnsupportedError";
+  }
+}
+
 export const iamService = {
-  async createUser(input: CreateUserInput): Promise<BackendUserRow> {
-    return apiClient.post<BackendUserRow>("/iam/users", input);
+  /**
+   * CATATAN INTEGRASI (Modul 7 — IAM).
+   *
+   * Backend `iam/users` hanya menyediakan operasi BACA (`GET /iam/users`,
+   * `GET /iam/users/:id`) dan `POST /iam/users/:id/unlock`. Tidak ada
+   * `POST /iam/users` maupun `PATCH /iam/users/:id` (lihat API_ENDPOINTS.md
+   * §1.4–1.5.1 dan `users.controller.ts`). Karena itu pembuatan/penonaktifan
+   * akun ditolak lebih awal dengan pesan eksplisit — bukan request ke route
+   * yang tidak ada dan bukan pula fake success.
+   */
+  async createUser(_input: CreateUserInput): Promise<BackendUserRow> {
+    throw new IamOperationUnsupportedError(
+      "createUser",
+      "backend belum mengekspos POST /iam/users (hanya GET /iam/users)."
+    );
   },
 
-  async updateUser(id: string, input: UpdateUserInput): Promise<BackendUserRow> {
-    return apiClient.patch<BackendUserRow>(`/iam/users/${id}`, input);
+  async updateUser(_id: string, _input: UpdateUserInput): Promise<BackendUserRow> {
+    throw new IamOperationUnsupportedError(
+      "updateUser",
+      "backend belum mengekspos PATCH /iam/users/:id (hanya GET /iam/users dan POST /iam/users/:id/unlock)."
+    );
+  },
+
+  /** POST /iam/users/:id/unlock — membuka akun yang terkunci (route backend nyata). */
+  async unlockUser(id: string): Promise<{ success: boolean; username?: string; message?: string }> {
+    return apiClient.post<{ success: boolean; username?: string; message?: string }>(
+      `/iam/users/${id}/unlock`,
+      {}
+    );
   },
 
   async listUsers(page = 1, limit = 20) {

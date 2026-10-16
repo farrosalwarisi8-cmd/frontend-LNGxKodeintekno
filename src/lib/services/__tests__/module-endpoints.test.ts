@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { installBrowserStubs, mockFetch, envelope, pathOf } from "./helpers";
+import { setToken } from "@/lib/api-client";
+import { clearPharmacySiteScopeCache } from "@/lib/services/pharmacy.service";
 
 installBrowserStubs();
 
@@ -225,7 +227,31 @@ describe("Kontrak endpoint frontend <-> backend", () => {
   });
 
   it("Modul 5 — pharmacy service memanggil endpoint FEFO", async () => {
-    const calls = mockFetch(() => ({ body: envelope([]) }));
+    // Guard cross-site perlu mengenali user: berikan JWT palsu dengan
+    // username "admin" dan mock /iam/users mengembalikan role SYSTEM_ADMIN
+    // (GLOBAL) sehingga seluruh site diizinkan.
+    setToken(`fake.${btoa(JSON.stringify({ username: "admin" }))}.sig`);
+    clearPharmacySiteScopeCache();
+    const calls = mockFetch((req) => {
+      if (req.url.includes("/iam/users")) {
+        return {
+          body: envelope([
+            {
+              id: "u-admin",
+              username: "admin",
+              user_roles: [
+                {
+                  id: "ur-1",
+                  role: { id: "r-1", code: "SYSTEM_ADMIN", name: "System Administrator" },
+                  site: { id: "site-ho", code: "SITE-HO-JKT", name: "Head Office Jakarta" },
+                },
+              ],
+            },
+          ]),
+        };
+      }
+      return { body: envelope([]) };
+    });
     const { pharmacyService } = await import("@/lib/services/pharmacy.service");
 
     await pharmacyService.getInventory();
@@ -234,16 +260,22 @@ describe("Kontrak endpoint frontend <-> backend", () => {
     await pharmacyService.dispense("rx-1", [{ stockBatchId: "b1", quantity: 10 }]);
     await pharmacyService.returnMedication("d1", "b1", 5, "alergi");
 
-    expect(pathOf(calls[0].url)).toBe("/api/v1/pharmacy/inventory");
-    expect(pathOf(calls[1].url)).toBe("/api/v1/pharmacy/prescriptions/pending");
-    expect(pathOf(calls[2].url)).toBe("/api/v1/pharmacy/dispensing/recommend-batches");
-    expect(calls[2].body).toEqual({
+    // Guard cross-site menyelesaikan cakupan site lewat /iam/users sekali
+    // (di-cache per token) sebelum aksi tulis — kontrak endpoint farmasi
+    // diverifikasi terpisah pada panggilan /pharmacy saja.
+    expect(calls.filter((c) => pathOf(c.url).startsWith("/api/v1/iam/users"))).toHaveLength(1);
+    const pharmacy = calls.filter((c) => pathOf(c.url).includes("/pharmacy/"));
+    expect(pathOf(pharmacy[0].url)).toBe("/api/v1/pharmacy/inventory");
+    expect(pathOf(pharmacy[1].url)).toBe("/api/v1/pharmacy/prescriptions/pending");
+    expect(pathOf(pharmacy[2].url)).toBe("/api/v1/pharmacy/dispensing/recommend-batches");
+    expect(pharmacy[2].body).toEqual({
       medicationId: "med-1",
       siteId: "site-1",
       requiredQuantity: 30,
     });
-    expect(pathOf(calls[3].url)).toBe("/api/v1/pharmacy/dispensing");
-    expect(pathOf(calls[4].url)).toBe("/api/v1/pharmacy/returns");
+    expect(pathOf(pharmacy[3].url)).toBe("/api/v1/pharmacy/dispensing");
+    expect(pathOf(pharmacy[4].url)).toBe("/api/v1/pharmacy/returns");
+    clearPharmacySiteScopeCache();
   });
 
   it("Modul 6 — notification service memanggil endpoint notifikasi", async () => {

@@ -1,0 +1,55 @@
+name: Accessibility (WCAG AA)
+
+# Gerbang aksesibilitas: axe-core (gagal bila ada pelanggaran critical/serious)
+# + alur login→SOAP yang dijalankan hanya dengan keyboard.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  axe:
+    runs-on: ubuntu-latest
+    env:
+      # Backend tidak dipakai; skrip menstub API. Nilai apa pun yang valid
+      # supaya konfigurasi env frontend tidak berstatus "unknown".
+      NEXT_PUBLIC_API_URL: https://a11y.example.com/api/v1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          npm start -- --port 3001 > /tmp/next.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -sf -o /dev/null http://localhost:3001/login; then echo "server ready"; break; fi
+            sleep 1
+          done
+
+      - name: Axe audit (critical/serious = fail)
+        run: A11Y_BASE_URL=http://localhost:3001 node scripts/a11y-audit.mjs
+
+      - name: Keyboard-only login → SOAP flow
+        run: A11Y_BASE_URL=http://localhost:3001 node scripts/a11y-keyboard-flow.mjs
+
+      # Skenario utama tiap peran + anggaran langkah (klik paling sedikit).
+      - name: Role scenarios (steps per role)
+        run: ROLE_BASE_URL=http://localhost:3001 node scripts/role-scenarios.mjs
+
+      - name: Upload a11y report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-report
+          path: test-artifacts/a11y
+          if-no-files-found: ignore

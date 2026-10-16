@@ -45,8 +45,16 @@ export function PeopleList() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">People & Medical Record</h1>
-          <p className="text-sm text-slate-500">Kelola data administratif dan consent pekerja</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Registrasi &amp; Consent</h1>
+          <p className="text-sm text-slate-500">
+            MPI Modul 01 — pendaftaran pekerja, MRN, dan consent digital
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Butuh direktori pekerja dari backend?{" "}
+            <Link href="/employees" className="font-medium text-primary-600 hover:underline">
+              Buka Direktori Pekerja
+            </Link>
+          </p>
         </div>
         <Can action="people.create">
           <Link href="/people/new">
@@ -61,7 +69,7 @@ export function PeopleList() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari nama, MRN, atau Employee ID..."
               value={search}
@@ -128,8 +136,17 @@ export function PeopleList() {
                 {data.data.map((person) => (
                   <tr
                     key={person.id}
-                    className="cursor-pointer transition-colors hover:bg-slate-50"
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Buka profil ${person.fullName}`}
+                    className="cursor-pointer transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
                     onClick={() => router.push(`/people/${person.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/people/${person.id}`);
+                      }
+                    }}
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-900">{person.fullName}</div>
@@ -139,7 +156,7 @@ export function PeopleList() {
                     <td className="px-4 py-3 font-mono text-sm text-slate-600">{person.employeeNo}</td>
                     <td className="px-4 py-3 text-sm text-slate-600">{person.siteName}</td>
                     <td className="px-4 py-3">
-                      <ChevronRight className="size-4 text-slate-400" />
+                      <ChevronRight className="size-4 text-slate-500" />
                     </td>
                   </tr>
                 ))}
@@ -160,7 +177,7 @@ export function PeopleList() {
                       {person.mrn} · {person.employeeNo}
                     </div>
                   </div>
-                  <ChevronRight className="size-4 shrink-0 text-slate-400" />
+                  <ChevronRight className="size-4 shrink-0 text-slate-500" />
                 </Card>
               </Link>
             ))}

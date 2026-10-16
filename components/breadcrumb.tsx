@@ -28,7 +28,7 @@ export function Breadcrumb({ className }: { className?: string }) {
         const isLast = i === list.length - 1;
         return (
           <span key={`${item.label}-${i}`} className="flex min-w-0 items-center gap-1.5">
-            {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />}
+            {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-slate-500" aria-hidden="true" />}
             {isLast || !item.href ? (
               <span
                 aria-current={isLast ? "page" : undefined}

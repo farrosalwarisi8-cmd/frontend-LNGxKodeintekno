@@ -85,6 +85,21 @@ export interface PublicVerifyResult {
   decision?: string | null;
 }
 
+/**
+ * Fase 4 — penyaringan scope site untuk daftar waiver.
+ *
+ * Backend meng-scope `GET /waivers` per token; untuk user GLOBAL yang memilih
+ * satu site di UI, baris di luar scope itu dibuang di client. `null` = semua
+ * site (cakupan bawaan token), jadi daftar tidak disaring.
+ */
+export function filterWaiversBySite(
+  rows: BackendWaiver[],
+  activeSiteId: string | null | undefined
+): BackendWaiver[] {
+  if (!activeSiteId) return rows;
+  return rows.filter((w) => (w.site_id ?? w.site?.id ?? null) === activeSiteId);
+}
+
 export const waiverService = {
   async list(page = 1, limit = 50, search?: string) {
     const query = new URLSearchParams({ page: String(page), limit: String(limit) });

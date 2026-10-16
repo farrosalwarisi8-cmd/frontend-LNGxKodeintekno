@@ -10,19 +10,18 @@ import {
   syncPatients,
   useSyncedModules,
 } from "@/lib/remote-sync";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Modal } from "@/components/ui/modal";
-import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { Input } from "@/shared/components/design-system/input";
+import { Select } from "@/shared/components/design-system/select";
+import { Modal } from "@/shared/components/design-system/modal";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { ApiError } from "@/lib/api-client";
-import { toastSuccess, toastError } from "@/lib/use-toast";
 import {
   masterDataService,
+  findDuplicateCode,
   type BackendDepartment,
   type BackendOrganization,
   type BackendSite,
@@ -49,6 +48,9 @@ export default function MasterDataPage() {
   const [sites, setSites] = useState<BackendSite[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Fase 6 — kegagalan SEBAGIAN (route backend yang belum terpasang): tidak
+  // memblokir tab lain, hanya menampilkan peringatan di atas tabel.
+  const [loadWarning, setLoadWarning] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabId>("diagnoses");
@@ -60,6 +62,11 @@ export default function MasterDataPage() {
     | null
   >(null);
   const [saving, setSaving] = useState(false);
+  // Fase 4 — dependency guard: setelah 409 (site/org masih punya data aktif),
+  // UI menawarkan konfirmasi "force" alih-alih hanya menyuruh user mengulang.
+  const [forceTarget, setForceTarget] = useState<
+    { kind: FormKind; id: string; label: string; nextActive: boolean } | null
+  >(null);
   const [form, setForm] = useState({
     code: "",
     name: "",
@@ -67,30 +74,45 @@ export default function MasterDataPage() {
     siteType: "ONSHORE_PLANT",
     address: "",
   });
-  const [confirmToggle, setConfirmToggle] = useState<{
-    kind: FormKind;
-    id: string;
-    name: string;
-    nextActive: boolean;
-  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    try {
-      const [orgs, depts, siteRows] = await Promise.all([
-        masterDataService.listOrganizations(),
-        masterDataService.listDepartments(),
-        masterDataService.listSites(),
-      ]);
-      setOrganizations(orgs);
-      setDepartments(depts);
-      setSites(siteRows);
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Gagal memuat master data dari backend.");
-    } finally {
-      setLoading(false);
+    setLoadWarning(null);
+    // Ketiga modul dibaca TERPISAH: bila satu route backend belum terpasang
+    // (mis. /master-data/sites 404 karena modulnya belum diaktifkan), tab lain
+    // tetap menampilkan data backend yang berhasil dimuat, bukan seluruh
+    // halaman gagal. Kegagalan dicatat per sumber agar user tahu mana yang
+    // belum tersedia.
+    const failures: string[] = [];
+    const [orgs, depts, siteRows] = await Promise.all([
+      masterDataService.listOrganizations().catch((e: unknown) => {
+        failures.push(`perusahaan: ${e instanceof Error ? e.message : "gagal dimuat"}`);
+        return [] as BackendOrganization[];
+      }),
+      masterDataService.listDepartments().catch((e: unknown) => {
+        failures.push(`departemen: ${e instanceof Error ? e.message : "gagal dimuat"}`);
+        return [] as BackendDepartment[];
+      }),
+      masterDataService.listSites().catch((e: unknown) => {
+        failures.push(`lokasi: ${e instanceof Error ? e.message : "gagal dimuat"}`);
+        return [] as BackendSite[];
+      }),
+    ]);
+    setOrganizations(orgs);
+    setDepartments(depts);
+    setSites(siteRows);
+    if (failures.length > 0) {
+      // Gagal SEMUA sumber -> ErrorState penuh (ada tombol coba ulang).
+      // Gagal SEBAGIAN -> peringatan, tab yang berhasil tetap dipakai.
+      const loaded = orgs.length + depts.length + siteRows.length;
+      if (loaded === 0) {
+        setLoadError(`Gagal memuat master data dari backend — ${failures.join("; ")}.`);
+      } else {
+        setLoadWarning(`Sebagian data belum tersedia di backend — ${failures.join("; ")}.`);
+      }
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -105,11 +127,37 @@ export default function MasterDataPage() {
     setActionError(null);
   };
 
+  /**
+   * Fase 4 — guard kode duplikat di lapisan client.
+   *
+   * Backend memberlakukan unique constraint (409). Pemeriksaan awal di sini
+   * memberi umpan balik instan tanpa request, DAN tidak menggantikan 409
+   * dari backend (tetap ditangani sebagai kebenaran terakhir).
+   */
+  const duplicateCode = (code: string, kind: FormKind, excludeId?: string): string | null => {
+    const rows: Array<{ id: string; code: string }> =
+      kind === "company"
+        ? organizations
+        : kind === "department"
+          ? departments
+          : sites;
+    const clash = findDuplicateCode(rows, code, excludeId);
+    if (!clash) return null;
+    const label = kind === "company" ? "perusahaan" : kind === "department" ? "departemen" : "lokasi";
+    return `Kode \"${clash}\" sudah dipakai ${label} lain.`;
+  };
+
   const handleCreate = async () => {
     if (!showCreate) return;
     setActionError(null);
     if (!form.name || (showCreate !== "location" && !form.code)) {
       setActionError("Kode dan nama wajib diisi.");
+      return;
+    }
+    // Fase 4 — tolak kode duplikat sebelum request keluar (guard client).
+    const dup = duplicateCode(form.code, showCreate);
+    if (dup) {
+      setActionError(dup);
       return;
     }
     setSaving(true);
@@ -134,7 +182,6 @@ export default function MasterDataPage() {
       setShowCreate(null);
       resetForm();
       await load();
-      toastSuccess("Data disimpan", "Master data berhasil tersimpan ke backend.");
     } catch (e) {
       setActionError(
         e instanceof ApiError && e.status === 409
@@ -143,7 +190,6 @@ export default function MasterDataPage() {
             ? e.message
             : "Gagal menyimpan."
       );
-      toastError("Gagal menyimpan", e instanceof Error ? e.message : undefined);
     } finally {
       setSaving(false);
     }
@@ -168,57 +214,68 @@ export default function MasterDataPage() {
       setEditing(null);
       resetForm();
       await load();
-      toastSuccess("Data diperbarui", "Master data berhasil diperbarui.");
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Gagal memperbarui.");
-      toastError("Gagal memperbarui", e instanceof Error ? e.message : undefined);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleToggleStatus = (
+  const applyStatus = async (
     kind: FormKind,
     id: string,
     nextActive: boolean,
-    currentActive: boolean,
-    name: string
+    force?: boolean
   ) => {
-    if (nextActive === currentActive) return;
-    setConfirmToggle({ kind, id, name, nextActive });
+    if (kind === "company") {
+      await masterDataService.setOrganizationStatus(id, nextActive ? "ACTIVE" : "INACTIVE", force);
+    } else if (kind === "department") {
+      await masterDataService.setDepartmentStatus(id, nextActive);
+    } else {
+      await masterDataService.setSiteStatus(id, nextActive, force);
+    }
   };
 
-  const handleConfirmToggle = async () => {
-    if (!confirmToggle) return;
-    const { kind, id, name, nextActive } = confirmToggle;
+  const handleToggleStatus = async (
+    kind: FormKind,
+    id: string,
+    nextActive: boolean,
+    currentActive: boolean
+  ) => {
+    if (nextActive === currentActive) return;
     setActionError(null);
-    setSaving(true);
     try {
-      if (kind === "company") {
-        await masterDataService.setOrganizationStatus(id, nextActive ? "ACTIVE" : "INACTIVE");
-      } else if (kind === "department") {
-        await masterDataService.setDepartmentStatus(id, nextActive);
-      } else {
-        await masterDataService.setSiteStatus(id, nextActive);
-      }
+      await applyStatus(kind, id, nextActive);
       await load();
-      setConfirmToggle(null);
-      toastSuccess(
-        nextActive ? "Data diaktifkan" : "Data dinonaktifkan",
-        `${name} telah ${nextActive ? "diaktifkan" : "dinonaktifkan"}.`
-      );
     } catch (e) {
-      setConfirmToggle(null);
-      if (e instanceof ApiError && e.status === 409) {
-        setActionError(
-          `${e instanceof Error ? e.message : "Gagal"} Konfirmasi dependency: kirim ulang dengan force. Histori tetap tersimpan.`
-        );
+      if (e instanceof ApiError && e.status === 409 && !nextActive) {
+        // Fase 4 — dependency guard: tawarkan konfirmasi force (backend
+        // menerima force=true; histori tetap tersimpan, tidak ada data dihapus).
+        const row =
+          kind === "company"
+            ? organizations.find((o) => o.id === id)
+            : kind === "department"
+              ? departments.find((d) => d.id === id)
+              : sites.find((s) => s.id === id);
+        setForceTarget({ kind, id, label: row?.name ?? id, nextActive });
+        setActionError(e.message);
       } else {
         setActionError(e instanceof Error ? e.message : "Gagal mengubah status.");
       }
-      toastError("Gagal mengubah status", e instanceof Error ? e.message : undefined);
-    } finally {
-      setSaving(false);
+    }
+  };
+
+  const confirmForce = async () => {
+    if (!forceTarget) return;
+    const { kind, id, nextActive } = forceTarget;
+    setActionError(null);
+    try {
+      await applyStatus(kind, id, nextActive, true);
+      setForceTarget(null);
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Gagal memaksa perubahan status.");
+      setForceTarget(null);
     }
   };
 
@@ -234,12 +291,7 @@ export default function MasterDataPage() {
     <Badge variant={active ? "success" : "default"}>{active ? "ACTIVE" : "INACTIVE"}</Badge>
   );
 
-  const renderRowActions = (
-    kind: FormKind,
-    id: string,
-    active: boolean,
-    name: string
-  ) => (
+  const renderRowActions = (kind: FormKind, id: string, active: boolean) => (
     <Can action="master-data.edit">
       <div className="flex gap-2">
         <Button
@@ -247,7 +299,12 @@ export default function MasterDataPage() {
           variant="outline"
           onClick={() => {
             setActionError(null);
-            const row = kind === "company" ? organizations.find((o) => o.id === id) : kind === "department" ? departments.find((d) => d.id === id) : sites.find((s) => s.id === id);
+            const row =
+              kind === "company"
+                ? organizations.find((o) => o.id === id)
+                : kind === "department"
+                  ? departments.find((d) => d.id === id)
+                  : sites.find((s) => s.id === id);
             if (!row) return;
             setForm({
               code: "code" in row ? row.code : "",
@@ -264,7 +321,7 @@ export default function MasterDataPage() {
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => handleToggleStatus(kind, id, !active, active, name)}
+          onClick={() => handleToggleStatus(kind, id, !active, active)}
         >
           {active ? "Nonaktifkan" : "Aktifkan"}
         </Button>
@@ -287,6 +344,36 @@ export default function MasterDataPage() {
         </div>
       )}
 
+      {/* Fase 6 — peringatan parsial: sumber backend yang belum tersedia tidak
+          memblokir tab lain; tabel yang berhasil tetap dirender di bawah. */}
+      {!loading && !loadError && loadWarning && (
+        <div className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
+          {loadWarning}
+        </div>
+      )}
+
+      {/* Fase 4 — konfirmasi dependency guard (force) */}
+      {forceTarget && (
+        <div className="flex flex-col gap-3 rounded-xl border border-warning-200 bg-warning-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-warning-800">
+            <p className="font-medium">
+              {forceTarget.label} masih memiliki data aktif yang bergantung padanya.
+            </p>
+            <p className="text-xs">
+              Nonaktifkan paksa? Histori tetap tersimpan — tidak ada data yang dihapus.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setForceTarget(null)}>
+              Batal
+            </Button>
+            <Button size="sm" onClick={confirmForce}>
+              Nonaktifkan Paksa
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -302,7 +389,7 @@ export default function MasterDataPage() {
             >
               <Icon className="size-4" />
               {tab.label}
-              <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === tab.id ? "bg-white/20" : "bg-slate-100"}`}>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === tab.id ? "bg-primary-700 text-white" : "bg-slate-100 text-slate-600"}`}>
                 {tab.count}
               </span>
             </button>
@@ -377,39 +464,20 @@ export default function MasterDataPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {organizations.length === 0 ? (
-              <EmptyState
-                icon={Building2}
-                title="Belum ada perusahaan"
-                description="Tambah perusahaan pertama untuk memulai master data organisasi."
-                action={
-                  <Can action="master-data.edit">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { resetForm(); setShowCreate("company"); }}
-                    >
-                      <Plus className="size-3.5" /> Tambah Perusahaan
-                    </Button>
-                  </Can>
-                }
-              />
-            ) : (
-              <div className="space-y-2">
-                {organizations.map((c) => (
-                  <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{c.name}</p>
-                      <p className="text-xs text-slate-500">{c.code}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {renderStatus(c.status === "ACTIVE")}
-                      {renderRowActions("company", c.id, c.status === "ACTIVE", c.name)}
-                    </div>
+            <div className="space-y-2">
+              {organizations.map((c) => (
+                <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{c.name}</p>
+                    <p className="text-xs text-slate-500">{c.code}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="flex items-center gap-2">
+                    {renderStatus(c.status === "ACTIVE")}
+                    {renderRowActions("company", c.id, c.status === "ACTIVE")}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -428,41 +496,22 @@ export default function MasterDataPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {departments.length === 0 ? (
-              <EmptyState
-                icon={Building2}
-                title="Belum ada departemen"
-                description="Tambah departemen pertama untuk memulai master data organisasi."
-                action={
-                  <Can action="master-data.edit">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { resetForm(); setShowCreate("department"); }}
-                    >
-                      <Plus className="size-3.5" /> Tambah Departemen
-                    </Button>
-                  </Can>
-                }
-              />
-            ) : (
-              <div className="space-y-2">
-                {departments.map((d) => (
-                  <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{d.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {d.code} · {d.organization?.name ?? "-"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {renderStatus(d.active)}
-                      {renderRowActions("department", d.id, d.active, d.name)}
-                    </div>
+            <div className="space-y-2">
+              {departments.map((d) => (
+                <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{d.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {d.code} · {d.organization?.name ?? "-"}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="flex items-center gap-2">
+                    {renderStatus(d.active)}
+                    {renderRowActions("department", d.id, d.active)}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -481,44 +530,25 @@ export default function MasterDataPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {sites.length === 0 ? (
-              <EmptyState
-                icon={MapPin}
-                title="Belum ada lokasi kerja"
-                description="Tambah lokasi kerja pertama untuk memulai master data organisasi."
-                action={
-                  <Can action="master-data.edit">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { resetForm(); setShowCreate("location"); }}
-                    >
-                      <Plus className="size-3.5" /> Tambah Lokasi
-                    </Button>
-                  </Can>
-                }
-              />
-            ) : (
-              <div className="space-y-2">
-                {sites.map((l) => (
-                  <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">{l.name}</p>
-                      <p className="text-xs text-slate-500">
-                        {l.code} · {l.org_unit?.organization?.name ?? "-"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="default" className="capitalize">
-                        {l.site_type?.replace(/_/g, " ").toLowerCase() ?? "-"}
-                      </Badge>
-                      {renderStatus(l.active)}
-                      {renderRowActions("location", l.id, l.active, l.name)}
-                    </div>
+            <div className="space-y-2">
+              {sites.map((l) => (
+                <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{l.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {l.code} · {l.org_unit?.organization?.name ?? "-"}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="capitalize">
+                      {l.site_type?.replace(/_/g, " ").toLowerCase() ?? "-"}
+                    </Badge>
+                    {renderStatus(l.active)}
+                    {renderRowActions("location", l.id, l.active)}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -612,38 +642,6 @@ export default function MasterDataPage() {
           </div>
         </div>
       </Modal>
-
-      {/* Dialog konfirmasi nonaktifkan/aktifkan master data */}
-      {confirmToggle && (
-        <Modal
-          open={true}
-          onClose={() => setConfirmToggle(null)}
-          title={`Konfirmasi ${confirmToggle.nextActive ? "Aktifkan" : "Nonaktifkan"} Data`}
-          size="md"
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-slate-700">
-              Apakah Anda yakin ingin{" "}
-              <span className="font-medium">
-                {confirmToggle.nextActive ? "mengaktifkan" : "menonaktifkan"}
-              </span>{" "}
-              {confirmToggle.name}? Data yang dinonaktifkan tidak akan muncul dalam daftar aktif.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setConfirmToggle(null)}>
-                Batal
-              </Button>
-              <Button
-                onClick={handleConfirmToggle}
-                disabled={saving}
-                variant={confirmToggle.nextActive ? "default" : "danger"}
-              >
-                {saving ? "Memproses..." : confirmToggle.nextActive ? "Aktifkan" : "Nonaktifkan"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

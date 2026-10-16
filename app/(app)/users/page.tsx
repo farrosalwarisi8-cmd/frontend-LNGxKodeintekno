@@ -5,19 +5,17 @@ import { Can } from "@/components/can";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { syncUsers, useSyncedModules } from "@/lib/remote-sync";
-import { iamService } from "@/lib/services/iam.service";
-import { backendRoleCode } from "@/lib/services/auth.service";
-import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { iamService, IamOperationUnsupportedError } from "@/lib/services/iam.service";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { ROLES } from "@/lib/constants";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Avatar } from "@/components/ui/avatar";
-import { Modal } from "@/components/ui/modal";
-import { Search, Plus, KeyRound } from "lucide-react";
+import { Card } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { Input } from "@/shared/components/design-system/input";
+import { Select } from "@/shared/components/design-system/select";
+import { Avatar } from "@/shared/components/design-system/avatar";
+import { Search, KeyRound, LockOpen } from "lucide-react";
 
 export default function UsersPage() {
   const users = useStore((s) => s.users);
@@ -26,11 +24,9 @@ export default function UsersPage() {
   const { loading, error, refetch } = useSyncedModules(() => syncUsers(1, 100));
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [newUser, setNewUser] = useState({ username: "", password: "", name: "", role: "", title: "", mfaEnabled: false });
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionInfo, setActionInfo] = useState<string | null>(null);
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
@@ -40,46 +36,34 @@ export default function UsersPage() {
   });
 
   /**
-   * Simpan user BARU ke backend (POST /iam/users).
-   * Tidak ada mock success: bila backend menolak, error ditampilkan apa adanya.
+   * Buka kunci akun (POST /iam/users/:id/unlock).
+   *
+   * Ini satu-satunya operasi tulis yang diekspos backend untuk
+   * `iam/users` (lihat API_ENDPOINTS.md §1.5 dan users.controller.ts):
+   * akun terkunci setelah beberapa kali login gagal dapat dibuka
+   * di sini. Operasi lain (buat/ubah/nonaktifkan akun) TIDAK
+   * tersedia di backend — oleh karena itu tidak ada tombolnya,
+   * bukan sekadar error 404.
    */
-  const handleCreate = async () => {
-    setSaveError(null);
-    const roleCode = newUser.role ? backendRoleCode(newUser.role) : null;
-    if (!newUser.username || !newUser.password || !roleCode) {
-      setSaveError("Username, password, dan role wajib diisi (role admin-klinik/pekerja belum memiliki padanan role backend).");
-      return;
-    }
-    setSaving(true);
+  const handleUnlock = async (userId: string, username: string) => {
+    setUnlockingId(userId);
+    setActionError(null);
+    setActionInfo(null);
     try {
-      await iamService.createUser({
-        username: newUser.username,
-        email: `${newUser.username}@layargas.co.id`,
-        password: newUser.password,
-        roleCode,
-      });
-      setShowModal(false);
-      setNewUser({ username: "", password: "", name: "", role: "", title: "", mfaEnabled: false });
-      await syncUsers(1, 100);
-      refetch();
+      const res = await iamService.unlockUser(userId);
+      setActionInfo(
+        `Akun @${res.username ?? username} berhasil dibuka kuncinya.`
+      );
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Gagal menyimpan user ke backend.");
+      if (e instanceof IamOperationUnsupportedError) {
+        setActionError(e.message);
+      } else {
+        setActionError(
+          e instanceof Error ? e.message : "Gagal membuka kunci akun."
+        );
+      }
     } finally {
-      setSaving(false);
-    }
-  };
-
-  /** Aktif/nonaktifkan akun (PATCH /iam/users/:id) — perubahan nyata di backend. */
-  const handleToggleActive = async (id: string, active: boolean) => {
-    setTogglingId(id);
-    setSaveError(null);
-    try {
-      await iamService.updateUser(id, { active });
-      await syncUsers(1, 100);
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Gagal mengubah status user.");
-    } finally {
-      setTogglingId(null);
+      setUnlockingId(null);
     }
   };
 
@@ -88,20 +72,16 @@ export default function UsersPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Manajemen User</h1>
-          <p className="text-sm text-slate-500">Kelola akun user dan role</p>
+          <p className="text-sm text-slate-500">
+            Daftar akun, role, dan scope dari backend (GET /iam/users)
+          </p>
         </div>
-        <Can action="users.manage">
-          <Button onClick={() => { setSaveError(null); setShowModal(true); }}>
-            <Plus className="size-4" />
-            Tambah User
-          </Button>
-        </Can>
       </div>
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari nama, username..."
               value={search}
@@ -120,9 +100,25 @@ export default function UsersPage() {
 
       <p className="text-sm text-slate-500">{filtered.length} user</p>
 
-      {saveError && (
-        <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{saveError}</div>
+      {actionError && (
+        <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{actionError}</div>
       )}
+      {actionInfo && (
+        <div className="rounded-xl bg-success-50 p-3 text-sm text-success-700">
+          {actionInfo}
+        </div>
+      )}
+
+      <div className="rounded-xl border border-info-200 bg-info-50 p-3 text-sm text-info-700">
+        <p className="font-medium">Catatan integrasi backend (Modul 7 — IAM)</p>
+        <p className="text-xs">
+          Backend saat ini hanya mengekspos pembacaan akun (GET /iam/users,
+          GET /iam/users/:id) dan pembukaan kunci (POST /iam/users/:id/unlock).
+          Pembuatan, perubahan, dan penonaktifan akun belum tersedia di API —
+          kelola provisioning akun di direktori/backend, lalu sinkronkan di
+          halaman ini.
+        </p>
+      </div>
 
       {error && <ErrorState title="Gagal memuat daftar user" message={error} onRetry={refetch} />}
 
@@ -136,6 +132,7 @@ export default function UsersPage() {
       <div className="space-y-3">
         {filtered.map((user) => {
           const roleMeta = ROLES[user.role];
+          const isInactive = user.active === false;
           return (
             <Card key={user.id} className="p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -144,9 +141,12 @@ export default function UsersPage() {
                   <div>
                     <p className="font-medium text-slate-900">{user.name}</p>
                     <p className="text-xs text-slate-500">@{user.username} · {user.title}</p>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className={roleMeta?.color}>
                         {roleMeta?.label}
+                      </Badge>
+                      <Badge variant={isInactive ? "default" : "success"}>
+                        {isInactive ? "Nonaktif" : "Aktif"}
                       </Badge>
                       {user.mfaEnabled && (
                         <Badge variant="success">
@@ -162,11 +162,12 @@ export default function UsersPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      loading={togglingId === user.id}
-                      disabled={togglingId === user.id}
-                      onClick={() => handleToggleActive(user.id, false)}
+                      loading={unlockingId === user.id}
+                      disabled={unlockingId === user.id}
+                      onClick={() => handleUnlock(user.id, user.username)}
                     >
-                      Nonaktifkan
+                      <LockOpen className="size-3.5" />
+                      Buka Kunci
                     </Button>
                   </Can>
                 </div>
@@ -175,37 +176,6 @@ export default function UsersPage() {
           );
         })}
       </div>
-
-      <Modal
-        open={showModal}
-        onClose={() => setShowModal(false)}
-        title="Tambah User Baru"
-        size="md"
-      >
-        <div className="space-y-4">
-          {saveError && (
-            <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{saveError}</div>
-          )}
-          <Input label="Username" value={newUser.username} onChange={(e) => setNewUser((u) => ({ ...u, username: e.target.value }))} />
-          <Input label="Email" value={newUser.username ? `${newUser.username}@layargas.co.id` : ""} onChange={() => {}} disabled />
-          <Input label="Password" type="password" value={newUser.password} onChange={(e) => setNewUser((u) => ({ ...u, password: e.target.value }))} />
-          <Select
-            label="Role"
-            value={newUser.role}
-            onChange={(e) => setNewUser((u) => ({ ...u, role: e.target.value }))}
-            placeholder="Pilih role"
-            options={Object.entries(ROLES)
-              .filter(([key]) => backendRoleCode(key) !== null)
-              .map(([value, { label }]) => ({ value, label }))}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowModal(false)} disabled={saving}>Batal</Button>
-            <Can action="users.manage">
-              <Button onClick={handleCreate} loading={saving} disabled={saving}>Simpan</Button>
-            </Can>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

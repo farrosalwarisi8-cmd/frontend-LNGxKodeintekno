@@ -215,7 +215,7 @@ export function NotificationBell() {
                     )}
                     <time
                       dateTime={n.createdAt}
-                      className="mt-1 block text-[11px] text-slate-400"
+                      className="mt-1 block text-[11px] text-slate-500"
                       title={formatDateTime(n.createdAt)}
                     >
                       {formatDateTime(n.createdAt)}

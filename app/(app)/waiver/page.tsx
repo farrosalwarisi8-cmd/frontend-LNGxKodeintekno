@@ -3,31 +3,25 @@
 import { Can } from "@/components/can";
 
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Modal } from "@/components/ui/modal";
-import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useStore } from "@/lib/store";
+import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { Input } from "@/shared/components/design-system/input";
+import { Select } from "@/shared/components/design-system/select";
+import { Modal } from "@/shared/components/design-system/modal";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { ErrorState } from "@/shared/components/design-system/error-state";
+import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { ApiError } from "@/lib/api-client";
-import { toastSuccess, toastError } from "@/lib/use-toast";
 import {
   waiverService,
+  filterWaiversBySite,
   type BackendWaiver,
   type WaiverDecision,
 } from "@/lib/services/waiver.service";
+import { masterDataService } from "@/lib/services/master-data.service";
 import { ShieldAlert, Plus, CheckCircle, Clock, XCircle, Send, Ban, Search } from "lucide-react";
 
 const EMPTY_FORM = {
@@ -63,6 +57,11 @@ export default function WaiverPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  // Fase 4 — scope site aktif: daftar waiver di-refetch saat scope berubah
+  // dan baris dari scope lain disaring keluar (data lama tidak tampil).
+  const activeSiteId = useStore((s) => s.activeSiteId);
+  const scopeVersion = useStore((s) => s.scopeVersion);
+
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
@@ -73,25 +72,34 @@ export default function WaiverPage() {
   const [publicToken, setPublicToken] = useState("");
   const [publicResult, setPublicResult] = useState<string | null>(null);
 
+  // Fase 4 — kirim consent: backend mewajibkan email penerima (hostEmail atau
+  // body.email). Bila waiver tidak punya host_email, UI memungkinkan input
+  // email sebelum mengirim (sebelumnya langsung 400 tanpa jalan keluar).
+  const [sendTarget, setSendTarget] = useState<BackendWaiver | null>(null);
+  const [sendEmail, setSendEmail] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await waiverService.list(1, 50, search || undefined);
-      setWaivers(res.data);
+      // Fase 4 — GET /waivers di-scope backend per token; untuk user GLOBAL
+      // yang memilih scope site tertentu, baris luar scope dibuang di client.
+      setWaivers(filterWaiversBySite(res.data, activeSiteId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat waiver dari backend.");
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, activeSiteId]);
 
   useEffect(() => {
     // Defer agar setState tidak dipanggil sinkron di dalam effect
     // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
-  }, [load]);
+    // scopeVersion: refetch saat user berpindah scope site.
+  }, [load, scopeVersion]);
 
   const handleSubmit = async () => {
     setActionError(null);
@@ -101,7 +109,17 @@ export default function WaiverPage() {
     }
     setSaving(true);
     try {
+      // Fase 4 — waiver yang dibuat saat scope site aktif harus ikut site itu,
+      // andai tidak, backend menyimpan site_id=null dan waiver langsung hilang
+      // dari daftar (disaring keluar oleh scope aktif).
+      const { activeSiteId } = useStore.getState();
+      let siteCode: string | undefined;
+      if (activeSiteId) {
+        const sites = await masterDataService.listSites({ active: true });
+        siteCode = sites.find((s) => s.id === activeSiteId)?.code;
+      }
       await waiverService.create({
+        siteCode,
         visitorName: formData.visitorName,
         company: formData.company || undefined,
         hostName: formData.hostName || undefined,
@@ -116,10 +134,8 @@ export default function WaiverPage() {
       setShowModal(false);
       setFormData({ ...EMPTY_FORM });
       await load();
-      toastSuccess("Waiver disimpan", "Waiver visitor berhasil tercatat di backend.");
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Gagal menyimpan waiver.");
-      toastError("Gagal menyimpan waiver", e instanceof Error ? e.message : undefined);
     } finally {
       setSaving(false);
     }
@@ -131,20 +147,18 @@ export default function WaiverPage() {
     try {
       await waiverService.decide(id, status);
       await load();
-      toastSuccess(status === "APPROVED" ? "Waiver disetujui" : "Waiver ditolak", "Keputusan waiver telah tersimpan.");
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Gagal memutus waiver.");
-      toastError("Gagal memutus waiver", e instanceof Error ? e.message : undefined);
     } finally {
       setActingId(null);
     }
   };
 
-  const handleSend = async (id: string) => {
+  const handleSend = async (id: string, email?: string) => {
     setActingId(id);
     setActionError(null);
     try {
-      const res = await waiverService.send(id);
+      const res = await waiverService.send(id, email || undefined);
       setPublicResult(
         res.devToken
           ? `Token dikirim ke ${res.email}. Token uji (non-production): ${res.devToken}`
@@ -152,13 +166,36 @@ export default function WaiverPage() {
       );
       setPublicToken(res.devToken ?? "");
       await load();
-      toastSuccess("Consent terkirim", "Token consent telah dikirim ke email host.");
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Gagal mengirim consent.");
-      toastError("Gagal mengirim consent", e instanceof Error ? e.message : undefined);
     } finally {
       setActingId(null);
     }
+  };
+
+  /**
+   * Fase 4 — minta email bila waiver belum punya host_email, karena backend
+   * menolak send tanpa email penerima (400).
+   */
+  const requestSend = (waiver: BackendWaiver) => {
+    if (waiver.host_email) {
+      void handleSend(waiver.id);
+      return;
+    }
+    setSendTarget(waiver);
+    setSendEmail("");
+  };
+
+  const confirmSend = async () => {
+    if (!sendTarget) return;
+    const email = sendEmail.trim();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      setActionError("Email penerima consent wajib diisi dengan format yang benar.");
+      return;
+    }
+    const id = sendTarget.id;
+    setSendTarget(null);
+    await handleSend(id, email);
   };
 
   const handleRevoke = async (id: string) => {
@@ -167,10 +204,8 @@ export default function WaiverPage() {
     try {
       await waiverService.revoke(id);
       await load();
-      toastSuccess("Token direvoke", "Token consent telah dicabut.");
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Gagal merevoke token.");
-      toastError("Gagal mencabut token", e instanceof Error ? e.message : undefined);
     } finally {
       setActingId(null);
     }
@@ -183,10 +218,8 @@ export default function WaiverPage() {
       setPublicResult(
         `Token ${res.valid ? "VALID" : "TIDAK VALID"} — ${res.visitorName} (${res.site ?? "-"}), berlaku s/d ${formatDate(res.validUntil)}`
       );
-      toastSuccess(res.valid ? "Token valid" : "Token tidak valid", `Token untuk ${res.visitorName} ${res.valid ? "dapat diverifikasi" : "tidak dapat diverifikasi"}.`);
     } catch (e) {
       setPublicResult(e instanceof Error ? e.message : "Verifikasi token gagal.");
-      toastError("Verifikasi token gagal", e instanceof Error ? e.message : undefined);
     }
   };
 
@@ -199,7 +232,6 @@ export default function WaiverPage() {
           : await waiverService.publicReject(publicToken);
       setPublicResult(`Public decision tersimpan: ${res.status} / ${res.decision}`);
       await load();
-      toastSuccess("Keputusan publik tersimpan", `Keputusan: ${res.status} / ${res.decision}.`);
     } catch (e) {
       setPublicResult(
         e instanceof ApiError && e.status === 409
@@ -208,7 +240,6 @@ export default function WaiverPage() {
             ? e.message
             : "Public decision gagal."
       );
-      toastError("Public decision gagal", e instanceof Error ? e.message : undefined);
     }
   };
 
@@ -220,20 +251,11 @@ export default function WaiverPage() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Waiver Visitor</h1>
-          <p className="text-sm text-slate-500">
-            Kelola waiver untuk visitor tanpa MCU — tersimpan di backend sesuai site scope Anda
-          </p>
-        </div>
-        <Can action="waiver.decide">
-          <Button onClick={() => { setActionError(null); setShowModal(true); }}>
-            <Plus className="size-4" />
-            Buat Waiver
-          </Button>
-        </Can>
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900">Waiver Visitor</h1>
+        <p className="text-sm text-slate-500">
+          Kelola waiver untuk visitor tanpa MCU — tersimpan di backend sesuai site scope Anda
+        </p>
       </div>
 
       {actionError && (
@@ -242,7 +264,29 @@ export default function WaiverPage() {
         </div>
       )}
 
-      {/* Ringkasan status */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <Input
+            placeholder="Cari nama visitor / perusahaan..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Can action="waiver.decide">
+          <Button
+            onClick={() => {
+              setActionError(null);
+              setShowModal(true);
+            }}
+          >
+            <Plus className="size-4" />
+            Buat Waiver
+          </Button>
+        </Can>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
@@ -279,19 +323,6 @@ export default function WaiverPage() {
         </Card>
       </div>
 
-      {/* Filter bar */}
-      <Card className="p-4">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="Cari nama visitor / perusahaan..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </Card>
-
       {loading && (
         <div className="space-y-3">
           <Skeleton className="h-20 w-full" />
@@ -311,91 +342,76 @@ export default function WaiverPage() {
 
       {!loading && !error && (
         <div className="space-y-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama Visitor</TableHead>
-                <TableHead>Perusahaan</TableHead>
-                <TableHead>Site</TableHead>
-                <TableHead className="text-right">Berlaku s/d</TableHead>
-                <TableHead className="text-center w-24">Status</TableHead>
-                <TableHead className="text-right w-40">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {waivers.map((waiver) => {
-                const lifecycle = lifecycleOf(waiver);
-                const consent = waiver.waiver_consent;
-                const busy = actingId === waiver.id;
-                return (
-                  <TableRow key={waiver.id}>
-                    <TableCell className="whitespace-normal">
-                      <div className="space-y-1">
-                        <p className="font-medium text-slate-900">{waiver.visitor_name}</p>
-                        <p className="text-xs text-slate-500">Tujuan: {waiver.purpose}</p>
-                        {waiver.deviation && <p className="text-xs text-slate-500">Deviasi: {waiver.deviation}</p>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="whitespace-normal">
-                      <p className="text-sm text-slate-900">{waiver.company ?? "-"}</p>
-                    </TableCell>
-                    <TableCell className="whitespace-normal">
-                      <p className="text-sm text-slate-900">{waiver.site?.name ?? "Tanpa site"}</p>
-                    </TableCell>
-                    <TableCell className="text-right whitespace-normal">
-                      <p className="text-sm text-slate-900">{formatDate(waiver.valid_until)}</p>
-                    </TableCell>
-                    <TableCell className="text-center whitespace-normal">
-                      <Badge variant={BADGE_VARIANT[lifecycle] ?? "default"}>{lifecycle}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {consent ? (consent.revoked_at ? "Direvoke" : "Consent terkirim") : "Belum dikirim"}
-                        </Badge>
-                        <Can action="waiver.decide">
-                          {lifecycle === "PENDING" && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={busy}
-                                onClick={() => handleDecision(waiver.id, "REJECTED")}
-                              >
-                                Tolak
-                              </Button>
-                              <Button size="sm" disabled={busy} onClick={() => handleDecision(waiver.id, "APPROVED")}>
-                                Approve
-                              </Button>
-                            </>
-                          )}
+          {waivers.map((waiver) => {
+            const lifecycle = lifecycleOf(waiver);
+            const consent = waiver.waiver_consent;
+            const busy = actingId === waiver.id;
+            return (
+              <Card key={waiver.id} className="p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="font-medium text-slate-900">{waiver.visitor_name}</p>
+                    <p className="text-xs text-slate-500">
+                      {waiver.company ?? "-"} · {waiver.site?.name ?? "Tanpa site"} ·{" "}
+                      {formatDate(waiver.created_at ?? waiver.valid_until)}
+                    </p>
+                    <p className="text-xs text-slate-500">Tujuan: {waiver.purpose}</p>
+                    {waiver.deviation && (
+                      <p className="text-xs text-slate-500">Deviasi: {waiver.deviation}</p>
+                    )}
+                    <p className="text-xs text-slate-500">
+                      Berlaku s/d {formatDate(waiver.valid_until)}
+                    </p>
+                    {consent && (
+                      <p className="text-xs text-slate-500">
+                        Consent: {consent.decision ?? "-"}
+                        {consent.used_at ? " · sudah dipakai" : ""}
+                        {consent.revoked_at ? " · direvoke" : ""}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={BADGE_VARIANT[lifecycle] ?? "default"}>{lifecycle}</Badge>
+                    <Can action="waiver.decide">
+                      {lifecycle === "PENDING" && (
+                        <>
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
                             disabled={busy}
-                            onClick={() => handleSend(waiver.id)}
+                            onClick={() => handleDecision(waiver.id, "REJECTED")}
                           >
-                            <Send className="size-3.5" />
-                            {consent ? "Kirim ulang" : "Kirim consent"}
+                            Tolak
                           </Button>
-                          {consent && !consent.revoked_at && (
-                            <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleRevoke(waiver.id)}>
-                              <Ban className="size-3.5" />
-                              Revoke
-                            </Button>
-                          )}
-                        </Can>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                          <Button size="sm" disabled={busy} onClick={() => handleDecision(waiver.id, "APPROVED")}>
+                            Approve
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => requestSend(waiver)}
+                      >
+                        <Send className="size-3.5" />
+                        {consent ? "Kirim ulang" : "Kirim consent"}
+                      </Button>
+                      {consent && !consent.revoked_at && (
+                        <Button size="sm" variant="ghost" disabled={busy} onClick={() => handleRevoke(waiver.id)}>
+                          <Ban className="size-3.5" />
+                          Revoke
+                        </Button>
+                      )}
+                    </Can>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Panel aksi publik (uji alur token) */}
       <Card className="p-4">
         <p className="text-sm font-medium text-slate-900">Uji alur publik (verify / approve / reject)</p>
         <p className="text-xs text-slate-500">
@@ -421,6 +437,37 @@ export default function WaiverPage() {
         </div>
         {publicResult && <p className="mt-2 text-xs text-slate-600">{publicResult}</p>}
       </Card>
+
+      {/* Fase 4 — input email penerima bila waiver belum memiliki host_email */}
+      <Modal
+        open={sendTarget !== null}
+        onClose={() => setSendTarget(null)}
+        title="Kirim Consent Waiver"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Waiver <span className="font-medium">{sendTarget?.visitor_name}</span> belum memiliki
+            email host. Masukkan email penerima consent untuk mengirim token verifikasi.
+          </p>
+          <Input
+            label="Email Penerima"
+            type="email"
+            value={sendEmail}
+            onChange={(e) => setSendEmail(e.target.value)}
+            placeholder="nama@contoh.com"
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setSendTarget(null)}>
+              Batal
+            </Button>
+            <Button onClick={confirmSend} disabled={actingId !== null}>
+              <Send className="size-3.5" />
+              Kirim Consent
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Buat Waiver Visitor" size="lg">
         <div className="space-y-4">

@@ -5,16 +5,17 @@ import { Can, useCan } from "@/components/can";
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
-import { syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
+import { syncCertificates, syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { documentService } from "@/lib/services/document.service";
 import { CERT_STATUS } from "@/lib/constants";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Badge } from "@/shared/components/design-system/badge";
+import { Button } from "@/shared/components/design-system/button";
+import { Input } from "@/shared/components/design-system/input";
+import { Select } from "@/shared/components/design-system/select";
+import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
-import { Search, BadgeCheck, Plus, QrCode } from "lucide-react";
+import { Search, BadgeCheck, Plus, QrCode, ChevronRight, ShieldCheck, ExternalLink } from "lucide-react";
 
 export default function CertificatesPage() {
   const certificates = useStore((s) => s.certificates);
@@ -29,10 +30,25 @@ export default function CertificatesPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Modul 9 — data MCU & pekerja dari backend untuk menerbitkan sertifikat
+  // Fase 6 — QR verification modal
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrToken, setQrToken] = useState("");
+  const [qrVerifying, setQrVerifying] = useState(false);
+  const [qrResult, setQrResult] = useState<{
+    isValid: boolean;
+    status: string;
+    documentTitle?: string;
+    issuer?: string;
+    issuedAt?: string;
+  } | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
+
+  // Modul 9 — data MCU & pekerja dari backend untuk menerbitkan sertifikat;
+  // daftar sertifikat + QR-nya diambil dari dokumen FTW backend.
   const { loading, error, refetch } = useSyncedModules(async () => {
     await syncPatients(1, 100);
     await syncMcu(1, 100);
+    await syncCertificates(1, 100);
   });
 
   /**
@@ -41,8 +57,6 @@ export default function CertificatesPage() {
    *  2. POST /api/v1/signatures/request     -> permintaan tanda tangan PSrE
    */
   const handleIssue = async (mcuId: string) => {
-    // Alur ini meminta tanda tangan PSrE ke backend — dijaga permission yang
-    // sama seperti tombolnya (pertahanan berlapis, bukan hanya sembunyikan CTA).
     if (!can("documents.request-signature")) {
       setMsg("Anda tidak memiliki izin untuk meminta tanda tangan dokumen.");
       return;
@@ -69,6 +83,31 @@ export default function CertificatesPage() {
       setMsg(e instanceof Error ? e.message : "Gagal membuat dokumen di backend.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  /**
+   * Fase 6 — Verifikasi QR dari UI (buka halaman /verify/:token)
+   */
+  const handleVerifyQr = async (token: string) => {
+    setQrToken(token);
+    setShowQrModal(true);
+    setQrVerifying(true);
+    setQrResult(null);
+    setQrError(null);
+    try {
+      const result = await documentService.verifyPublic(token);
+      setQrResult({
+        isValid: result.isValid,
+        status: result.status,
+        documentTitle: result.documentTitle,
+        issuer: result.issuer,
+        issuedAt: result.issuedAt,
+      });
+    } catch (e) {
+      setQrError(e instanceof Error ? e.message : "Gagal memverifikasi QR.");
+    } finally {
+      setQrVerifying(false);
     }
   };
 
@@ -105,7 +144,7 @@ export default function CertificatesPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Cari nomor sertifikat, nama pekerja..."
               value={search}
@@ -175,10 +214,21 @@ export default function CertificatesPage() {
                   <Badge variant="outline" className={statusMeta?.color}>
                     {statusMeta?.label}
                   </Badge>
+                  {/* Fase 6 — Tombol Verifikasi QR langsung dari sini */}
+                  {cert.qrToken && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleVerifyQr(cert.qrToken)}
+                    >
+                      <QrCode className="size-3.5" />
+                      Verifikasi QR
+                    </Button>
+                  )}
                   <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
                     <Button variant="outline" size="sm">
-                      <QrCode className="size-3.5" />
-                      QR
+                      <ExternalLink className="size-3.5" />
+                      Buka
                     </Button>
                   </Link>
                   {cert.status === "valid" && (
@@ -194,6 +244,57 @@ export default function CertificatesPage() {
           );
         })}
       </div>
+
+      {/* Fase 6 — QR Verification Modal */}
+      <Modal
+        open={showQrModal}
+        onClose={() => {
+          setShowQrModal(false);
+          setQrResult(null);
+          setQrError(null);
+        }}
+        title="Verifikasi QR Sertifikat"
+      >
+        <div className="space-y-4">
+          {qrVerifying && (
+            <div className="flex flex-col items-center gap-2 py-6">
+              <div className="size-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
+              <p className="text-sm text-slate-500">Memverifikasi token...</p>
+            </div>
+          )}
+
+          {qrError && (
+            <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+              {qrError}
+            </div>
+          )}
+
+          {qrResult && qrResult.isValid && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-xl bg-success-50 p-3">
+                <ShieldCheck className="size-5 text-success-600" />
+                <div>
+                  <p className="text-sm font-medium text-success-700">Sertifikat Valid</p>
+                  <p className="text-xs text-success-600">{qrResult.status}</p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3 text-sm space-y-1">
+                <p><span className="font-medium">Judul:</span> {qrResult.documentTitle ?? "—"}</p>
+                <p><span className="font-medium">Penerbit:</span> {qrResult.issuer ?? "—"}</p>
+                <p><span className="font-medium">Terbit:</span> {qrResult.issuedAt ? formatDate(qrResult.issuedAt) : "—"}</p>
+              </div>
+            </div>
+          )}
+
+          {qrResult && !qrResult.isValid && (
+            <div className="flex flex-col items-center gap-2 rounded-xl bg-danger-50 p-6 text-center">
+              <QrCode className="size-8 text-danger-600" />
+              <p className="font-medium text-danger-700">Sertifikat Tidak Ditemukan</p>
+              <p className="text-sm text-danger-600">{qrResult.status}</p>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

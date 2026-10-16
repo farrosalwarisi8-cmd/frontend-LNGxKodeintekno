@@ -1,0 +1,1 @@
+export { Skeleton, PeopleListSkeleton } from "@/components/ui/skeleton";

@@ -21,6 +21,7 @@ import {
   type McuType,
 } from "@/lib/services/mcu.service";
 import { pharmacyService, type BackendInventoryItem } from "@/lib/services/pharmacy.service";
+import { documentService, type BackendDocument } from "@/lib/services/document.service";
 import { notificationService, type BackendNotification } from "@/lib/services/notification.service";
 import { iamService, type BackendAuditLogRow, type BackendUserRow } from "@/lib/services/iam.service";
 import { mapBackendRole, ROLE_TITLES } from "@/lib/services/auth.service";
@@ -31,11 +32,13 @@ import type {
   Company,
   Department,
   Employee,
+  HealthCertificate,
   Medicine,
   MCU,
   StockBatch,
   User,
   VisitStatus,
+  WorkHealthStatus,
   WorkLocation,
 } from "@/lib/types";
 import type { PersonListItem } from "@/features/people/api/people.types";
@@ -60,7 +63,13 @@ function mergeById<T extends { id: string }>(base: T[], extra: T[]): T[] {
 // ---------------------------------------------------------------------------
 export async function syncPatients(page = 1, limit = PAGE_SIZE): Promise<PersonListItem[]> {
   const res = await patientService.list({ page, pageSize: limit });
-  const rows = res.data;
+  // Fase 4 — GET /patients tidak menerima siteId (kontrak backend), jadi untuk
+  // user GLOBAL yang memilih scope site tertentu, filter baris dilakukan di
+  // client berdasarkan nama site (satu-satunya info site pada response list).
+  const { activeSiteName } = useStore.getState();
+  const rows = activeSiteName
+    ? res.data.filter((p) => (p.siteName ?? "") === activeSiteName)
+    : res.data;
 
   const employees: Employee[] = rows.map((p) => ({
     id: p.id,
@@ -137,6 +146,7 @@ export function mapQueueTicket(ticket: BackendQueueTicket, index: number): Clini
     visitNumber: ticket.ticket_no ?? `TKT-${index + 1}`,
     queueNumber: index + 1,
     employeeId: patient?.id ?? "",
+    appointmentId: ticket.appointment_id,
     locationId: "",
     date: createdAt.slice(0, 10),
     time: createdAt ? new Date(createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "",
@@ -151,11 +161,49 @@ export function mapQueueTicket(ticket: BackendQueueTicket, index: number): Clini
   };
 }
 
+/**
+ * Jejak yang hanya dimiliki lapisan frontend dan harus bertahan saat
+ * antrean di-refetch: id encounter backend, status kunci (LOCKED), dan
+ * isi SOAP yang sudah tersimpan. Tanpa ini bukti "SOAP tersimpan" dan
+ * "record terkunci" hilang setiap kali halaman dimuat ulang.
+ */
+function keepLocalClinicalTrace(prev: ClinicVisit, next: ClinicVisit): ClinicVisit {
+  return {
+    ...next,
+    appointmentId: prev.appointmentId || next.appointmentId,
+    encounterId: prev.encounterId,
+    recordStatus: prev.recordStatus,
+    lockedAt: prev.lockedAt,
+    employeeId: prev.employeeId || next.employeeId,
+    locationId: prev.locationId || next.locationId,
+    chiefComplaint: prev.chiefComplaint || next.chiefComplaint,
+    initialExam: prev.initialExam || next.initialExam,
+    diagnosisIds: prev.diagnosisIds.length > 0 ? prev.diagnosisIds : next.diagnosisIds,
+    diagnosisNote: prev.diagnosisNote || next.diagnosisNote,
+    treatment: prev.treatment || next.treatment,
+    doctorNote: prev.doctorNote || next.doctorNote,
+  };
+}
+
 export async function syncQueues(siteId?: string): Promise<ClinicVisit[]> {
-  const tickets = await encounterService.getQueues(siteId);
-  const visits = tickets.map(mapQueueTicket);
-  useStore.setState({ visits });
-  return visits;
+  // Fase 4 — bila caller tidak menentukan site, pakai scope site aktif dari UI
+  // (GET /clinic/queues?siteId= didukung backend).
+  const activeSiteId = useStore.getState().activeSiteId;
+  const tickets = await encounterService.getQueues(siteId ?? activeSiteId ?? undefined);
+  const fresh = tickets.map(mapQueueTicket);
+  const visits = useStore.getState().visits;
+  const queuedIds = new Set(fresh.map((v) => v.id));
+  const merged = fresh.map((next) => {
+    const prev = visits.find((v) => v.id === next.id);
+    return prev ? keepLocalClinicalTrace(prev, next) : next;
+  });
+  // Kunjungan yang dibuat via POST /clinic/encounters (bukan dari antrean)
+  // tetap ditampilkan — kalau tidak, bukti "SOAP tersimpan" hilang begitu
+  // halaman Rekam Medis di-refresh.
+  const localEncounters = visits.filter((v) => v.encounterId && !queuedIds.has(v.id));
+  const result = [...merged, ...localEncounters];
+  useStore.setState({ visits: result });
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -247,9 +295,132 @@ export function mapMcuCycle(cycle: BackendMcuCycle, index: number): MCU {
   };
 }
 
+/**
+ * Peta 1 siklus MCU + assessment FTW-nya menjadi status kesehatan kerja.
+ * Mengembalikan `null` bila siklus belum punya keputusan FTW.
+ */
+export function mapWorkHealthStatus(cycle: BackendMcuCycle): WorkHealthStatus | null {
+  const assessment = cycle.ftw_assessment;
+  if (!assessment) return null;
+
+  const restrictions = assessment.restrictions ?? [];
+  const active =
+    restrictions.find((r) => (r.status ?? "ACTIVE") === "ACTIVE") ?? restrictions[0];
+  const assessedAt =
+    iso(assessment.assessed_at) || iso(cycle.updated_at) || iso(cycle.created_at);
+
+  return {
+    id: assessment.id,
+    employeeId: cycle.patient?.id ?? "",
+    mcuId: cycle.id,
+    status: mapFtwToHealthStatus(assessment.ftw_status) ?? "Fit to Work",
+    decisionDate: assessedAt.slice(0, 10),
+    validFrom: (cycle.valid_from ?? cycle.examination_date ?? "").slice(0, 10),
+    validUntil: (assessment.valid_until ?? cycle.valid_until ?? "").slice(0, 10),
+    restriction: active?.description,
+    recommendation: assessment.summary ?? undefined,
+    reviewDate: active?.review_date?.slice(0, 10),
+    doctorId: assessment.assessed_by ?? "",
+    doctorName: "",
+    createdAt: assessedAt || new Date().toISOString(),
+  };
+}
+
+/**
+ * Modul 4 — Status Kesehatan Kerja / Fitness to Work dari backend.
+ *
+ * Sumber: `GET /api/v1/mcu/cycles` (field `ftw_assessment` + `restrictions`).
+ * Sebelumnya halaman /health-status, /dashboard, dan /reports membaca
+ * `workHealthStatus` dari data seed lokal; sekarang diganti hasil backend.
+ */
+export async function syncWorkHealthStatus(
+  page = 1,
+  limit = PAGE_SIZE
+): Promise<WorkHealthStatus[]> {
+  const res = await mcuService.list({ page, limit });
+  const { activeSiteName } = useStore.getState();
+  const rows = (res.data ?? []).filter((c) => {
+    if (!activeSiteName) return true;
+    const siteName = c.patient?.employee?.site?.name;
+    return typeof siteName === "string" && siteName === activeSiteName;
+  });
+  const workHealthStatus = rows
+    .map(mapWorkHealthStatus)
+    .filter((w): w is WorkHealthStatus => w !== null);
+  useStore.setState({ workHealthStatus });
+  return workHealthStatus;
+}
+
+/**
+ * Modul 9 — Sertifikat kesehatan kerja (HealthCertificate) dari backend.
+ *
+ * Diturunkan dari siklus MCU yang sudah punya keputusan FTW, lalu dipadukan
+ * dengan dokumen `GET /documents?documentType=FTW_CERTIFICATE` untuk
+ * mendapatkan `qrToken` (verifikasi publik /verify/[token]) dan status
+ * revoked/expired dari token QR-nya.
+ */
+export async function syncCertificates(
+  page = 1,
+  limit = PAGE_SIZE
+): Promise<HealthCertificate[]> {
+  const [res, docsRes] = await Promise.all([
+    mcuService.list({ page, limit }),
+    documentService.getDocuments({ page: 1, limit: 100, documentType: "FTW_CERTIFICATE" }),
+  ]);
+  const docs: BackendDocument[] = docsRes.data ?? [];
+  const { activeSiteName } = useStore.getState();
+  const rows = (res.data ?? []).filter((c) => {
+    if (!activeSiteName) return true;
+    const siteName = c.patient?.employee?.site?.name;
+    return typeof siteName === "string" && siteName === activeSiteName;
+  });
+
+  const certificates: HealthCertificate[] = [];
+  for (const cycle of rows) {
+    const whs = mapWorkHealthStatus(cycle);
+    if (!whs) continue; // belum ada keputusan FTW -> belum ada sertifikat
+
+    // renderPdf memakai judul `Sertifikat Kelaikan Kerja <mcuNumber>` —
+    // satu-satunya penghubung dokumen backend <-> siklus MCU (schema
+    // Document tidak menyimpan referenceId).
+    const mcuNumber = `MCU-${cycle.id.slice(0, 8).toUpperCase()}`;
+    const doc = docs.find((d) => (d.title ?? "").includes(mcuNumber));
+    const revoked = doc?.qr_token?.revoked === true;
+    const expired =
+      whs.validUntil !== "" && new Date(whs.validUntil).getTime() < Date.now();
+
+    certificates.push({
+      id: doc?.id ?? `cert-${cycle.id}`,
+      certNumber: `HC-${cycle.id.slice(0, 8).toUpperCase()}`,
+      employeeId: whs.employeeId,
+      mcuId: cycle.id,
+      healthStatus: whs.status,
+      restrictions: whs.restriction,
+      doctorId: whs.doctorId,
+      doctorName: whs.doctorName,
+      issuedAt: whs.decisionDate,
+      validUntil: whs.validUntil,
+      qrToken: doc?.qr_token?.token_hash ?? "",
+      status: revoked ? "revoked" : expired ? "expired" : "valid",
+    });
+  }
+
+  useStore.setState({ certificates });
+  return certificates;
+}
+
 export async function syncMcu(page = 1, limit = PAGE_SIZE, ftwStatus?: string): Promise<MCU[]> {
   const res = await mcuService.list({ page, limit, ftwStatus: ftwStatus as never });
-  const mcus = (res.data ?? []).map(mapMcuCycle);
+  // Fase 4 — GET /mcu/cycles tidak menerima siteId; filter scope site aktif
+  // berdasarkan nama site pekerja pada response.
+  const { activeSiteName } = useStore.getState();
+  const mcus = (res.data ?? [])
+    .filter((c) => {
+      if (!activeSiteName) return true;
+      const siteName = c.patient?.employee?.site?.name;
+      return typeof siteName === "string" && siteName === activeSiteName;
+    })
+    .map(mapMcuCycle);
   useStore.setState({ mcus });
   return mcus;
 }
@@ -290,7 +461,9 @@ export function mapInventory(items: BackendInventoryItem[]): {
 }
 
 export async function syncInventory(siteId?: string) {
-  const items = await pharmacyService.getInventory(siteId);
+  // Fase 4 — scope site aktif diteruskan ke backend (GET /pharmacy/inventory?siteId=).
+  const activeSiteId = useStore.getState().activeSiteId;
+  const items = await pharmacyService.getInventory(siteId ?? activeSiteId ?? undefined);
   const { medicines, stockBatches } = mapInventory(items);
   useStore.setState((s) => ({
     medicines,
@@ -331,6 +504,9 @@ export function mapUser(u: BackendUserRow, existing?: User): User {
     (u.user_roles ?? []).find((r) => r.role?.code)?.role?.name ??
     ROLE_TITLES[role] ??
     role;
+  // Backend mengekspos `mfa_method` ("TOTP" | "NONE") — sumber kebenaran
+  // status MFA akun, bukan asumsi client.
+  const mfaEnabled = u.mfa_method === "TOTP";
   return {
     id: u.id,
     username: u.username,
@@ -338,9 +514,11 @@ export function mapUser(u: BackendUserRow, existing?: User): User {
     name: existing?.name ?? u.username,
     role: role as User["role"],
     title,
+    active: u.active,
     locationId: existing?.locationId,
     employeeId: existing?.employeeId,
-    mfaEnabled: false,
+    mfaEnabled,
+    mfaMethod: mfaEnabled ? "totp" : existing?.mfaMethod,
     preferredLanguage: existing?.preferredLanguage ?? "id",
   };
 }
@@ -412,6 +590,10 @@ export function useSyncedModules(syncOnce: () => Promise<unknown>): {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Fase 4 — setiap perpindahan scope site menaikkan scopeVersion di store;
+  // halaman yang sedang terbuka ikut membuang hasil lama dan memuat ulang
+  // data sesuai scope baru.
+  const scopeVersion = useStore((s) => s.scopeVersion);
 
   useEffect(() => {
     let alive = true;
@@ -435,7 +617,7 @@ export function useSyncedModules(syncOnce: () => Promise<unknown>): {
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadKey]);
+  }, [reloadKey, scopeVersion]);
 
   return { loading, error, refetch: () => setReloadKey((k) => k + 1) };
 }

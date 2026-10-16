@@ -6,8 +6,14 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { VitalsReporter } from "@/components/vitals-reporter";
 
 export const metadata: Metadata = {
-  title: "EMR PT Layar Nusantara Gas — Modul 01",
-  description: "Electronic Medical Record — Registrasi Pekerja, MRN, dan Consent",
+  applicationName: "Kodein Klinik",
+  title: {
+    default: "Kodein Klinik — EMR Okupasi & Klinik Perusahaan",
+    template: "%s · Kodein Klinik",
+  },
+  description:
+    "Electronic Medical Record (EMR) okupasi: registrasi pekerja & MRN, consent digital, " +
+    "MCU & Fitness to Work, kunjungan klinik, farmasi, dan sertifikat kesehatan kerja.",
 };
 
 export default function RootLayout({

@@ -8,6 +8,7 @@ import {
   syncMcu,
   syncPatients,
   syncQueues,
+  syncWorkHealthStatus,
   useSyncedModules,
 } from "@/lib/remote-sync";
 import {
@@ -46,6 +47,7 @@ export default function ReportsPage() {
       syncPatients(1, 100),
       syncMcu(1, 100),
       syncQueues(),
+      syncWorkHealthStatus(1, 100),
     ]);
     const rejected = syncResults.filter(
       (r): r is PromiseRejectedResult => r.status === "rejected"

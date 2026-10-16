@@ -1,0 +1,34 @@
+import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { launchBrowser, loadPlaywright } from "../e2e/lib/browser.mjs";
+const require = createRequire(import.meta.url);
+const BASE = "http://localhost:3311";
+const axeSource = fs.readFileSync(path.join(path.dirname(require.resolve("axe-core/package.json")), "axe.min.js"), "utf8");
+console.log("axe bytes:", axeSource.length);
+const pw = loadPlaywright();
+console.log("pw loaded");
+const { browser } = await launchBrowser(pw, { headless: true });
+console.log("browser launched");
+const ctx = await browser.newContext();
+await ctx.addInitScript(() => {
+  localStorage.setItem("kodein-klinik-store", JSON.stringify({ state: { currentUserId: "u-a11y", users: [{ id: "u-a11y", username: "admin.a11y", name: "Admin A11y", password: "", role: "admin", title: "System Administrator", mfaEnabled: false, preferredLanguage: "id" }] }, version: 0 }));
+  localStorage.setItem("emr-demo-role", JSON.stringify({ state: { role: "SYSTEM_ADMIN", enabled: false }, version: 0 }));
+});
+await ctx.addCookies([{ name: "kodein-klinik-store", value: encodeURIComponent(JSON.stringify({ state: { currentUserId: "u-a11y" } })), url: BASE }]);
+const page = await ctx.newPage();
+await page.route("**/api/v1/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: true, statusCode: 200, data: [], meta: { page: 1, limit: 100, total: 0, totalPages: 1 } }) }));
+console.log("goto /login");
+await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
+console.log("login loaded, title=", await page.title());
+console.log("inject axe...");
+await page.addScriptTag({ content: axeSource });
+console.log("axe injected, typeof axe=", await page.evaluate(() => typeof window.axe));
+console.log("run axe...");
+const res = await page.evaluate(async () => {
+  const r = await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] } });
+  return { violations: r.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length })) };
+});
+console.log("axe done:", JSON.stringify(res));
+await browser.close();
+console.log("closed");

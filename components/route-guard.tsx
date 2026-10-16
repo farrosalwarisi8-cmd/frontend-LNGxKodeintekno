@@ -31,13 +31,21 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   { pattern: /^\/medicine\/return(?:\/.*)?$/, permission: "dispense-medicine" },
   { pattern: /^\/medicine(?:\/.*)?$/, permission: "manage-stock" },
   { pattern: /^\/certificates(?:\/.*)?$/, permission: "issue-certificate" },
+  // Dokumen & tanda tangan elektronik = bagian alur penerbitan sertifikat.
+  // Sebelumnya menu memakai permission tetapi route tidak punya guard
+  // (tautan langsung lolos) — diselaraskan agar guard = navigasi = aksi.
+  { pattern: /^\/documents(?:\/.*)?$/, permission: "issue-certificate" },
+  { pattern: /^\/signatures(?:\/.*)?$/, permission: "issue-certificate" },
   { pattern: /^\/reports(?:\/.*)?$/, permission: "view-reports" },
   { pattern: /^\/health-status(?:\/.*)?$/, permission: "view-health-status" },
   { pattern: /^\/users(?:\/.*)?$/, permission: "manage-users" },
   { pattern: /^\/master-data(?:\/.*)?$/, permission: "manage-master-data" },
   { pattern: /^\/audit-logs(?:\/.*)?$/, permission: "view-audit-logs" },
   { pattern: /^\/waiver(?:\/.*)?$/, permission: "manage-hse" },
-  { pattern: /^\/da(?:\/.*)?$/, permission: "manage-hse" },
+  // D&A forensik (modul da-test backend) hanya DOCTOR_OH / LAB_ANALYST /
+  // SYSTEM_ADMIN. Sebelumnya route ini memakai `manage-hse` sehingga HSE bisa
+  // membuka halaman yang API-nya selalu 403.
+  { pattern: /^\/da(?:\/.*)?$/, permission: "manage-da" },
   { pattern: /^\/emergency(?:\/.*)?$/, permission: "view-emergency" },
   // Lab & Radiologi sebelumnya tidak punya guard padahal menu mensyaratkan
   // `input-lab-result` → tautan langsung melewati guard. Kini diselaraskan.

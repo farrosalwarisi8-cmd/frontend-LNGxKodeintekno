@@ -26,8 +26,11 @@ export interface NavigationItem {
 export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "layout-dashboard", end: true },
   { label: "Demo", href: "/demo", icon: "flask" },
-  { label: "People", href: "/people", icon: "users", permission: "manage-employees" },
-  { label: "Pekerja", href: "/employees", icon: "users", permission: "manage-employees" },
+  // Registrasi & Consent (MPI Modul 01) sengaja dipisah tegas dari
+  // Direktori Pekerja (/employees, data master pekerja dari backend) supaya
+  // tidak ada dua menu "daftar orang" yang tampak sama.
+  { label: "Registrasi & Consent", href: "/people", icon: "users", permission: "manage-employees" },
+  { label: "Direktori Pekerja", href: "/employees", icon: "users", permission: "manage-employees" },
   { label: "MCU & FTW", href: "/mcu", icon: "activity", permission: "view-mcu" },
   { label: "Review MCU", href: "/mcu/review", icon: "stethoscope", permission: "review-mcu" },
   { label: "Kunjungan", href: "/visits", icon: "clipboard-list", permission: "view-visits" },
@@ -41,20 +44,25 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Laporan", href: "/reports", icon: "bar-chart", permission: "view-reports" },
   { label: "Status Kesehatan", href: "/health-status", icon: "heart-pulse", permission: "view-health-status" },
   { label: "Waiver", href: "/waiver", icon: "shield-check", permission: "manage-hse" },
-  { label: "D&A", href: "/da", icon: "flask", permission: "manage-hse" },
+  // D&A forensik = wewenang Dokter OH & Analis Lab (sesuai @Roles backend
+  // pada modul da-test), bukan HSE yang hanya menerima hasilnya.
+  { label: "D&A", href: "/da", icon: "flask", permission: "manage-da" },
   { label: "Emergency", href: "/emergency", icon: "alert-triangle", permission: "view-emergency" },
   { label: "User", href: "/users", icon: "users", permission: "manage-users" },
   { label: "Master Data", href: "/master-data", icon: "database", permission: "manage-master-data" },
   { label: "Audit Log", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
   { label: "Lab & Radiologi", href: "/lab", icon: "flask", permission: "input-lab-result" },
+  { label: "Tanda Tangan", href: "/signatures", icon: "pen-line", permission: "issue-certificate" },
+  { label: "Dokumen", href: "/documents", icon: "file-text", permission: "issue-certificate" },
 ];
 
 /** Label bahasa Indonesia untuk tiap route (dipakai breadcrumb). */
 export const ROUTE_LABELS: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/demo": "Demo",
-  "/people": "People",
-  "/employees": "Pekerja",
+  "/people": "Registrasi & Consent",
+  "/people/new": "Pendaftaran Pekerja",
+  "/employees": "Direktori Pekerja",
   "/mcu": "MCU & FTW",
   "/mcu/new": "Buat MCU",
   "/mcu/review": "Review MCU",
@@ -75,10 +83,13 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/master-data": "Master Data",
   "/audit-logs": "Audit Log",
   "/lab": "Lab & Radiologi",
-  "/my": "Profil Saya",
+  "/signatures": "Tanda Tangan",
+  "/documents": "Dokumen",
+  "/my": "Akun Saya",
   "/my/profile": "Profil Saya",
   "/my/mcu": "MCU Saya",
   "/my/certificates": "Sertifikat Saya",
+  "/my/notifications": "Notifikasi Saya",
 };
 
 const SEGMENT_FALLBACK: Record<string, string> = {
