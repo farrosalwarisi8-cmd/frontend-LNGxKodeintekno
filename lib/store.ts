@@ -260,7 +260,7 @@ export const useStore = create<AppState>()(
       currentUserId: null,
       session: null,
       orgScope: { companyId: "", locationId: "" },
-      isOnline: typeof navigator === "undefined" ? true : navigator.onLine,
+      isOnline: typeof navigator === "undefined" ? true : navigator.onLine !== false,
       offlineQueue: [],
 
       activeSiteId: null,
