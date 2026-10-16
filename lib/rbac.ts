@@ -41,7 +41,11 @@ export type Permission =
   | "manage-da"
   | "view-emergency"
   | "view-profile"
-  | "input-lab-result";
+  | "input-lab-result"
+  | "manage-system-config"
+  | "manage-api-keys"
+  | "view-tte"
+  | "monitor-emergency";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "view-dashboard",
@@ -73,37 +77,28 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "view-emergency",
   "view-profile",
   "input-lab-result",
+  "manage-system-config",
+  "manage-api-keys",
+  "view-tte",
+  "monitor-emergency",
 ];
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   admin: [
     "view-dashboard",
-    "manage-employees",
-    "upload-document",
-    "view-mcu",
-    "create-mcu",
-    "input-mcu-result",
-    "approve-mcu",
-    "view-visits",
-    "register-patient",
-    "edit-visit",
-    "view-clinical-notes",
-    "view-diagnosis",
-    "manage-stock",
-    "dispense-medicine",
+    "manage-system-config",
+    "manage-api-keys",
+    "view-tte",
+    "monitor-emergency",
+    "view-emergency",
     "view-reports",
     "export-reports",
     "view-health-status",
-    "manage-users",
-    "manage-master-data",
-    "view-audit-logs",
-    "manage-hse",
-    // D&A hanya untuk role yang diizinkan backend
-    // (@Roles DOCTOR_OH, LAB_ANALYST, SYSTEM_ADMIN pada modul da-test).
-    "manage-da",
-    "view-emergency",
     "view-profile",
-    "input-lab-result",
+    "view-audit-logs",
+    // Audit log hanya bisa dilihat, tidak bisa diubah/hapus
+    // (backend tetap meng-enforce, tapi UI hanya menampilkan read-only)
+    // MFA wajib untuk setiap user (backend enforcement)
   ],
   "dokter-oh": [
     "view-dashboard",
@@ -174,11 +169,15 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "input-mcu-result",
     "input-lab-result",
     // D&A (forensik): backend mengizinkan LAB_ANALYST pada modul da-test.
+    // UI memisahkan lab result dari radiology report
     "manage-da",
     "view-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
+    // Lab analyst bisa melihat TTE dan Emergency Mode monitoring
+    "view-tte",
+    "monitor-emergency",
   ],
   "admin-klinik": [
     "view-dashboard",
@@ -186,24 +185,29 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "create-mcu",
     "view-visits",
     "register-patient",
-    "dispense-medicine",
     "view-reports",
+    "export-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
+    // Admin Klinik dapat konfigurasi sistem dan monitoring TTE/Emergency
+    // TIDAK punya akses data klinis langsung (catatan, diagnosis, dll)
+    "manage-system-config",
+    "manage-api-keys",
+    "view-tte",
+    "monitor-emergency",
   ],
   hr: [
     "view-dashboard",
-    "manage-employees",
-    "upload-document",
     "view-mcu",
-    "create-mcu",
     "view-visits",
     "view-reports",
     "export-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
+    // HR hanya bisa melihat status kepatuhan, tidak boleh manage-users
+    // atau manage-master-data sesuai proposal (terbatas pada status kepatuhan)
   ],
   hse: [
     "view-dashboard",
@@ -229,6 +233,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-health-status",
     "view-emergency",
     "view-profile",
+    // Proposal: Management hanya memiliki view aggregat dan export-reports
+    // Pastikan halaman hanya menampilkan data agregat dan anonim,
+    // tanpa nama pekerja individual.
   ],
   pekerja: [
     "view-dashboard",
@@ -280,6 +287,8 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = [
   "manage-hse",
   "manage-da",
   "input-lab-result",
+  "manage-system-config",
+  "manage-api-keys",
 ];
 
 /** Semua permission yang dikenal (dipakai untuk validasi & test). */
