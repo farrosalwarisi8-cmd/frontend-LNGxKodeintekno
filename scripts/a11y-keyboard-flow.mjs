@@ -133,7 +133,9 @@ async function main() {
     check("KB-05", "Enter pada skip link memindahkan fokus ke <main>", afterSkip.id === "main-content", `active=#${afterSkip.id}`);
 
     // ---- 3) Navigasi ke Rekam Medis lewat link (focus + Enter) ----
-    await page.getByRole("link", { name: "Rekam Medis" }).focus();
+    const rekamMedisLink = page.getByRole("link", { name: "Rekam Medis" });
+    await rekamMedisLink.waitFor({ state: "visible", timeout: 15000 });
+    await rekamMedisLink.focus();
     await page.keyboard.press("Enter");
     await page.waitForURL(/medical-records/, { timeout: 15000 }).catch(() => {});
     check("KB-06", "Aktivasi link 'Rekam Medis' dengan keyboard membuka halaman", /medical-records/.test(page.url()), page.url());
