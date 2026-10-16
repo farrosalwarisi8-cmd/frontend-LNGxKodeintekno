@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, ClipboardList, ChevronRight } from "lucide-react";
+import { useDebounce } from "@/shared/utils/use-debounce";
 
 export default function VisitsPage() {
   const visits = useStore((s) => s.visits);
@@ -27,12 +28,13 @@ export default function VisitsPage() {
   const { loading, error, refetch } = useSyncedModules(() => syncQueues());
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
 
   const filtered = visits.filter((v) => {
     const emp = employees.find((e) => e.id === v.employeeId);
-    const q = search.toLowerCase();
+    const q = debouncedSearch.toLowerCase();
     const matchSearch =
       !q ||
       v.visitNumber.toLowerCase().includes(q) ||

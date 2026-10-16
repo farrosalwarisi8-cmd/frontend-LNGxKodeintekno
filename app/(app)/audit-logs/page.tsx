@@ -13,10 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { formatDateTime } from "@/lib/format";
 import { Search, History, ShieldCheck } from "lucide-react";
+import { VirtualList } from "@/shared/components/virtual-list";
+import { useDebounce } from "@/shared/utils/use-debounce";
 
 export default function AuditLogsPage() {
   const auditLogs = useStore((s) => s.auditLogs);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [actionFilter, setActionFilter] = useState("");
   const [chainResult, setChainResult] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
@@ -44,8 +47,12 @@ export default function AuditLogsPage() {
   const actions = [...new Set(auditLogs.map((l) => l.action))];
 
   const filtered = auditLogs.filter((l) => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || l.action.toLowerCase().includes(q) || l.userName.toLowerCase().includes(q) || l.objectType.toLowerCase().includes(q);
+    const q = debouncedSearch.toLowerCase();
+    const matchSearch =
+      !q ||
+      l.action.toLowerCase().includes(q) ||
+      l.userName.toLowerCase().includes(q) ||
+      l.objectType.toLowerCase().includes(q);
     const matchAction = !actionFilter || l.action === actionFilter;
     return matchSearch && matchAction;
   });
@@ -106,30 +113,40 @@ export default function AuditLogsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {filtered.map((log) => (
-              <div key={log.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-slate-100">
-                    <ShieldCheck className="size-4 text-slate-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{log.action}</p>
-                    <p className="text-xs text-slate-500">
-                      {log.userName} · {log.objectType} · {log.objectId}
-                    </p>
-                    {log.before && (
-                      <p className="text-xs text-slate-400">
-                        {log.before} → {log.after}
+            <VirtualList
+              items={filtered}
+              itemHeight={104}
+              renderItem={(log, index, style) => (
+                <div
+                  key={log.id}
+                  style={style}
+                  className="flex items-center justify-between rounded-xl border border-slate-100 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-slate-100">
+                      <ShieldCheck className="size-4 text-slate-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{log.action}</p>
+                      <p className="text-xs text-slate-500">
+                        {log.userName} · {log.objectType} · {log.objectId}
                       </p>
-                    )}
-                    {log.reason && (
-                      <p className="text-xs text-slate-400">Alasan: {log.reason}</p>
-                    )}
+                      {log.before && (
+                        <p className="text-xs text-slate-400">
+                          {log.before} → {log.after}
+                        </p>
+                      )}
+                      {log.reason && (
+                        <p className="text-xs text-slate-400">Alasan: {log.reason}</p>
+                      )}
+                    </div>
                   </div>
+                  <span className="text-xs text-slate-400">{formatDateTime(log.at)}</span>
                 </div>
-                <span className="text-xs text-slate-400">{formatDateTime(log.at)}</span>
-              </div>
-            ))}
+              )}
+              style={{ maxHeight: "55vh", minHeight: 300 }}
+              aria-label="Daftar log audit"
+            />
           </div>
         </CardContent>
       </Card>

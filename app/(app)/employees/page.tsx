@@ -4,6 +4,7 @@ import { Can } from "@/components/can";
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { EMPLOYEE_STATUS } from "@/lib/constants";
@@ -17,22 +18,25 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, Users, ChevronRight } from "lucide-react";
+import { VirtualList } from "@/shared/components/virtual-list";
+import { useDebounce } from "@/shared/utils/use-debounce";
 
 export default function EmployeesPage() {
   const employees = useStore((s) => s.employees);
   const companies = useStore((s) => s.companies);
-  const departments = useStore((s) => s.departments);
-  const locations = useStore((s) => s.locations);
 
   // Modul 2 — sinkron daftar pekerja (pasien) dari backend
   const { loading, error, refetch } = useSyncedModules(() => syncPatients(1, 100));
 
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
 
+  const debouncedSearch = useDebounce(search, 300);
+
   const filtered = employees.filter((e) => {
-    const q = search.toLowerCase();
+    const q = debouncedSearch.toLowerCase();
     const matchSearch =
       !q ||
       e.fullName.toLowerCase().includes(q) ||
@@ -115,82 +119,47 @@ export default function EmployeesPage() {
           description="Coba ubah kata kunci pencarian atau filter Anda."
         />
       ) : !loading && !error ? (
-        <>
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nama</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Employee ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">MRN</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Perusahaan</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Departemen</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Lokasi</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((emp) => {
-                  const company = companies.find((c) => c.id === emp.companyId);
-                  const dept = departments.find((d) => d.id === emp.departmentId);
-                  const loc = locations.find((l) => l.id === emp.locationId);
-                  const statusMeta = EMPLOYEE_STATUS[emp.status];
-                  return (
-                    <tr key={emp.id} className="cursor-pointer transition-colors hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar name={emp.fullName} size="sm" />
-                          <div>
-                            <div className="font-medium text-slate-900">{emp.fullName}</div>
-                            <div className="text-xs text-slate-500">{emp.jobTitle}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-sm text-slate-600">{emp.employeeId}</td>
-                      <td className="px-4 py-3 font-mono text-sm text-slate-600">{emp.mrn}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{company?.name}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{dept?.name}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{loc?.name}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant="outline" className={statusMeta?.color}>
-                          {statusMeta?.label}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <ChevronRight className="size-4 text-slate-400" />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="space-y-3 lg:hidden">
-            {filtered.map((emp) => {
-              const company = companies.find((c) => c.id === emp.companyId);
-              const statusMeta = EMPLOYEE_STATUS[emp.status];
-              return (
-                <Card key={emp.id} className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={emp.fullName} />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-slate-900">{emp.fullName}</div>
-                      <div className="text-xs text-slate-500">
-                        {emp.employeeId} · {emp.mrn}
-                      </div>
-                      <div className="text-xs text-slate-500">{company?.name}</div>
-                    </div>
-                    <Badge variant="outline" className={statusMeta?.color}>
-                      {statusMeta?.label}
-                    </Badge>
+        <VirtualList
+          items={filtered}
+          itemHeight={112}
+          renderItem={(emp, index, style) => {
+            const company = companies.find((c) => c.id === emp.companyId);
+            const statusMeta = EMPLOYEE_STATUS[emp.status];
+            return (
+              <div
+                key={emp.id}
+                style={style}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 cursor-pointer transition-colors hover:bg-slate-50"
+                onClick={() => router.push(`/people/${emp.id}`)}
+                role="button"
+                tabIndex={0}
+              >
+                <Avatar name={emp.fullName} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-slate-900 truncate">
+                    {emp.fullName}
                   </div>
-                </Card>
-              );
-            })}
-          </div>
-        </>
+                  <div className="text-xs text-slate-500 truncate">
+                    {emp.employeeId} · {emp.mrn}
+                  </div>
+                  {company?.name && (
+                    <div className="text-xs text-slate-500 truncate">
+                      {company.name}
+                    </div>
+                  )}
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  <Badge variant="outline" className={statusMeta?.color}>
+                    {statusMeta?.label}
+                  </Badge>
+                  <ChevronRight className="size-4 shrink-0 text-slate-400" />
+                </div>
+              </div>
+            );
+          }}
+          style={{ maxHeight: "60vh", minHeight: 300 }}
+          aria-label="Daftar pekerja"
+        />
       ) : null}
     </div>
   );

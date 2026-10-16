@@ -50,6 +50,14 @@ import {
   type BackendUser,
   type SessionUser,
 } from "@/lib/services/auth.service"
+import type { OfflineAction, OfflineQueueEntry } from "@/lib/offline-queue"
+import {
+  enqueueOfflineQueue,
+  isAckOnly,
+  removeOfflineQueue,
+  clearOfflineQueue,
+  MAX_OFFLINE_RETRIES,
+} from "@/lib/offline-queue"
 
 type Diagnosis = (typeof DIAGNOSES)[number]
 
@@ -66,6 +74,7 @@ interface AppState {
   session: SessionInfo | null
   orgScope: OrgScope
   isOnline: boolean
+  offlineQueue: OfflineQueueEntry[]
 
   users: User[]
   companies: Company[]
@@ -92,6 +101,10 @@ interface AppState {
   logout: () => void
   setOrgScope: (scope: OrgScope) => void
   setOnline: (v: boolean) => void
+  enqueueOfflineQueue: (action: OfflineAction, args: unknown[]) => void
+  removeOfflineQueue: (id: string) => void
+  clearOfflineQueue: () => void
+  replayOfflineQueue: () => Promise<{ ok: number; failed: number }>
   updateLastActivity: () => void
 
   findDuplicates: (nationalId: string, fullName: string) => Employee[]
@@ -219,6 +232,7 @@ export const useStore = create<AppState>()(
       session: null,
       orgScope: { companyId: "", locationId: "" },
       isOnline: typeof navigator === "undefined" ? true : navigator.onLine,
+      offlineQueue: [],
 
       users: USERS,
       companies: COMPANIES,
@@ -278,7 +292,68 @@ export const useStore = create<AppState>()(
 
       setOrgScope: (scope) => set({ orgScope: scope }),
 
-      setOnline: (v) => set({ isOnline: v }),
+      setOnline: (v) => {
+        set((s) => (s.isOnline === v ? {} : { isOnline: v }))
+        if (v) void get().replayOfflineQueue()
+      },
+
+      enqueueOfflineQueue: (action, args) => {
+        const entry = {
+          action,
+          args,
+        }
+        set((s) => ({
+          offlineQueue: enqueueOfflineQueue(s.offlineQueue, entry),
+        }))
+      },
+
+      removeOfflineQueue: (id) => {
+        set((s) => ({ offlineQueue: removeOfflineQueue(s.offlineQueue, id) }))
+      },
+
+      clearOfflineQueue: () => {
+        set({ offlineQueue: clearOfflineQueue() })
+      },
+
+      replayOfflineQueue: async () => {
+        const queue = get().offlineQueue
+        let ok = 0
+        let failed = 0
+        const remaining: OfflineQueueEntry[] = []
+
+        for (const entry of queue) {
+          // Aksi yang sudah diterapkan store secara optimistik hanya perlu
+          // dikonfirmasi sebagai tercatat (hindari duplikasi / potong stok ganda
+          // saat dieksekusi ulang setelah kembali online).
+          if (isAckOnly(entry.action)) {
+            ok++
+            continue
+          }
+
+          const fn = (get() as unknown as Record<string, unknown>)[entry.action]
+          try {
+            if (typeof fn !== "function") {
+              throw new Error(`Aksi ${entry.action} tidak tersedia`)
+            }
+            await (
+              fn as (...args: unknown[]) => Promise<unknown>
+            )(...entry.args)
+            ok++
+          } catch (e) {
+            failed++
+            const next = {
+              ...entry,
+              retries: entry.retries + 1,
+              error:
+                e instanceof Error ? e.message : "Gagal menyinkronkan",
+            }
+            if (next.retries < MAX_OFFLINE_RETRIES) remaining.push(next)
+          }
+        }
+
+        set({ offlineQueue: remaining })
+        return { ok, failed }
+      },
 
       updateLastActivity: () => {
         const session = get().session
@@ -332,6 +407,9 @@ export const useStore = create<AppState>()(
           employees: [employee, ...s.employees],
           auditLogs: pushAudit(s.auditLogs, user?.id ?? "", user?.name ?? "", "CREATE_EMPLOYEE", "Employee", id, { after: employeeId }),
         }))
+        if (!get().isOnline) {
+          get().enqueueOfflineQueue("addEmployee", [input])
+        }
         return id
       },
 
@@ -364,6 +442,9 @@ export const useStore = create<AppState>()(
             auditLogs: pushAudit(s.auditLogs, user?.id ?? "", user?.name ?? "", "UPDATE_EMPLOYEE", "Employee", id),
           }
         })
+        if (!get().isOnline) {
+          get().enqueueOfflineQueue("updateEmployee", [id, patch])
+        }
       },
 
       giveConsent: (employeeId) => {
@@ -475,6 +556,9 @@ export const useStore = create<AppState>()(
             : s.notifications,
           auditLogs: pushAudit(s.auditLogs, get().currentUserId ?? "", resolveUser(get())?.name ?? "", "SUBMIT_MCU", "MCU", id, { before: "Draft", after: "Submitted" }),
         }))
+        if (!get().isOnline) {
+          get().enqueueOfflineQueue("submitMCU", [id])
+        }
         return true
       },
 
@@ -626,6 +710,9 @@ export const useStore = create<AppState>()(
           createdAt: new Date().toISOString(),
         }
         set((s) => ({ visits: [visit, ...s.visits] }))
+        if (!get().isOnline) {
+          get().enqueueOfflineQueue("registerVisit", [input])
+        }
         return id
       },
 
@@ -723,6 +810,9 @@ export const useStore = create<AppState>()(
           notifications: [...lowStock, ...s.notifications],
           auditLogs: pushAudit(s.auditLogs, get().currentUserId ?? "", resolveUser(get())?.name ?? "", "DISPENSE_MEDICINE", "ClinicVisit", visitId, { after: `${items.length} item` }),
         }))
+        if (!get().isOnline) {
+          get().enqueueOfflineQueue("dispense", [visitId, items])
+        }
         return { ok: true }
       },
 
@@ -782,6 +872,7 @@ export const useStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         currentUserId: s.currentUserId,
+        offlineQueue: s.offlineQueue,
         session: s.session,
         orgScope: s.orgScope,
         users: s.users,

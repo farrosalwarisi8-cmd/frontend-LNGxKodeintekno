@@ -23,6 +23,7 @@ import { patientService } from "@/lib/services/patient.service";
 import { useDraft, EMPTY_DRAFT } from "../hooks/use-draft";
 import { useOnlineStatus } from "../hooks/use-online-status";
 import { Button } from "@/components/ui/button";
+import { toastError } from "@/lib/use-toast";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
@@ -155,7 +156,13 @@ export function RegistrationWizard() {
 
   const handleSubmit = async () => {
     if (!validateStep(5)) return;
-    if (!isOnline) return;
+    if (!isOnline) {
+      toastError(
+        "Offline",
+        "Anda sedang offline. Draft tetap tersimpan secara lokal dan akan dikirim saat tersambung kembali."
+      );
+      return;
+    }
 
     setSubmitting(true);
     try {
