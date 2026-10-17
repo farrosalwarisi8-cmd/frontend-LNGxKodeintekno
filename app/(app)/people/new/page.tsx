@@ -25,7 +25,7 @@ import { useOnlineStatus } from "@/features/people/hooks/use-online-status";
 import { Button } from "@/components/ui/button";
 import { toastError } from "@/lib/use-toast";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
@@ -392,10 +392,10 @@ export function RegistrationWizard() {
               placeholder="Masukkan nama lengkap"
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Select
+              <NativeSelect
                 label="Tipe Identifier"
                 value={formData.identifierType}
-                onChange={(e) => updateField("identifierType", e.target.value as IdentifierType)}
+                onChange={(v) => updateField("identifierType", v as IdentifierType)}
                 options={[
                   { value: "NIK", label: "NIK" },
                   { value: "PASSPORT", label: "Passport" },
@@ -437,10 +437,10 @@ export function RegistrationWizard() {
                 onChange={(e) => updateField("birthDate", e.target.value)}
                 error={errors.birthDate}
               />
-              <Select
+              <NativeSelect
                 label="Jenis Kelamin"
                 value={formData.sex}
-                onChange={(e) => updateField("sex", e.target.value as Sex)}
+                onChange={(v) => updateField("sex", v as Sex)}
                 error={errors.sex}
                 options={[
                   { value: "MALE", label: "Laki-laki" },
@@ -461,42 +461,42 @@ export function RegistrationWizard() {
         {currentStep === 2 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">Penempatan Pekerja</h2>
-            <Select
+            <NativeSelect
               label="Organization"
               value={formData.organizationId}
-              onChange={(e) => updateField("organizationId", e.target.value)}
+              onChange={(v) => updateField("organizationId", v)}
               error={errors.organizationId}
               placeholder="Pilih organisasi"
               options={ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }))}
             />
-            <Select
+            <NativeSelect
               label="Unit Kerja"
               value={formData.orgUnitId}
-              onChange={(e) => updateField("orgUnitId", e.target.value)}
+              onChange={(v) => updateField("orgUnitId", v)}
               error={errors.orgUnitId}
               placeholder="Pilih unit kerja"
               options={filteredOrgUnits.map((o) => ({ value: o.id, label: o.name }))}
             />
-            <Select
+            <NativeSelect
               label="Site/Office"
               value={formData.siteId}
-              onChange={(e) => updateField("siteId", e.target.value)}
+              onChange={(v) => updateField("siteId", v)}
               error={errors.siteId}
               placeholder="Pilih site"
               options={filteredSites.map((s) => ({ value: s.id, label: s.name }))}
             />
-            <Select
+            <NativeSelect
               label="Job Task"
               value={formData.jobTaskId}
-              onChange={(e) => updateField("jobTaskId", e.target.value)}
+              onChange={(v) => updateField("jobTaskId", v)}
               placeholder="Pilih job task"
               options={JOB_TASKS.map((j) => ({ value: j.id, label: j.name }))}
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Select
+              <NativeSelect
                 label="Employment Status"
                 value={formData.employmentStatus}
-                onChange={(e) => updateField("employmentStatus", e.target.value as "ACTIVE" | "INACTIVE")}
+                onChange={(v) => updateField("employmentStatus", v as "ACTIVE" | "INACTIVE")}
                 options={[
                   { value: "ACTIVE", label: "Aktif" },
                   { value: "INACTIVE", label: "Nonaktif" },
@@ -630,10 +630,10 @@ export function RegistrationWizard() {
               </div>
             </div>
 
-            <Select
+            <NativeSelect
               label="Tipe Consent"
               value={formData.consentType}
-              onChange={(e) => updateField("consentType", e.target.value)}
+              onChange={(v) => updateField("consentType", v)}
               error={errors.consentType}
               options={[
                 { value: "DATA_PROCESSING", label: "Pemrosesan Data EMR" },
