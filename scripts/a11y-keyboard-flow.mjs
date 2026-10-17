@@ -333,8 +333,7 @@ async function main() {
       .waitFor({ state: "visible", timeout: 5000 })
       .then(() => true)
       .catch(() => false);
-    await nextBtn.focus().catch(() => {});
-    await page.keyboard.press("Enter");
+    await nextBtn.press("Enter");
     await page.waitForTimeout(900);
     const stepAfter = await readStep();
     const wizardState = await page.evaluate(() => ({
