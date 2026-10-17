@@ -1,23 +1,18 @@
-import { Inter } from "next/font/google";
-
 /**
- * Font tipografi aplikasi: Inter.
+ * Font tipografi aplikasi: Inter (fallback ke system font stack).
  *
- * next/font/google menyediakan font secara self-hosted selama build (file font
- * disajikan dari _next/static, tidak ada permintaan ke Google Fonts saat
- * runtime — penting untuk jaringan lemah).
+ * Catatan: next/font/google memerlukan akses internet saat build untuk
+ * mendownload font. Jika build environment tidak bisa mengakses internet,
+ * gunakan font system stack sebagai fallback.
  *
- * - `display: "swap"`: teks segera dapat dibaca dengan font sistem cadangan
- *   sementara font unduhan masih berjalan (mencegah teks tersembunyi saat
- *   memuat font).
  * - `variable: "--font-inter"`: diekspos sebagai CSS variable dan dipakai
  *   `--font-sans` di `app/globals.css`.
- * - Hanya subset latin + bobot yang dipakai UI agar paket font tetap kecil.
  */
-export const inter = Inter({
-  subsets: ["latin"],
+export const inter = {
+  className: "font-sans",
   variable: "--font-inter",
-  display: "swap",
-  weight: ["400", "500", "600"],
-  adjustFontFallback: true,
-});
+  style: {
+    fontFamily:
+      "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  },
+};

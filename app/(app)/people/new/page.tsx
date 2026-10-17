@@ -1,8 +1,6 @@
 "use client";
 
-"use client";
-
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserRound,
@@ -19,20 +17,20 @@ import {
   X,
   WifiOff,
 } from "lucide-react";
-import type { CreatePersonDraft, IdentifierType, Sex, CreatedPersonResult, DuplicateCheckResult } from "../../src/features/people/api/people.types";
-import { apiUrl } from "../../src/lib/env";
-import { patientService } from "../../src/lib/services/patient.service";
-import { useDraft, EMPTY_DRAFT } from "../../src/features/people/hooks/use-draft";
-import { useOnlineStatus } from "../../src/features/people/hooks/use-online-status";
-import { Button } from "../../src/components/ui/button";
-import { toastError } from "../../src/lib/use-toast";
-import { Input } from "../../src/components/ui/input";
-import { Select } from "../../src/components/ui/select";
-import { Card } from "../../src/components/ui/card";
-import { Badge } from "../../src/components/ui/badge";
-import { Modal } from "../../src/components/ui/modal";
-import { ORGANIZATIONS, ORG_UNITS, SITES, JOB_TASKS } from "../../src/features/people/fixtures/people.fixtures";
-import { maskIdentifier } from "../../src/shared/utils/masking";
+import type { CreatePersonDraft, IdentifierType, Sex, CreatedPersonResult, DuplicateCheckResult } from "@/features/people/api/people.types";
+import { apiUrl } from "@/lib/env";
+import { patientService } from "@/lib/services/patient.service";
+import { useDraft, EMPTY_DRAFT } from "@/features/people/hooks/use-draft";
+import { useOnlineStatus } from "@/features/people/hooks/use-online-status";
+import { Button } from "@/components/ui/button";
+import { toastError } from "@/lib/use-toast";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Modal } from "@/components/ui/modal";
+import { ORGANIZATIONS, ORG_UNITS, SITES, JOB_TASKS } from "@/features/people/fixtures/people.fixtures";
+import { maskIdentifier } from "@/shared/utils/masking";
 import {
   validateFullName,
   validateIdentifier,
@@ -43,9 +41,9 @@ import {
   validatePhone,
   validateConsentType,
   validateConsentVersion,
-} from "../../src/shared/utils/validation";
-import { formatDate } from "../../src/shared/utils/date";
-import { EmailPreview } from "../../src/features/people/components/email-preview";
+} from "@/shared/utils/validation";
+import { formatDate } from "@/shared/utils/date";
+import { EmailPreview } from "@/features/people/components/email-preview";
 
 const STEPS = [
   { id: 1, label: "Identitas", icon: UserRound },
@@ -746,21 +744,4 @@ export function RegistrationWizard() {
 
 export default function NewPersonRoute() {
   return <RegistrationWizard />;
-}
-
-function RegistrationWizardLoading() {
-  return (
-    <div className="mx-auto max-w-2xl py-10 space-y-4">
-      <div className="h-4 w-1/3 rounded bg-slate-200 animate-pulse" />
-      <div className="h-48 rounded-2xl border border-slate-200 bg-white animate-pulse" />
-    </div>
-  );
-}
-
-export default function NewPersonRoute() {
-  return (
-    <Suspense fallback={<RegistrationWizardLoading />}>
-      <RegistrationWizard />
-    </Suspense>
-  );
 }
