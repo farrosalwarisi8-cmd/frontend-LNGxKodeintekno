@@ -71,6 +71,7 @@ export default function EmployeesPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
+              label="Cari pekerja"
               placeholder="Cari nama, Employee ID, MRN..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -79,12 +80,14 @@ export default function EmployeesPage() {
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex">
             <Select
+              label="Perusahaan"
               placeholder="Perusahaan"
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
               options={companies.map((c) => ({ value: c.id, label: c.name }))}
             />
             <Select
+              label="Status"
               placeholder="Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
