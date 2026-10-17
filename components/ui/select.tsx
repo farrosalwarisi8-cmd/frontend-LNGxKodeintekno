@@ -136,6 +136,7 @@ export function Select({
         required={required}
         value={isEmpty ? "" : String(value)}
         onValueChange={(v) => onChange?.(changeEvent(v))}
+        aria-label={label || placeholder}
         aria-invalid={error ? true : undefined}
         aria-describedby={
           error

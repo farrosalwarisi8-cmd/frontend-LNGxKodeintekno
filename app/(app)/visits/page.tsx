@@ -67,6 +67,7 @@ export default function VisitsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
             <Input
+              label="Cari kunjungan"
               placeholder="Cari nomor kunjungan, nama pasien..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -75,12 +76,14 @@ export default function VisitsPage() {
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex">
             <Select
+              label="Status"
               placeholder="Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               options={Object.entries(VISIT_STATUS).map(([value, { label }]) => ({ value, label }))}
             />
             <Select
+              label="Lokasi"
               placeholder="Lokasi"
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
