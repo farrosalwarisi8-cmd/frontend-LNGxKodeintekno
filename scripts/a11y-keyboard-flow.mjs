@@ -264,12 +264,10 @@ async function main() {
 
     // ---- 7) Wizard registrasi: field & tombol hanya keyboard ----
     await page.goto(`${BASE}/people/new`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1500);
+    // Tunggu wizard selesai render (CI lebih lambat dari lokal)
     const empId = page.getByLabel("Employee ID").first();
-    const empVisible = await empId
-      .waitFor({ state: "visible", timeout: 8000 })
-      .then(() => true)
-      .catch(() => false);
+    await empId.waitFor({ state: "visible", timeout: 15000 });
+    const empVisible = true;
     await empId.focus().catch(() => {});
     await page.keyboard.type("EMP-9999");
     const empValue = await empId.inputValue().catch(() => "<err>");
