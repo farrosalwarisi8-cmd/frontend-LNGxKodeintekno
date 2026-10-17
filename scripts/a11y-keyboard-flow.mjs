@@ -72,7 +72,16 @@ async function main() {
         });
       }
       if (p.endsWith("/patients")) {
-        return ok([PATIENT], { page: 1, limit: 100, total: 1, totalPages: 1 });
+        // Hormati parameter `search` seperti backend: registrasi memanggil
+        // GET /patients?search=<identifier> untuk cek duplikat. Bila selalu
+        // mengembalikan pasien yang sama, identifier baru dianggap duplikat
+        // (severity BLOCK) dan modal "Tidak dapat melanjutkan" menutupi wizard.
+        const search = new URL(route.request().url()).searchParams.get("search")?.toLowerCase() ?? "";
+        const matches =
+          !search ||
+          [PATIENT.fullName, PATIENT.employeeNo, PATIENT.mrn].some((v) => v.toLowerCase().includes(search));
+        const rows = matches ? [PATIENT] : [];
+        return ok(rows, { page: 1, limit: 100, total: rows.length, totalPages: 1 });
       }
       if (p.endsWith("/clinic/queues")) return ok([TICKET]);
       if (p.includes("/clinic/encounters")) return ok({ id: "enc-1", status: "DRAFT", locked_at: null });
@@ -327,8 +336,22 @@ async function main() {
 
     const stepFilled = await readStep();
     const nextBtn = page.getByRole("button", { name: /^Lanjut$/ }).first();
-    await nextBtn.waitFor({ state: "visible", timeout: 10000 });
-    await nextBtn.press("Enter");
+    const nextVisible = await nextBtn
+      .waitFor({ state: "visible", timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!nextVisible) {
+      // Modal dengan aria-hidden/inert membuat tombol di belakangnya hilang dari
+      // accessibility tree, jadi laporkan penyebabnya alih-alih timeout buta.
+      const blocking = await page.evaluate(() => ({
+        dialog: document.querySelector('[role="dialog"]')?.textContent?.trim().slice(0, 120) ?? null,
+        alerts: Array.from(document.querySelectorAll('[role="alert"]'))
+          .map((el) => (el.textContent || "").trim().slice(0, 120))
+          .join("; "),
+      }));
+      console.log(`  (tombol Lanjut tidak terlihat — dialog="${blocking.dialog}" alert="${blocking.alerts}")`);
+    }
+    if (nextVisible) await nextBtn.press("Enter");
     await page.waitForTimeout(900);
     const stepAfter = await readStep();
     const wizardState = await page.evaluate(() => ({
