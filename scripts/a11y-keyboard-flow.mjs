@@ -329,10 +329,7 @@ async function main() {
 
     const stepFilled = await readStep();
     const nextBtn = page.getByRole("button", { name: /^Lanjut$/ }).first();
-    const nextVisible = await nextBtn
-      .waitFor({ state: "visible", timeout: 5000 })
-      .then(() => true)
-      .catch(() => false);
+    await nextBtn.waitFor({ state: "visible", timeout: 10000 });
     await nextBtn.press("Enter");
     await page.waitForTimeout(900);
     const stepAfter = await readStep();
