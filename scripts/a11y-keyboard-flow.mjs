@@ -313,8 +313,14 @@ async function main() {
     const birthValue = await birthField.inputValue().catch(() => "<err>");
     const sexSelect = page.getByLabel("Jenis Kelamin").first();
     await sexSelect.focus().catch(() => {});
-    await page.keyboard.press("ArrowDown");
-    const sexValue = await sexSelect.inputValue().catch(() => "<err>");
+    // Base UI Select: buka pilihannya, lalu pilih opsi pertama (Laki-laki/MALE).
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(200);
+    const sexOption = page.getByRole("option", { name: "Laki-laki" }).first();
+    await sexOption.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+    await sexOption.click().catch(() => {});
+    await page.waitForTimeout(200);
+    const sexValue = await sexSelect.textContent().catch(() => "<err>");
     await page.waitForTimeout(400);
 
     check(
