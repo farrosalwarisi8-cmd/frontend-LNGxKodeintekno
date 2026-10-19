@@ -47,6 +47,7 @@ export type Permission =
   | "view-tte"
   | "monitor-emergency";
 
+/** Semua permission yang dikenal (dipakai untuk validasi, test, & generator docs). */
 export const ALL_PERMISSIONS: readonly Permission[] = [
   "view-dashboard",
   "manage-employees",

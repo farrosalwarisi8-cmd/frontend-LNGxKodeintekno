@@ -19,7 +19,8 @@
     "test:e2e:fase1": "node e2e/staging-business-flows.mjs",
     "test:e2e:staging": "node e2e/fase2-identity-mcu-staging.mjs",
     "test:e2e:playwright": "playwright test --config=playwright.config.ts",
-    "test:e2e:playwright:ui": "playwright test --config=playwright.config.ts --ui"
+    "test:e2e:playwright:ui": "playwright test --config=playwright.config.ts --ui",
+    "docs:role-matrix": "node scripts/generate-role-matrix.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
