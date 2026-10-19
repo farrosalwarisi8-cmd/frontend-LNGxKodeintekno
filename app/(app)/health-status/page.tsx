@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { syncPatients, syncWorkHealthStatus, useSyncedModules } from "@/lib/remote-sync";
 import { HEALTH_STATUS } from "@/lib/constants";
 import { RestrictionAcknowledgementSection } from "@/features/mcu/components/restriction-acknowledgement";
+import { McuReminderBadge, McuReminderTimeline } from "@/features/mcu/components/mcu-reminder";
+import { EscalationPanel } from "@/features/mcu/components/escalation-panel";
 import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Input } from "@/shared/components/design-system/input";
@@ -21,6 +24,8 @@ import { Search, AlertTriangle, CheckCircle, Clock, ClipboardCheck, Filter, X } 
 export default function HealthStatusPage() {
   const workHealthStatus = useStore((s) => s.workHealthStatus);
   const employees = useStore((s) => s.employees);
+  // Catatan kepatuhan yang menampilkan garis waktu tahapan reminder.
+  const [expandedReminderId, setExpandedReminderId] = useState<string | null>(null);
 
   // Modul 4 — status kesehatan kerja (FTW) diambil dari backend
   // (GET /mcu/cycles -> ftw_assessment + restrictions), bukan data seed lokal.
@@ -72,6 +77,8 @@ export default function HealthStatusPage() {
       {/* HSE only: komponen ini mengembalikan null bila role tidak punya
           permission `acknowledge-restriction` (route tetap view-health-status). */}
       <RestrictionAcknowledgementSection />
+
+      <EscalationPanel />
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -188,14 +195,36 @@ export default function HealthStatusPage() {
                           Segera Berakhir
                         </Badge>
                       )}
+                      <McuReminderBadge validUntil={whs.validUntil} />
                     </div>
                   </div>
                 </div>
                 <div className="text-right text-xs text-slate-500">
                   <p>Berlaku: {formatDate(whs.validFrom)} — {formatDate(whs.validUntil)}</p>
                   {whs.reviewDate && <p>Review: {formatDate(whs.reviewDate)}</p>}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-expanded={expandedReminderId === whs.id}
+                    onClick={() =>
+                      setExpandedReminderId(expandedReminderId === whs.id ? null : whs.id)
+                    }
+                    data-testid="reminder-timeline-toggle"
+                  >
+                    {expandedReminderId === whs.id
+                      ? "Sembunyikan tahapan reminder"
+                      : "Lihat tahapan reminder"}
+                  </Button>
                 </div>
               </div>
+              {expandedReminderId === whs.id && (
+                <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                  <p className="mb-2 text-xs font-medium text-slate-600">
+                    Tahapan reminder (H-30 → H-14 → H-7 → Hari-H → Overdue)
+                  </p>
+                  <McuReminderTimeline validUntil={whs.validUntil} />
+                </div>
+              )}
               {whs.restriction && (
                 <div className="mt-3 flex items-start gap-2 rounded-xl bg-warning-50 p-3 text-sm text-warning-700">
                   <AlertTriangle className="size-4 shrink-0" />

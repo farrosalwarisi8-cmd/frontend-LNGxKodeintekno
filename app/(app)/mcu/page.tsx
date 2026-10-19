@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { MCU_STATUS, MCU_TYPES } from "@/lib/constants";
+import { McuReminderBadge } from "@/features/mcu/components/mcu-reminder";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -135,6 +136,7 @@ export default function MCUPage() {
                     <tr key={mcu.id} className="transition-colors hover:bg-slate-50">
                       <td className="px-4 py-3">
                         <div className="font-mono text-sm font-medium text-slate-900">{mcu.mcuNumber}</div>
+                        <McuReminderBadge validUntil={mcu.validUntil} className="mt-1" />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -176,10 +178,11 @@ export default function MCUPage() {
                       <div className="text-xs text-slate-500">
                         {mcu.mcuNumber} · {mcu.type}
                       </div>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className={statusMeta?.color}>
                           {statusMeta?.label}
                         </Badge>
+                        <McuReminderBadge validUntil={mcu.validUntil} />
                         {mcu.decision && (
                           <span className="text-xs text-slate-500">{mcu.decision}</span>
                         )}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { DemoRole } from "../api/people.types";
 import { DEMO_ROLE_LABELS, useDemoMode } from "@/lib/demo-role";
+import { isDemoModeEnabled } from "@/lib/env";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,32 +98,42 @@ export function DemoPage() {
           <CardTitle>Public Consent Links</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {[
-            { label: "Token Valid", token: "consent-token-person-1-1" },
-            { label: "Token Expired", token: "consent-token-expired" },
-            { label: "Token Delivery Failed", token: "consent-token-delivery-failed" },
-            { label: "Token Invalid", token: "consent-token-unknown" },
-          ].map((item) => (
-            <div key={item.token} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-              <div>
-                <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                <p className="font-mono text-xs text-slate-500">{item.token}</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(item.token, item.token)}
-                  aria-label="Copy token"
-                >
-                  {copied === item.token ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                </Button>
-                <Link href={`/public/consent/${item.token}`}>
-                  <Button variant="outline" size="sm">Buka</Button>
-                </Link>
-              </div>
-            </div>
-          ))}
+          {/* Token contoh bersifat data demo — tidak boleh tampil di produksi. */}
+          {isDemoModeEnabled() ? (
+            <>
+              {[
+                { label: "Token Valid", token: "consent-token-person-1-1" },
+                { label: "Token Expired", token: "consent-token-expired" },
+                { label: "Token Delivery Failed", token: "consent-token-delivery-failed" },
+                { label: "Token Invalid", token: "consent-token-unknown" },
+              ].map((item) => (
+                <div key={item.token} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">{item.label}</p>
+                    <p className="font-mono text-xs text-slate-500">{item.token}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(item.token, item.token)}
+                      aria-label="Copy token"
+                    >
+                      {copied === item.token ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    </Button>
+                    <Link href={`/public/consent/${item.token}`}>
+                      <Button variant="outline" size="sm">Buka</Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">
+              Token contoh tidak ditampilkan karena mode demo nonaktif. Gunakan tautan consent
+              yang dikirim backend ke email host.
+            </p>
+          )}
         </CardContent>
       </Card>
 

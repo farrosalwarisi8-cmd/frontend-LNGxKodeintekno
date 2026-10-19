@@ -14,6 +14,8 @@ import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
+
+import { isDemoModeEnabled } from "@/lib/env";
 import { ApiError } from "@/lib/api-client";
 import {
   waiverService,
@@ -22,7 +24,7 @@ import {
   type WaiverDecision,
 } from "@/lib/services/waiver.service";
 import { masterDataService } from "@/lib/services/master-data.service";
-import { ShieldAlert, Plus, CheckCircle, Clock, XCircle, Send, Ban, Search } from "lucide-react";
+import { ShieldAlert, Plus, CheckCircle, Clock, XCircle, Send, Ban, Search, Loader2 } from "lucide-react";
 
 const EMPTY_FORM = {
   visitorName: "",
@@ -67,6 +69,17 @@ export default function WaiverPage() {
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+
+  // Keputusan yang menunggu konfirmasi pengguna (setuju/tolak).
+  const [pendingDecision, setPendingDecision] = useState<{
+    id: string;
+    visitorName: string;
+    decision: "APPROVED" | "REJECTED";
+  } | null>(null);
+  // Hasil aksi terakhir per waiver (badge sukses/gagal di baris).
+  const [rowResults, setRowResults] = useState<
+    Record<string, { status: "success" | "failed"; message: string }>
+  >({});
 
   // Public verify panel (pengujian alur token oleh HSE)
   const [publicToken, setPublicToken] = useState("");
@@ -146,12 +159,34 @@ export default function WaiverPage() {
     setActionError(null);
     try {
       await waiverService.decide(id, status);
+      setRowResults((prev) => ({
+        ...prev,
+        [id]: {
+          status: "success",
+          message: status === "APPROVED" ? "Waiver disetujui." : "Waiver ditolak.",
+        },
+      }));
       await load();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Gagal memutus waiver.");
+      const message = e instanceof Error ? e.message : "Gagal memutus waiver.";
+      setRowResults((prev) => ({ ...prev, [id]: { status: "failed", message } }));
+      setActionError(message);
     } finally {
       setActingId(null);
     }
+  };
+
+  /** Membuka dialog konfirmasi sebelum keputusan dikirim ke backend. */
+  const openDecision = (id: string, visitorName: string, decision: "APPROVED" | "REJECTED") => {
+    setActionError(null);
+    setPendingDecision({ id, visitorName, decision });
+  };
+
+  const confirmDecision = async () => {
+    if (!pendingDecision) return;
+    const { id, decision } = pendingDecision;
+    setPendingDecision(null);
+    await handleDecision(id, decision);
   };
 
   const handleSend = async (id: string, email?: string) => {
@@ -159,8 +194,11 @@ export default function WaiverPage() {
     setActionError(null);
     try {
       const res = await waiverService.send(id, email || undefined);
+      // Token uji hanya ditampilkan pada mode demo; di produksi backend tidak
+      // boleh mengirim token dev dan UI tidak boleh memaparkannya.
+      const showDevToken = Boolean(res.devToken) && isDemoModeEnabled();
       setPublicResult(
-        res.devToken
+        showDevToken
           ? `Token dikirim ke ${res.email}. Token uji (non-production): ${res.devToken}`
           : `Token dikirim ke ${res.email}.`
       );
@@ -379,12 +417,18 @@ export default function WaiverPage() {
                             size="sm"
                             variant="outline"
                             disabled={busy}
-                            onClick={() => handleDecision(waiver.id, "REJECTED")}
+                            onClick={() => openDecision(waiver.id, waiver.visitor_name, "REJECTED")}
+                            data-testid={`waiver-reject-${waiver.id}`}
                           >
                             Tolak
                           </Button>
-                          <Button size="sm" disabled={busy} onClick={() => handleDecision(waiver.id, "APPROVED")}>
-                            Approve
+                          <Button
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => openDecision(waiver.id, waiver.visitor_name, "APPROVED")}
+                            data-testid={`waiver-approve-${waiver.id}`}
+                          >
+                            Setuju
                           </Button>
                         </>
                       )}
@@ -404,6 +448,23 @@ export default function WaiverPage() {
                         </Button>
                       )}
                     </Can>
+                        {busy && (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs text-slate-500"
+                            data-testid="waiver-row-loading"
+                          >
+                            <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                            Memproses...
+                          </span>
+                        )}
+                        {rowResults[waiver.id] && (
+                          <span
+                            className={`text-xs ${rowResults[waiver.id].status === "success" ? "text-success-600" : "text-danger-600"}`}
+                            data-testid="waiver-row-result"
+                          >
+                            {rowResults[waiver.id].message}
+                          </span>
+                        )}
                   </div>
                 </div>
               </Card>
@@ -412,6 +473,8 @@ export default function WaiverPage() {
         </div>
       )}
 
+
+      {isDemoModeEnabled() && (
       <Card className="p-4">
         <p className="text-sm font-medium text-slate-900">Uji alur publik (verify / approve / reject)</p>
         <p className="text-xs text-slate-500">
@@ -437,7 +500,10 @@ export default function WaiverPage() {
         </div>
         {publicResult && <p className="mt-2 text-xs text-slate-600">{publicResult}</p>}
       </Card>
-
+      )}
+      {/* Panel uji alur publik (verify / approve / reject).
+          Hanya aktif pada mode demo — di produksi panel ini disembunyikan agar
+          token dev tidak pernah tampil. */}
       {/* Fase 4 — input email penerima bila waiver belum memiliki host_email */}
       <Modal
         open={sendTarget !== null}
@@ -469,6 +535,38 @@ export default function WaiverPage() {
         </div>
       </Modal>
 
+      {/* Dialog konfirmasi keputusan waiver (setuju / tolak).
+          Backend: POST /waivers/:id/decision { status: APPROVED | REJECTED } */}
+      <Modal
+        open={pendingDecision !== null}
+        onClose={() => setPendingDecision(null)}
+        title={pendingDecision?.decision === "APPROVED" ? "Konfirmasi Setuju" : "Konfirmasi Tolak"}
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-700">
+            {pendingDecision?.decision === "APPROVED"
+              ? "Setujui waiver visitor berikut? Keputusan akan tercatat pada jejak audit backend."
+              : "Tolak waiver visitor berikut? Keputusan akan tercatat pada jejak audit backend."}
+          </p>
+          <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+            Visitor:{" "}
+            <span className="font-medium">{pendingDecision?.visitorName ?? "-"}</span>
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setPendingDecision(null)}>
+              Batal
+            </Button>
+            <Button
+              variant={pendingDecision?.decision === "APPROVED" ? "default" : "danger"}
+              onClick={() => void confirmDecision()}
+              data-testid="waiver-decision-confirm"
+            >
+              {pendingDecision?.decision === "APPROVED" ? "Ya, Setuju" : "Ya, Tolak"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Buat Waiver Visitor" size="lg">
         <div className="space-y-4">
           <Input
