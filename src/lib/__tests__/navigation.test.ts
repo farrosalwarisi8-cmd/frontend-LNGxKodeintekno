@@ -21,28 +21,53 @@ describe("getNavigation() — filtering per role", () => {
     expect(getNavigation(undefined)).toEqual([]);
   });
 
-  it("admin sees administration + clinical modules", () => {
+  it("admin (System Administrator) melihat modul administrasi, tanpa modul klinis", () => {
     const nav = hrefs("admin");
     expect(nav).toContain("/dashboard");
     expect(nav).toContain("/users");
     expect(nav).toContain("/master-data");
     expect(nav).toContain("/audit-logs");
-    expect(nav).toContain("/medicine");
-    expect(nav).toContain("/people");
+    expect(nav).toContain("/reports");
+    expect(nav).toContain("/health-status");
+    // Tidak ada akses data klinis (termasuk read-only).
+    expect(nav).not.toContain("/medicine");
+    expect(nav).not.toContain("/medicine/dispense");
+    expect(nav).not.toContain("/people");
+    expect(nav).not.toContain("/employees");
+    expect(nav).not.toContain("/mcu");
+    expect(nav).not.toContain("/mcu/review");
+    expect(nav).not.toContain("/visits");
+    expect(nav).not.toContain("/visits/new");
+    expect(nav).not.toContain("/medical-records");
+    expect(nav).not.toContain("/lab");
   });
 
-  it("hr sees administrative modules but no clinical/pharmacy/users", () => {
+  it("hr (HR/PIC) melihat data pekerja & kepatuhan, tanpa user/master data atau MCU", () => {
     const nav = hrefs("hr");
     expect(nav).toContain("/people");
     expect(nav).toContain("/employees");
-    expect(nav).toContain("/mcu");
     expect(nav).toContain("/health-status");
-    expect(nav).toContain("/reports");
     expect(nav).not.toContain("/medicine");
     expect(nav).not.toContain("/medicine/dispense");
     expect(nav).not.toContain("/users");
+    expect(nav).not.toContain("/master-data");
+    expect(nav).not.toContain("/mcu");
     expect(nav).not.toContain("/mcu/review");
+    expect(nav).not.toContain("/visits");
     expect(nav).not.toContain("/audit-logs");
+  });
+
+  it("admin-klinik melihat registrasi/antrean, tanpa data klinis", () => {
+    const nav = hrefs("admin-klinik");
+    expect(nav).toContain("/people");
+    expect(nav).toContain("/visits");
+    expect(nav).toContain("/visits/new");
+    expect(nav).toContain("/visits/queue");
+    expect(nav).not.toContain("/mcu");
+    expect(nav).not.toContain("/medical-records");
+    expect(nav).not.toContain("/medicine");
+    expect(nav).not.toContain("/medicine/dispense");
+    expect(nav).not.toContain("/users");
   });
 
   it("dokter-oh sees review & certificates but not users/pharmacy", () => {
@@ -107,7 +132,7 @@ describe("getNavigation() — filtering per role", () => {
 
 describe("Lab & Radiologi navigation", () => {
   it("Lab & Radiologi tampil untuk role dengan permission input-lab-result", () => {
-    for (const role of ["admin", "dokter-oh", "lab"] as Role[]) {
+    for (const role of ["dokter-oh", "lab"] as Role[]) {
       const lab = getNavigation(role).find((i) => i.href === "/lab");
       expect(lab).toBeDefined();
       expect(lab?.disabled).toBeUndefined();
@@ -115,7 +140,7 @@ describe("Lab & Radiologi navigation", () => {
   });
 
   it("Lab & Radiologi tidak tampil untuk role tanpa permission", () => {
-    for (const role of ["pekerja", "hr", "manajemen"] as Role[]) {
+    for (const role of ["pekerja", "hr", "manajemen", "admin", "admin-klinik"] as Role[]) {
       const lab = getNavigation(role).find((i) => i.href === "/lab");
       expect(lab).toBeUndefined();
     }
@@ -138,7 +163,7 @@ describe("getBottomNavigation() — permission registry yang sama", () => {
 
   it("hr tidak melihat Farmasi di bottom navigation", () => {
     const hrefs = getBottomNavigation("hr").map((i) => i.href);
-    expect(hrefs).toEqual(["/dashboard", "/mcu", "/visits"]);
+    expect(hrefs).toEqual(["/dashboard"]);
   });
 
   it("pekerja tidak melihat Farmasi di bottom navigation", () => {
@@ -147,25 +172,23 @@ describe("getBottomNavigation() — permission registry yang sama", () => {
     expect(hrefs).toContain("/dashboard");
   });
 
-  it("apoteker & admin melihat Farmasi", () => {
+  it("apoteker melihat Farmasi; admin (System Administrator) tidak", () => {
     expect(getBottomNavigation("apoteker").map((i) => i.href)).toContain("/medicine");
-    expect(getBottomNavigation("admin").map((i) => i.href)).toEqual([
-      "/dashboard",
-      "/mcu",
-      "/visits",
-      "/medicine",
-    ]);
+    // System Administrator tidak punya akses data klinis/farmasi.
+    expect(getBottomNavigation("admin").map((i) => i.href)).toEqual(["/dashboard"]);
   });
 
   it("lab/perawat/admin-klinik mengikuti registry", () => {
-    expect(getBottomNavigation("lab").map((i) => i.href)).toEqual(["/dashboard", "/mcu"]);
+    // lab tidak punya view-mcu lagi (hanya data penunjang).
+    expect(getBottomNavigation("lab").map((i) => i.href)).toEqual(["/dashboard"]);
     expect(getBottomNavigation("perawat").map((i) => i.href)).toEqual([
       "/dashboard",
       "/mcu",
       "/visits",
     ]);
-    // admin-klinik punya dispense-medicine tetapi TIDAK punya manage-stock
+    // admin-klinik punya dispense-medicine TIDAK lagi dan manage-stock juga tidak.
     expect(getBottomNavigation("admin-klinik").map((i) => i.href)).not.toContain("/medicine");
+    expect(getBottomNavigation("admin-klinik").map((i) => i.href)).toContain("/visits");
   });
 
   it("tanpa sesi → bottom navigation kosong", () => {
@@ -173,8 +196,10 @@ describe("getBottomNavigation() — permission registry yang sama", () => {
   });
 
   it("memakai label ringkas khusus bottom bar (presentasi, bukan permission baru)", () => {
-    const labels = getBottomNavigation("admin").map((i) => i.label);
-    expect(labels).toEqual(["Dashboard", "MCU", "Kunjungan", "Farmasi"]);
+    const labels = getBottomNavigation("apoteker").map((i) => i.label);
+    expect(labels).toEqual(["Dashboard", "MCU", "Farmasi"]);
+    const perawatLabels = getBottomNavigation("perawat").map((i) => i.label);
+    expect(perawatLabels).toEqual(["Dashboard", "MCU", "Kunjungan"]);
   });
 
   it("tidak ada link bottom nav yang pasti ditolak route guard", () => {

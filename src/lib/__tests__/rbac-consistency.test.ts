@@ -6,10 +6,11 @@ import {
   can,
   getPermissionsForRole,
 } from "../../../lib/rbac";
-import { ACTION_PERMISSIONS, canPerform, isActionId } from "../../../lib/actions";
+import { ACTION_PERMISSIONS, canPerform, isActionId, permissionsForAction } from "../../../lib/actions";
 import { NAVIGATION_ITEMS, BOTTOM_NAV_ITEMS } from "@/lib/navigation";
 import { ROUTE_PERMISSIONS, matchRoutePermission } from "../../../components/route-guard";
 import type { Role } from "../../../lib/types";
+import type { ActionId } from "../../../lib/actions";
 
 const ROLE_LIST = Object.keys(ROLE_PERMISSIONS) as Role[];
 
@@ -28,8 +29,10 @@ describe("registry permission konsisten", () => {
     for (const rule of ROUTE_PERMISSIONS) {
       expect(known.has(rule.permission), `guard ${rule.pattern}`).toBe(true);
     }
-    for (const [action, permission] of Object.entries(ACTION_PERMISSIONS)) {
-      expect(known.has(permission), `action ${action}`).toBe(true);
+    for (const action of Object.keys(ACTION_PERMISSIONS) as ActionId[]) {
+      for (const permission of permissionsForAction(action)) {
+        expect(known.has(permission), `action ${action}`).toBe(true);
+      }
     }
     for (const permission of PRIVILEGED_PERMISSIONS) {
       expect(known.has(permission), `privileged ${permission}`).toBe(true);
@@ -40,7 +43,9 @@ describe("registry permission konsisten", () => {
     const used = new Set<string>([
       ...(NAVIGATION_ITEMS.map((i) => i.permission).filter(Boolean) as string[]),
       ...ROUTE_PERMISSIONS.map((r) => r.permission),
-      ...Object.values(ACTION_PERMISSIONS),
+      ...Object.keys(ACTION_PERMISSIONS).flatMap((action) => [
+        ...permissionsForAction(action as ActionId),
+      ]),
     ]);
     for (const permission of used) {
       const holders = ROLE_LIST.filter((role) => can(role, permission as never));

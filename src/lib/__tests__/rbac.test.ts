@@ -5,20 +5,69 @@ import {
   canAll,
   getPermissionsForRole,
   ROLE_PERMISSIONS,
+  allPermissions,
   type Permission,
 } from "../../../lib/rbac";
 import type { Role } from "../../../lib/types";
 
 describe("ROLE_PERMISSIONS", () => {
-  it("admin has most permissions but not clinical-only ones", () => {
+  it("admin (System Administrator) hanya punya izin administrasi, tanpa data klinis", () => {
     const perms = getPermissionsForRole("admin");
     expect(perms).toContain("manage-users");
-    expect(perms).toContain("manage-employees");
-    expect(perms).toContain("view-mcu");
-    expect(perms).toContain("dispense-medicine");
-    expect(perms).not.toContain("review-mcu");
+    expect(perms).toContain("manage-master-data");
+    expect(perms).toContain("view-audit-logs");
+    expect(perms).toContain("view-reports");
+    expect(perms).toContain("view-health-status");
+    expect(perms).toContain("manage-hse");
+    expect(perms).toContain("view-emergency");
+    // Tidak ada akses data klinis (termasuk read-only).
+    expect(perms).not.toContain("view-mcu");
+    expect(perms).not.toContain("view-visits");
+    expect(perms).not.toContain("view-clinical-notes");
+    expect(perms).not.toContain("view-diagnosis");
+    expect(perms).not.toContain("approve-mcu");
     expect(perms).not.toContain("issue-certificate");
-    expect(perms).not.toContain("set-health-status");
+    expect(perms).not.toContain("dispense-medicine");
+    expect(perms).not.toContain("manage-stock");
+    expect(perms).not.toContain("input-lab-result");
+    expect(perms).not.toContain("manage-employees");
+  });
+
+  it("hr (HR/PIC) tidak mengelola user/master data dan tidak melihat MCU penuh", () => {
+    const perms = getPermissionsForRole("hr");
+    expect(perms).toContain("manage-employees");
+    expect(perms).toContain("upload-document");
+    expect(perms).toContain("view-health-status");
+    expect(perms).not.toContain("manage-users");
+    expect(perms).not.toContain("manage-master-data");
+    expect(perms).not.toContain("view-mcu");
+    expect(perms).not.toContain("view-visits");
+    expect(perms).not.toContain("create-mcu");
+    expect(perms).not.toContain("view-clinical-notes");
+  });
+
+  it("lab hanya data penunjang, tanpa akses MCU penuh", () => {
+    const perms = getPermissionsForRole("lab");
+    expect(perms).toContain("input-lab-result");
+    expect(perms).toContain("input-mcu-result");
+    expect(perms).not.toContain("view-mcu");
+    expect(perms).not.toContain("view-clinical-notes");
+    expect(perms).not.toContain("view-diagnosis");
+    expect(perms).not.toContain("dispense-medicine");
+  });
+
+  it("admin-klinik boleh registrasi/antrean tetapi tanpa data klinis", () => {
+    const perms = getPermissionsForRole("admin-klinik");
+    expect(perms).toContain("register-patient");
+    expect(perms).toContain("manage-employees");
+    expect(perms).toContain("upload-document");
+    expect(perms).toContain("view-visits");
+    expect(perms).not.toContain("view-mcu");
+    expect(perms).not.toContain("create-mcu");
+    expect(perms).not.toContain("dispense-medicine");
+    expect(perms).not.toContain("view-clinical-notes");
+    expect(perms).not.toContain("view-diagnosis");
+    expect(perms).not.toContain("manage-users");
   });
 
   it("dokter-oh has review-mcu but not manage-users", () => {
@@ -36,6 +85,15 @@ describe("ROLE_PERMISSIONS", () => {
     expect(perms).not.toContain("manage-users");
     expect(perms).not.toContain("manage-employees");
     expect(perms).not.toContain("review-mcu");
+  });
+
+  it("registry role lengkap (tanpa permission yatim)", () => {
+    const known = new Set(allPermissions());
+    for (const [role, perms] of Object.entries(ROLE_PERMISSIONS)) {
+      for (const permission of perms) {
+        expect(known.has(permission), `${role}:${permission}`).toBe(true);
+      }
+    }
   });
 
   it("every role has view-dashboard", () => {
@@ -81,11 +139,13 @@ describe("canAny()", () => {
 
 describe("canAll()", () => {
   it("returns true if all permissions are granted", () => {
-    expect(canAll("admin", ["manage-users", "manage-employees"])).toBe(true);
+    expect(canAll("admin", ["manage-users", "manage-master-data"])).toBe(true);
+    expect(canAll("admin", ["manage-users", "view-audit-logs"])).toBe(true);
   });
 
   it("returns false if any permission is missing", () => {
     expect(canAll("hr", ["manage-employees", "manage-users"])).toBe(false);
+    expect(canAll("admin", ["manage-users", "view-mcu"])).toBe(false);
   });
 
   it("returns true for empty array", () => {
