@@ -42,6 +42,11 @@ export type Permission =
   | "view-emergency"
   | "view-profile"
   | "input-lab-result"
+  | "view-lab-orders"
+  | "receive-sample"
+  | "import-lab-result"
+  | "verify-lab-result"
+  | "write-radiology-report"
   | "manage-system-config"
   | "manage-api-keys"
   | "view-tte"
@@ -78,6 +83,11 @@ export const ALL_PERMISSIONS: readonly Permission[] = [
   "view-emergency",
   "view-profile",
   "input-lab-result",
+  "view-lab-orders",
+  "receive-sample",
+  "import-lab-result",
+  "verify-lab-result",
+  "write-radiology-report",
   "manage-system-config",
   "manage-api-keys",
   "view-tte",
@@ -117,6 +127,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-reports",
     "view-health-status",
     "view-profile",
+    // A2 (Lab & Radiologi): admin hanya punya izin lihat & impor —
+    // penerimaan sampel, verifikasi analis, dan laporan radiologi
+    // disengaja TIDAK diberikan (verifikasi = kewenangan analis lab).
+    "view-lab-orders",
+    "import-lab-result",
     // Audit log hanya bisa dilihat, tidak bisa diubah/hapus
     // (backend tetap meng-enforce, tapi UI hanya menampilkan read-only)
     // MFA wajib untuk setiap user (backend enforcement)
@@ -141,6 +156,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-emergency",
     "view-profile",
     "input-lab-result",
+    // A2: Dokter OH boleh melihat order & hasil lab (konteks klinis).
+    "view-lab-orders",
   ],
   "dokter-klinik": [
     "view-dashboard",
@@ -158,6 +175,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-health-status",
     "view-emergency",
     "view-profile",
+    // A2: dokter klinik cukup melihat order/hasil lab; input & verifikasi
+    // tetap milik analis lab.
+    "view-lab-orders",
   ],
   perawat: [
     "view-dashboard",
@@ -173,6 +193,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-health-status",
     "view-emergency",
     "view-profile",
+    // A2: perawat cukup melihat order/hasil lab tertaut kunjungannya.
+    "view-lab-orders",
   ],
   apoteker: [
     "view-dashboard",
@@ -197,6 +219,13 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-profile",
     "input-mcu-result",
     "input-lab-result",
+    // A2 (Lab & Radiologi): kewenangan analis lab — terima sampel, input
+    // manual, impor massal, verifikasi hasil, dan menyusun laporan radiologi.
+    "view-lab-orders",
+    "receive-sample",
+    "import-lab-result",
+    "verify-lab-result",
+    "write-radiology-report",
     // D&A (forensik): backend mengizinkan LAB_ANALYST pada modul da-test.
     // UI memisahkan lab result dari radiology report
     "manage-da",
@@ -315,6 +344,10 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = [
   "manage-hse",
   "manage-da",
   "input-lab-result",
+  "receive-sample",
+  "import-lab-result",
+  "verify-lab-result",
+  "write-radiology-report",
   "manage-system-config",
   "manage-api-keys",
 ];
