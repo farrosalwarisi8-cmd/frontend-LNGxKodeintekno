@@ -31,6 +31,7 @@ import type {
   ClinicVisit,
   Company,
   Department,
+  Dispensing,
   Employee,
   HealthCertificate,
   Medicine,
@@ -425,6 +426,7 @@ export async function syncMcu(page = 1, limit = PAGE_SIZE, ftwStatus?: string): 
   return mcus;
 }
 
+
 // ---------------------------------------------------------------------------
 // Modul 5 — Farmasi (FEFO)
 // ---------------------------------------------------------------------------
@@ -470,6 +472,27 @@ export async function syncInventory(siteId?: string) {
     stockBatches: mergeById(s.stockBatches, stockBatches),
   }));
   return items;
+}
+
+/**
+ * Riwayat dispensing dari backend (GET /pharmacy/dispensing/history).
+ *
+ * A1: sebelumnya kartu "Dispensing" pada halaman laporan memakai data seed
+ * (`DISPENSINGS` dari `lib/seed.ts`) — data demo yang tampil di produksi.
+ */
+export async function syncDispensings(): Promise<Dispensing[]> {
+  const rows = await pharmacyService.getDispensingHistory();
+  const dispensings: Dispensing[] = rows.map((d) => ({
+    id: d.id,
+    visitId: d.prescription?.encounter_id ?? d.prescription_id ?? "",
+    medicineId: d.prescription?.items?.[0]?.medication_id ?? "",
+    batchId: d.dispensing_items?.[0]?.stock_batch_id ?? "",
+    quantity: (d.dispensing_items ?? []).reduce((sum, i) => sum + (i.quantity ?? 0), 0),
+    dispensedAt: (d.dispensed_at ?? "").slice(0, 10),
+    by: d.dispensed_by ?? "",
+  }));
+  useStore.setState({ dispensings });
+  return dispensings;
 }
 
 // ---------------------------------------------------------------------------

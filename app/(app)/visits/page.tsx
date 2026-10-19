@@ -1,6 +1,6 @@
 "use client";
 
-import { Can } from "@/components/can";
+import { Can, useCan } from "@/components/can";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -24,6 +24,12 @@ export default function VisitsPage() {
   const employees = useStore((s) => s.employees);
   const locations = useStore((s) => s.locations);
 
+  // Kolom klinis (keluhan utama, diagnosis) hanya ditampilkan untuk role yang
+  // punya akses catatan klinis. Admin Klinik (registrasi & antrean) tidak
+  // punya akses tersebut — data klinis tidak boleh bocor lewat UI.
+  const can = useCan();
+  const showClinical = can("visits.view-clinical");
+
   // Modul 3 — sinkron antrean/kunjungan dari backend (GET /clinic/queues)
   const { loading, error, refetch } = useSyncedModules(() => syncQueues());
 
@@ -39,7 +45,8 @@ export default function VisitsPage() {
       !q ||
       v.visitNumber.toLowerCase().includes(q) ||
       emp?.fullName.toLowerCase().includes(q) ||
-      v.chiefComplaint.toLowerCase().includes(q);
+      // Pencarian tidak boleh memakai keluhan utama untuk role tanpa akses klinis.
+      (showClinical && v.chiefComplaint.toLowerCase().includes(q));
     const matchStatus = !statusFilter || v.status === statusFilter;
     const matchLocation = !locationFilter || v.locationId === locationFilter;
     return matchSearch && matchStatus && matchLocation;
@@ -121,7 +128,9 @@ export default function VisitsPage() {
                 <tr className="border-b border-slate-100 bg-slate-50/50">
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Kunjungan</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Pasien</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Keluhan</th>
+                  {showClinical && (
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Keluhan</th>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Lokasi</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
                   <th className="px-4 py-3" />
@@ -147,7 +156,9 @@ export default function VisitsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{visit.chiefComplaint}</td>
+                      {showClinical && (
+                        <td className="px-4 py-3 text-sm text-slate-600">{visit.chiefComplaint}</td>
+                      )}
                       <td className="px-4 py-3 text-sm text-slate-600">{loc?.name}</td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className={statusMeta?.color}>
@@ -175,7 +186,8 @@ export default function VisitsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-slate-900">{emp?.fullName}</div>
                       <div className="text-xs text-slate-500">
-                        {visit.visitNumber} · {visit.chiefComplaint}
+                        {visit.visitNumber}
+                        {showClinical ? ` · ${visit.chiefComplaint}` : ""}
                       </div>
                       <div className="mt-1">
                         <Badge variant="outline" className={statusMeta?.color}>
