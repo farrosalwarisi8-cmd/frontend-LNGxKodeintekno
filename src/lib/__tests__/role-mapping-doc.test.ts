@@ -49,8 +49,11 @@ describe("generator ROLE_MAPPING.md", () => {
 
   it("ROLE_MAPPING.md ada dan sama dengan hasil generator", () => {
     expect(fs.existsSync(DOC_PATH), "ROLE_MAPPING.md harus ada").toBe(true);
-    const onDisk = fs.readFileSync(DOC_PATH, "utf8");
-    const generated = buildRoleMappingMarkdown();
+    // Normalisasi line ending: git bisa checkout CRLF di Windows, sedangkan
+    // generator menulis LF. Perbandingan isi tidak boleh bergantung OS.
+    const normalize = (text: string) => text.replace(/\r\n/g, "\n");
+    const onDisk = normalize(fs.readFileSync(DOC_PATH, "utf8"));
+    const generated = normalize(buildRoleMappingMarkdown());
     expect(
       onDisk,
       "ROLE_MAPPING.md tidak sinkron dengan kode. Jalankan: node scripts/generate-role-matrix.mjs"
@@ -58,7 +61,7 @@ describe("generator ROLE_MAPPING.md", () => {
   });
 
   it("dokumen memuat setiap role dan setiap permission", () => {
-    const onDisk = fs.readFileSync(DOC_PATH, "utf8");
+    const onDisk = fs.readFileSync(DOC_PATH, "utf8").replace(/\r\n/g, "\n");
     for (const role of Object.keys(ROLE_PERMISSIONS)) {
       expect(onDisk, role).toContain(`| \`${role}\` |`);
     }
@@ -68,7 +71,7 @@ describe("generator ROLE_MAPPING.md", () => {
   });
 
   it("dokumen mencerminkan aturan proposal untuk admin, hr, dan lab", () => {
-    const onDisk = fs.readFileSync(DOC_PATH, "utf8");
+    const onDisk = fs.readFileSync(DOC_PATH, "utf8").replace(/\r\n/g, "\n");
     const rows = onDisk.split("\n");
     const cells = (row: string) => row.split("|").map((c) => c.trim());
     const header = cells(rows.find((line) => line.startsWith("| Permission |")) as string);
