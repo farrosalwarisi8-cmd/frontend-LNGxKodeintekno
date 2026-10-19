@@ -30,8 +30,10 @@ export default function MedicalRecordsPage() {
   const updateVisit = useStore((s) => s.updateVisit);
 
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictMsg, setConflictMsg] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
+  const [savingSoap, setSavingSoap] = useState(false);
   const [addendumReason, setAddendumReason] = useState("");
   const [addendumNote, setAddendumNote] = useState("");
   const [savingAddendum, setSavingAddendum] = useState(false);
@@ -91,9 +93,48 @@ export default function MedicalRecordsPage() {
     setConfirmFinalize({ id: selectedVisit, name: v?.visitNumber ?? selectedVisit });
   };
 
+  /**
+   * Simpan SOAP sebagai draft (PUT /clinic/encounters/:id/soap).
+   * Finalisasi adalah langkah terpisah — dokumen hanya terkunci setelah
+   * "Finalize & Lock" dikonfirmasi.
+   */
+  const handleSaveSoap = async () => {
+    if (!selectedVisit) return;
+    setSaveMsg(null);
+    setSaveError(null);
+    setConflictMsg(null);
+    setSavingSoap(true);
+    try {
+      await encounterService.saveSoap(selectedVisit, {
+        subjective: soapData.subjective,
+        objective: soapData.objective,
+        assessment: diagnosisNote || soapData.assessment,
+        plan: treatment || soapData.plan,
+        primaryIcd10: selectedDiagnoses[0],
+      });
+      setSaveMsg(
+        "SOAP tersimpan sebagai draft. Gunakan 'Finalize & Lock' untuk mengunci dokumen."
+      );
+      toastSuccess("SOAP tersimpan", "Catatan SOAP disimpan pada backend.");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        setConflictMsg(
+          "Data rekam medis telah berubah di backend. Muat ulang lalu coba lagi (409 Conflict)."
+        );
+      } else {
+        const message = e instanceof Error ? e.message : "Gagal menyimpan SOAP.";
+        setSaveError(message);
+        toastError("Gagal menyimpan SOAP", message);
+      }
+    } finally {
+      setSavingSoap(false);
+    }
+  };
+
   const handleConfirmFinalize = async () => {
     if (!confirmFinalize || !selectedVisit) return;
     setSaveMsg(null);
+    setSaveError(null);
     setConflictMsg(null);
     setFinalizing(true);
     try {
@@ -108,8 +149,9 @@ export default function MedicalRecordsPage() {
       if (e instanceof ApiError && e.status === 409) {
         setConflictMsg("Data rekam medis telah berubah di backend. Muat ulang lalu coba lagi (409 Conflict).");
       } else {
-        setSaveMsg(e instanceof Error ? e.message : "Gagal finalisasi rekam medis.");
-        toastError("Gagal finalisasi", e instanceof Error ? e.message : undefined);
+        const message = e instanceof Error ? e.message : "Gagal finalisasi rekam medis.";
+        setSaveError(message);
+        toastError("Gagal finalisasi", message);
       }
     } finally {
       setFinalizing(false);
@@ -168,7 +210,14 @@ export default function MedicalRecordsPage() {
         </div>
       )}
       {saveMsg && (
-        <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700">{saveMsg}</div>
+        <div className="rounded-xl bg-success-50 p-3 text-sm text-success-700" role="status" data-testid="soap-save-success">
+          {saveMsg}
+        </div>
+      )}
+      {saveError && (
+        <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700" role="alert" data-testid="soap-save-error">
+          {saveError}
+        </div>
       )}
       {conflictMsg && (
         <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
@@ -362,23 +411,30 @@ export default function MedicalRecordsPage() {
                     variant="outline"
                     onClick={handleFinalize}
                     loading={finalizing}
-                    disabled={confirmFinalize?.id === selectedVisit && finalizing}
+                    disabled={finalizing || savingSoap}
+                    data-testid="soap-finalize"
                   >
                     <Lock className="size-3.5" />
-                    {confirmFinalize?.id === selectedVisit ? "Konfirmasi Finalize" : "Finalize & Lock"}
+                    Finalize & Lock
                   </Button>
                   <Button
-                    onClick={() => {
-                      if (confirmFinalize?.id === selectedVisit) {
-                        void handleConfirmFinalize();
-                      } else {
-                        handleFinalize();
-                      }
-                    }}
-                    disabled={savingAddendum || finalizing}
+                    onClick={() => void handleSaveSoap()}
+                    loading={savingSoap}
+                    disabled={savingSoap || finalizing}
+                    data-testid="soap-save"
                   >
-                    {confirmFinalize?.id === selectedVisit ? "Ya, Finalize" : "Simpan SOAP"}
+                    Simpan SOAP
                   </Button>
+                  {confirmFinalize?.id === selectedVisit && (
+                    <Button
+                      onClick={() => void handleConfirmFinalize()}
+                      loading={finalizing}
+                      disabled={finalizing}
+                      data-testid="soap-finalize-confirm"
+                    >
+                      Ya, Finalize
+                    </Button>
+                  )}
                 </Can>
               </div>
             </>
