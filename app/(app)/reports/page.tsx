@@ -1,13 +1,15 @@
 "use client";
 
-import { Can } from "@/components/can";
+import { Can, useCan } from "@/components/can";
 
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import {
+  syncDispensings,
   syncMcu,
   syncPatients,
   syncQueues,
+  syncWorkHealthStatus,
   useSyncedModules,
 } from "@/lib/remote-sync";
 import {
@@ -30,6 +32,15 @@ export default function ReportsPage() {
   const dispensings = useStore((s) => s.dispensings);
   const diagnoses = useStore((s) => s.diagnoses);
 
+  // Setiap kartu laporan memakai izin sesuai sumber datanya. Role non-klinis
+  // (HR/PIC, System Administrator) tetap bisa memantau kepatuhan, tetapi tidak
+  // melihat angka/kolom yang berasal dari data klinis.
+  const can = useCan();
+  const showMcuMetrics = can("reports.view-mcu");
+  const showVisitMetrics = can("reports.view-visits");
+  const showDiagnosisMetrics = can("reports.view-diagnosis");
+  const showPharmacyMetrics = can("reports.view-pharmacy");
+
   const [topDiseases, setTopDiseases] = useState<TopDiseaseItem[]>([]);
   const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
   const [exporting, setExporting] = useState(false);
@@ -41,12 +52,18 @@ export default function ReportsPage() {
   // Modul 8 — data laporan & analitik dari backend
   const { loading, error, refetch } = useSyncedModules(async () => {
     setPartialNotice(null);
+    // Hanya sumber data yang boleh diakses role ini yang diambil, supaya
+    // laporan non-klinis (HR/System Administrator) tidak memicu request
+    // klinis yang pasti ditolak backend.
+    const tasks: Array<Promise<unknown>> = [syncPatients(1, 100)];
+    if (showMcuMetrics) tasks.push(syncMcu(1, 100));
+    if (showVisitMetrics) tasks.push(syncQueues());
+    if (showPharmacyMetrics) tasks.push(syncDispensings());
+    // Status kepatuhan selalu berasal dari assessment FTW backend (bukan seed).
+    tasks.push(syncWorkHealthStatus());
+
     // Satu sumber yang ditolak tidak boleh mengosongkan seluruh halaman laporan.
-    const syncResults = await Promise.allSettled([
-      syncPatients(1, 100),
-      syncMcu(1, 100),
-      syncQueues(),
-    ]);
+    const syncResults = await Promise.allSettled(tasks);
     const rejected = syncResults.filter(
       (r): r is PromiseRejectedResult => r.status === "rejected"
     );
@@ -59,7 +76,9 @@ export default function ReportsPage() {
       );
     }
     const [analytics, defs] = await Promise.all([
-      reportingService.topDiseases({}).catch(() => null),
+      showDiagnosisMetrics
+        ? reportingService.topDiseases({}).catch(() => null)
+        : Promise.resolve(null),
       reportingService.getDefinitions().catch(() => []),
     ]);
     setTopDiseases(analytics ? analytics.topDiseases ?? analytics.top10Morbidity ?? [] : []);
@@ -162,39 +181,45 @@ export default function ReportsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-success-100 text-success-600">
-              <Activity className="size-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-slate-900">{approvedMCU}</p>
-              <p className="text-xs text-slate-500">MCU Approved</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-info-100 text-info-600">
-              <BarChart3 className="size-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-slate-900">{totalVisits}</p>
-              <p className="text-xs text-slate-500">Total Kunjungan</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
-              <Pill className="size-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-slate-900">{dispensings.length}</p>
-              <p className="text-xs text-slate-500">Dispensing</p>
-            </div>
-          </CardContent>
-        </Card>
+        {showMcuMetrics && (
+          <Card>
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-success-100 text-success-600">
+                <Activity className="size-6" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-slate-900">{approvedMCU}</p>
+                <p className="text-xs text-slate-500">MCU Approved</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {showVisitMetrics && (
+          <Card>
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-info-100 text-info-600">
+                <BarChart3 className="size-6" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-slate-900">{totalVisits}</p>
+                <p className="text-xs text-slate-500">Total Kunjungan</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {showPharmacyMetrics && (
+          <Card>
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
+                <Pill className="size-6" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-slate-900">{dispensings.length}</p>
+                <p className="text-xs text-slate-500">Dispensing</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -247,51 +272,55 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="size-5 text-info-600" />
-              Top 10 Diagnosis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {topRows.length === 0 ? (
-              <EmptyState
-                icon={TrendingUp}
-                title="Belum ada data diagnosis"
-                description="Data akan muncul setelah ada kunjungan dengan diagnosis ICD-10."
-              />
-            ) : (
-              <div className="space-y-2">
-                {topRows.map((d) => (
-                  <div key={d.key} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="min-w-0 truncate text-slate-600" title={d.label}>
-                      {d.label}
-                    </span>
-                    <Badge variant="info">{d.count}</Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {showDiagnosisMetrics && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="size-5 text-info-600" />
+                Top 10 Diagnosis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {topRows.length === 0 ? (
+                <EmptyState
+                  icon={TrendingUp}
+                  title="Belum ada data diagnosis"
+                  description="Data akan muncul setelah ada kunjungan dengan diagnosis ICD-10."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {topRows.map((d) => (
+                    <div key={d.key} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="min-w-0 truncate text-slate-600" title={d.label}>
+                        {d.label}
+                      </span>
+                      <Badge variant="info">{d.count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>MCU per Tipe</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {mcuByType.map((item) => (
-              <div key={item.type} className="rounded-xl border border-slate-200 p-4 text-center">
-                <p className="text-2xl font-semibold text-slate-900">{item.count}</p>
-                <p className="text-xs text-slate-500">{item.type}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {showMcuMetrics && (
+        <Card>
+          <CardHeader>
+            <CardTitle>MCU per Tipe</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {mcuByType.map((item) => (
+                <div key={item.type} className="rounded-xl border border-slate-200 p-4 text-center">
+                  <p className="text-2xl font-semibold text-slate-900">{item.count}</p>
+                  <p className="text-xs text-slate-500">{item.type}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

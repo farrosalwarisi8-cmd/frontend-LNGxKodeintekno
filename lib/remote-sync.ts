@@ -30,12 +30,14 @@ import type {
   ClinicVisit,
   Company,
   Department,
+  Dispensing,
   Employee,
   Medicine,
   MCU,
   StockBatch,
   User,
   VisitStatus,
+  WorkHealthStatus,
   WorkLocation,
 } from "@/lib/types";
 import type { PersonListItem } from "@/features/people/api/people.types";
@@ -255,6 +257,47 @@ export async function syncMcu(page = 1, limit = PAGE_SIZE, ftwStatus?: string): 
 }
 
 // ---------------------------------------------------------------------------
+// Modul 4 — Status Kepatuhan Kerja (FTW) diturunkan dari siklus MCU backend
+//
+// A1: halaman status kesehatan TIDAK boleh lagi menampilkan data seed
+// (WORK_HEALTH_STATUS dari `lib/seed.ts`) sebagai data produksi. Sumber
+// tunggalnya adalah assessment FTW pada siklus MCU yang dikembalikan backend.
+// ---------------------------------------------------------------------------
+
+export function mapWorkHealthStatus(cycle: BackendMcuCycle): WorkHealthStatus | null {
+  const assessment = cycle.ftw_assessment;
+  if (!assessment) return null;
+  const restriction = assessment.restrictions?.[0];
+  return {
+    id: assessment.id ?? `${cycle.id}-whs`,
+    employeeId: cycle.patient_id,
+    mcuId: cycle.id,
+    status: mapFtwToHealthStatus(assessment.ftw_status) ?? "Pending Further Evaluation",
+    decisionDate: (assessment.assessed_at ?? "").slice(0, 10),
+    validFrom: (cycle.valid_from ?? "").slice(0, 10),
+    validUntil: (cycle.valid_until ?? "").slice(0, 10),
+    restriction: restriction?.description,
+    recommendation: assessment.summary ?? undefined,
+    reviewDate: restriction?.review_date ? restriction.review_date.slice(0, 10) : undefined,
+    doctorId: cycle.reviewer_user_id ?? "",
+    doctorName: assessment.assessed_by ?? "",
+    createdAt: iso(cycle.created_at),
+  };
+}
+
+export async function syncWorkHealthStatus(
+  page = 1,
+  limit = PAGE_SIZE
+): Promise<WorkHealthStatus[]> {
+  const res = await mcuService.list({ page, limit });
+  const rows = (res.data ?? [])
+    .map(mapWorkHealthStatus)
+    .filter((row): row is WorkHealthStatus => row !== null);
+  useStore.setState({ workHealthStatus: rows });
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
 // Modul 5 — Farmasi (FEFO)
 // ---------------------------------------------------------------------------
 export function mapInventory(items: BackendInventoryItem[]): {
@@ -297,6 +340,27 @@ export async function syncInventory(siteId?: string) {
     stockBatches: mergeById(s.stockBatches, stockBatches),
   }));
   return items;
+}
+
+/**
+ * Riwayat dispensing dari backend (GET /pharmacy/dispensing/history).
+ *
+ * A1: sebelumnya kartu "Dispensing" pada halaman laporan memakai data seed
+ * (`DISPENSINGS` dari `lib/seed.ts`) — data demo yang tampil di produksi.
+ */
+export async function syncDispensings(): Promise<Dispensing[]> {
+  const rows = await pharmacyService.getDispensingHistory();
+  const dispensings: Dispensing[] = rows.map((d) => ({
+    id: d.id,
+    visitId: d.prescription?.encounter_id ?? d.prescription_id ?? "",
+    medicineId: d.prescription?.items?.[0]?.medication_id ?? "",
+    batchId: d.dispensing_items?.[0]?.stock_batch_id ?? "",
+    quantity: (d.dispensing_items ?? []).reduce((sum, i) => sum + (i.quantity ?? 0), 0),
+    dispensedAt: (d.dispensed_at ?? "").slice(0, 10),
+    by: d.dispensed_by ?? "",
+  }));
+  useStore.setState({ dispensings });
+  return dispensings;
 }
 
 // ---------------------------------------------------------------------------

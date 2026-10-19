@@ -1,6 +1,7 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import { useCan } from "@/components/can";
 import { syncQueues, useSyncedModules } from "@/lib/remote-sync";
 import { VISIT_STATUS } from "@/lib/constants";
 import type { VisitStatus } from "@/lib/types";
@@ -15,6 +16,11 @@ export default function QueuePage() {
   const employees = useStore((s) => s.employees);
   const locations = useStore((s) => s.locations);
   const updateVisit = useStore((s) => s.updateVisit);
+
+  // Keluhan utama = data klinis. Role yang hanya boleh menangani data
+  // administratif/antrean (mis. Admin Klinik) tidak melihat kolom ini.
+  const can = useCan();
+  const showClinical = can("visits.view-clinical");
 
   // Modul 3 — antrean klinik real-time dari backend
   const { loading, error, refetch } = useSyncedModules(() => syncQueues());
@@ -111,7 +117,9 @@ export default function QueuePage() {
                         <p className="text-xs text-slate-500">
                           {visit.visitNumber} · {loc?.name}
                         </p>
-                        <p className="text-xs text-slate-500">{visit.chiefComplaint}</p>
+                        {showClinical && (
+                          <p className="text-xs text-slate-500">{visit.chiefComplaint}</p>
+                        )}
                       </div>
                     </div>
                   </div>
