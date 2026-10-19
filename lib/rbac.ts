@@ -206,7 +206,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-visits",
     "register-patient",
     "view-reports",
-    "export-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
@@ -219,7 +218,14 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ],
   hr: [
     "view-dashboard",
+    // Restorasi A1: commit 7c985d8 menghapus permission ini dari HR di luar
+    // niat commit ("remove manage-users/master-data"). HR/PIC tetap role
+    // pendaftar pekerja & pengirim consent (registrasi & consent) sesuai
+    // ROLE_MAPPING.md dan test actions/demo-role/navigation.
+    "manage-employees",
+    "upload-document",
     "view-mcu",
+    "create-mcu",
     "view-visits",
     "view-reports",
     "export-reports",

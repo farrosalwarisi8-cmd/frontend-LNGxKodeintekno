@@ -47,6 +47,12 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   // membuka halaman yang API-nya selalu 403.
   { pattern: /^\/da(?:\/.*)?$/, permission: "manage-da" },
   { pattern: /^\/emergency(?:\/.*)?$/, permission: "view-emergency" },
+  // Kontrol sistem (Tahap 4): nav memakai permission tetapi route belum punya
+  // guard → tautan langsung lolos. Diselaraskan agar guard = navigasi = aksi.
+  { pattern: /^\/system-config(?:\/.*)?$/, permission: "manage-system-config" },
+  { pattern: /^\/api-keys(?:\/.*)?$/, permission: "manage-api-keys" },
+  { pattern: /^\/tte(?:\/.*)?$/, permission: "view-tte" },
+  { pattern: /^\/emergency-detail(?:\/.*)?$/, permission: "monitor-emergency" },
   // Lab & Radiologi sebelumnya tidak punya guard padahal menu mensyaratkan
   // `input-lab-result` → tautan langsung melewati guard. Kini diselaraskan.
   { pattern: /^\/lab(?:\/.*)?$/, permission: "input-lab-result" },
