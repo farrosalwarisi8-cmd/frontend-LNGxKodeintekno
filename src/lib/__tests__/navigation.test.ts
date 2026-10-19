@@ -158,7 +158,8 @@ describe("getBottomNavigation() — permission registry yang sama", () => {
   });
 
   it("lab/perawat/admin-klinik mengikuti registry", () => {
-    expect(getBottomNavigation("lab").map((i) => i.href)).toEqual(["/dashboard", "/mcu"]);
+    // A1: role lab tidak lagi memiliki view-mcu (hanya dashboard di bottom bar).
+    expect(getBottomNavigation("lab").map((i) => i.href)).toEqual(["/dashboard"]);
     expect(getBottomNavigation("perawat").map((i) => i.href)).toEqual([
       "/dashboard",
       "/mcu",

@@ -351,11 +351,13 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
         permission: "manage-da",
       },
       {
-        label: "MCU & FTW",
-        href: "/mcu",
-        icon: "activity",
-        description: "Siklus MCU yang menunggu hasil",
-        permission: "view-mcu",
+        // A1: pintasan MCU dihapus dari role lab (view-mcu dicabut);
+        // gantinya laporan yang memang boleh dilihat analis lab.
+        label: "Laporan",
+        href: "/reports",
+        icon: "bar-chart",
+        description: "Rekap hasil lab & radiologi",
+        permission: "view-reports",
       },
     ],
     tiles: ["pendingMcu", "mcuDueSoon", "visitsToday", "employees"],

@@ -29,6 +29,13 @@ describe("ROLE_PERMISSIONS", () => {
     expect(perms).not.toContain("manage-employees");
   });
 
+  it("A1 — role lab TIDAK memiliki view-mcu (hanya data penunjang)", () => {
+    const perms = getPermissionsForRole("lab");
+    expect(perms).not.toContain("view-mcu");
+    // Lab tetap role input hasil penunjang.
+    expect(perms).toContain("input-lab-result");
+  });
+
   it("pekerja has minimal permissions", () => {
     const perms = getPermissionsForRole("pekerja");
     expect(perms).toContain("view-dashboard");
