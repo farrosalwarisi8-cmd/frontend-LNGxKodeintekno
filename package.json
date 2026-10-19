@@ -17,7 +17,9 @@
     "test:e2e:frontend:contract": "node e2e/run-frontend-e2e.mjs --mode=contract",
     "test:e2e:fase2": "node e2e/fase2-identity-mcu-staging.mjs",
     "test:e2e:fase1": "node e2e/staging-business-flows.mjs",
-    "test:e2e:staging": "node e2e/fase2-identity-mcu-staging.mjs"
+    "test:e2e:staging": "node e2e/fase2-identity-mcu-staging.mjs",
+    "test:e2e:playwright": "playwright test --config=playwright.config.ts",
+    "test:e2e:playwright:ui": "playwright test --config=playwright.config.ts --ui"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -36,6 +38,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/react": "^19",

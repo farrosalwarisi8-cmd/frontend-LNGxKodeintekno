@@ -17,6 +17,8 @@ export interface SelectProps {
   options: { value: string; label: string }[];
   placeholder?: string;
   className?: string;
+  /** Selector E2E yang stabil (data-testid pada trigger). */
+  testId?: string;
 }
 
 function changeEvent(value: string | string[] | null): React.ChangeEvent<HTMLSelectElement> {
@@ -118,6 +120,7 @@ export function Select({
   helper,
   options,
   placeholder,
+  testId,
 }: SelectProps) {
   const selectId = id ?? name ?? label;
   const isEmpty = value === "" || value === undefined || value === null;
@@ -146,7 +149,7 @@ export function Select({
               : undefined
         }
       >
-        <SelectTrigger>
+        <SelectTrigger aria-label={label} data-testid={testId}>
           <SelectPrimitive.Value className="flex-1 text-left">
             {isEmpty ? placeholder : ""}
           </SelectPrimitive.Value>
