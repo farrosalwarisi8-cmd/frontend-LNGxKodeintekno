@@ -240,10 +240,14 @@ export default function ReturnMedicinePage() {
 
           {selectedDispensing?.dispensing_items && selectedDispensing.dispensing_items.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
+              <label
+                htmlFor="return-batch"
+                className="mb-1 block text-sm font-medium text-slate-700"
+              >
                 Pilih Batch
               </label>
               <select
+                id="return-batch"
                 className="w-full rounded-lg border border-slate-200 p-2 text-sm"
                 value={returnBatchId}
                 onChange={(e) => setReturnBatchId(e.target.value)}
@@ -267,8 +271,11 @@ export default function ReturnMedicinePage() {
           />
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Alasan Retur</label>
+            <label htmlFor="return-reason" className="mb-1 block text-sm font-medium text-slate-700">
+              Alasan Retur
+            </label>
             <textarea
+              id="return-reason"
               className="w-full rounded-lg border border-slate-200 p-2 text-sm"
               rows={2}
               value={returnReason}
@@ -301,7 +308,10 @@ export default function ReturnMedicinePage() {
             </Button>
             <Button
               onClick={() => (confirmReturn ? handleConfirmReturn() : handleReturn())}
-              disabled={saving || !confirmReturn}
+              // Tidak boleh dinonaktifkan hanya karena konfirmasi belum ada:
+              // klik pertama justru BERBEDA untuk memunculkan konfirmasi.
+              disabled={saving}
+              data-testid="return-submit"
             >
               {saving ? "Memproses..." : confirmReturn ? "Konfirmasi Retur" : "Proses Retur"}
             </Button>

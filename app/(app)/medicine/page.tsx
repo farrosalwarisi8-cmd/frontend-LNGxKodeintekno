@@ -137,7 +137,9 @@ export default function MedicinePage() {
                       </td>
                       <td className="px-4 py-3 font-mono text-sm text-slate-600">{med.code}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{med.category}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900">{totalStock}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-slate-900" data-testid="medicine-stock">
+                        {totalStock}
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-600">{batches.length} batch</td>
                       <td className="px-4 py-3">
                         {isLow ? (
