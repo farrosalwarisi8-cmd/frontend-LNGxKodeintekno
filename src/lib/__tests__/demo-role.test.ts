@@ -42,7 +42,8 @@ describe("konsistensi demo role dengan menu & bottom navigation", () => {
   });
 
   it("mengubah demo role mengubah bottom navigation", () => {
-    expect(getBottomNavigation(DEMO_ROLE_TO_ROLE.SYSTEM_ADMIN).map((i) => i.href)).toContain(
+    // System Administrator tidak punya akses data klinis/farmasi.
+    expect(getBottomNavigation(DEMO_ROLE_TO_ROLE.SYSTEM_ADMIN).map((i) => i.href)).not.toContain(
       "/medicine"
     );
     expect(getBottomNavigation(DEMO_ROLE_TO_ROLE.HR_PIC).map((i) => i.href)).not.toContain(

@@ -73,32 +73,30 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "input-lab-result",
 ];
 
+// ---------------------------------------------------------------------------
+// A1 — Matriks permission diselaraskan dengan proposal (lihat LAPORAN_A1_
+// STABILISASI_FASE2_4.md). Setiap perubahan punya alasan yang tercatat.
+//
+// `admin` = System Administrator: konfigurasi sistem, kelola user & role,
+// audit log (read-only), monitoring. TIDAK ada akses data klinis.
+// `admin-klinik` = registrasi/antrean/berobat luar klinik, TANPA data klinis.
+// `hr` = HR/PIC: hanya data pekerja + status kepatuhan (MCU/FTW/restriction).
+// `lab` = Analis Lab/Radiolog: hanya data penunjang.
+// ---------------------------------------------------------------------------
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
+  // System Administrator —Proposal: "konfigurasi sistem, kelola user dan
+  // role, monitor sertifikat TTE dan Emergency Mode. Tidak punya akses data
+  // klinis." Semua permission klinis (termasuk read-only) dicabut.
   admin: [
     "view-dashboard",
-    "manage-employees",
-    "upload-document",
-    "view-mcu",
-    "create-mcu",
-    "input-mcu-result",
-    "approve-mcu",
-    "view-visits",
-    "register-patient",
-    "edit-visit",
-    "view-clinical-notes",
-    "view-diagnosis",
-    "manage-stock",
-    "dispense-medicine",
     "view-reports",
-    "export-reports",
     "view-health-status",
+    "view-emergency",
+    "view-profile",
     "manage-users",
     "manage-master-data",
     "view-audit-logs",
     "manage-hse",
-    "view-emergency",
-    "view-profile",
-    "input-lab-result",
   ],
   "dokter-oh": [
     "view-dashboard",
@@ -161,40 +159,42 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-emergency",
     "view-profile",
   ],
+  // Analis Lab / Radiolog — proposal: hanya data penunjang (input/impor dan
+  // verifikasi hasil lab). Tidak punya akses data MCU penuh → view-mcu dicabut.
   lab: [
     "view-dashboard",
-    "view-mcu",
+    "view-reports",
+    "view-health-status",
+    "view-emergency",
+    "view-profile",
     "input-mcu-result",
     "input-lab-result",
-    "view-reports",
-    "view-health-status",
-    "view-emergency",
-    "view-profile",
   ],
+  // Admin Klinik — proposal: registrasi, antrean, entri berobat luar klinik.
+  // Tidak ada data klinis (MCU, catatan klinis, diagnosis, farmasi).
   "admin-klinik": [
     "view-dashboard",
-    "view-mcu",
-    "create-mcu",
-    "view-visits",
-    "register-patient",
-    "dispense-medicine",
     "view-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
-  ],
-  hr: [
-    "view-dashboard",
     "manage-employees",
     "upload-document",
-    "view-mcu",
-    "create-mcu",
     "view-visits",
+    "register-patient",
+    "edit-visit",
+  ],
+  // HR/PIC — proposal: hanya status kepatuhan + data pekerja.
+  // manage-users & manage-master-data dicabut (bukan domain HR).
+  hr: [
+    "view-dashboard",
     "view-reports",
     "export-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
+    "manage-employees",
+    "upload-document",
   ],
   hse: [
     "view-dashboard",
