@@ -1,94 +1,130 @@
-# Role Mapping & Permission Matrix — Tahap 4
+# Role Mapping & Permission Matrix
 
-## Frontend Role → Backend Role Code
+> **Dihasilkan otomatis** oleh `node scripts/generate-role-matrix.mjs` dari kode
+> (`lib/rbac.ts`, `lib/actions.ts`, `src/lib/navigation.ts`, `components/route-guard.tsx`).
+> Jangan diedit manual — ubah kode lalu jalankan ulang skrip. Test
+> `src/lib/__tests__/role-mapping-doc.test.ts` gagal bila file ini tidak sinkron dengan kode.
 
-| Frontend Role | Backend Role Code | Data Scope | Status | Notes |
-|---|---|---|---|---|
-| `admin` | `SYSTEM_ADMIN` | GLOBAL | Active | Full system access |
-| `dokter-oh` | `DOCTOR_OH` | GLOBAL | Active | Occupational health specialist |
-| `dokter-klinik` | `DOCTOR_CLINIC` | SITE | Active | Clinic doctor, site-scoped |
-| `perawat` | `NURSE` | SITE | Active | Nurse, site-scoped |
-| `apoteker` | `PHARMACIST` | SITE | Active | Pharmacist, site-scoped |
-| `lab` | `LAB_ANALYST` | SITE | Active | Lab analyst, site-scoped |
-| `hr` | `HR_ADMIN` | ORG | Active | HR admin, org-scoped |
-| `hse` | `HSE_OFFICER` | SITE | Active | HSE officer, site-scoped |
-| `manajemen` | `MANAGEMENT` | GLOBAL | Active | Management, read-only + export |
-| `admin-klinik` | `SYSTEM_ADMIN` | SITE | **Mapped** | Uses SYSTEM_ADMIN backend role with site scope restriction |
-| `pekerja` | — | — | **Public Token** | No backend JWT; uses consent token for public flows |
+Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik backend.
 
-## Backend Role → Frontend Role
+## 1. Frontend Role → Backend Role Code
 
-| Backend Role Code | Frontend Role | Data Scope | Medical | Notes |
-|---|---|---|---|---|
-| `SYSTEM_ADMIN` | `admin` | GLOBAL | Yes | Superuser |
-| `DOCTOR_OH` | `dokter-oh` | GLOBAL | Yes | OH specialist |
-| `DOCTOR_CLINIC` | `dokter-klinik` | SITE | Yes | Clinic doctor |
-| `NURSE` | `perawat` | SITE | Yes | Nurse |
-| `PHARMACIST` | `apoteker` | SITE | Yes | Pharmacist |
-| `LAB_ANALYST` | `lab` | SITE | Yes | Lab analyst |
-| `RADIOLOGIST` | `lab` | SITE | Yes | Radiologist (shares frontend role with lab) |
-| `HR_ADMIN` | `hr` | ORG | No | HR admin |
-| `HSE_OFFICER` | `hse` | SITE | No | HSE officer |
-| `HSE_MANAGER` | `hse` | GLOBAL | No | HSE manager (shares frontend role with hse) |
-| `MANAGEMENT` | `manajemen` | GLOBAL | No | Management |
-
-## Permission Matrix
-
-| Permission | admin | dokter-oh | dokter-klinik | perawat | apoteker | lab | hr | hse | manajemen | pekerja |
-|---|---|---|---|---|---|---|---|---|---|---|
-| view-dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| manage-employees | ✓ | — | — | — | — | — | ✓ | — | — | — |
-| upload-document | ✓ | — | — | — | — | — | ✓ | — | — | — |
-| view-mcu | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| review-mcu | ✓ | ✓ | — | — | — | — | — | — | — | — |
-| approve-mcu | ✓ | ✓ | — | — | — | — | — | — | — | — |
-| create-mcu | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — |
-| input-mcu-result | ✓ | ✓ | ✓ | ✓ | — | ✓ | — | — | — | — |
-| view-visits | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | ✓ | ✓ | ✓ |
-| register-patient | ✓ | — | ✓ | ✓ | — | — | ✓ | — | — | — |
-| edit-visit | ✓ | ✓ | ✓ | ✓ | — | — | — | — | — | — |
-| view-clinical-notes | ✓ | ✓ | ✓ | ✓ | — | — | — | — | — | — |
-| view-diagnosis | ✓ | ✓ | ✓ | ✓ | — | — | — | — | — | — |
-| manage-stock | ✓ | — | — | — | ✓ | — | — | — | — | — |
-| dispense-medicine | ✓ | — | — | — | ✓ | — | — | — | — | — |
-| issue-certificate | ✓ | ✓ | — | — | — | — | — | — | — | — |
-| view-reports | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | ✓ | ✓ | ✓ |
-| export-reports | ✓ | ✓ | — | — | — | — | ✓ | ✓ | ✓ | — |
-| view-health-status | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | ✓ | ✓ | ✓ |
-| set-health-status | ✓ | ✓ | — | — | — | — | — | — | — | — |
-| manage-users | ✓ | — | — | — | — | — | ✓ | — | — | — |
-| manage-master-data | ✓ | — | — | — | — | — | ✓ | — | — | — |
-| view-audit-logs | ✓ | — | — | — | — | — | — | — | — | — |
-| manage-hse | ✓ | — | — | — | — | — | — | ✓ | — | — |
-| view-emergency | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| view-profile | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| input-lab-result | ✓ | — | — | — | — | ✓ | — | — | — | — |
-
-## Site Scope Matrix
-
-| Role | Site A | Site B | Multi-site | Result |
-|---|---|---|---|---|
-| HR Site A | ✓ | ✗ | — | Can only view Site A workers |
-| Dokter Klinik A | ✓ | ✗ | — | Can only view Site A patients/visits |
-| HSE multi-site | ✓ | ✓ | ✓ | Can view assigned sites |
-| Apoteker Site A | ✓ | ✗ | — | Can only view Site A stock/prescriptions |
-| Management | Summary | Summary | ✓ | Can view org-level summaries |
-| Public token | Single waiver | — | — | Can only view token-specific data |
-
-## Worker Portal Policy
-
-- **No backend JWT**: Workers (pekerja) do not have backend user accounts
-- **Public token access**: Workers use consent tokens for public flows (consent approval, waiver verification)
-- **Self-service**: Workers can view their own MCU history, certificates, and health status via public token
-- **No clinical access**: Workers cannot view other workers' data or clinical notes
-
-## Demo Role Mapping
-
-| Demo Role | Maps To | Notes |
+| Frontend Role | Backend Role Code | Sumber |
 |---|---|---|
-| `ADMIN_CLINIC` | `admin-klinik` | Simulates clinic admin UI |
-| `HR_PIC` | `hr` | Simulates HR PIC UI |
-| `SYSTEM_ADMIN` | `admin` | Simulates system admin UI |
-| `PUBLIC_WORKER` | `pekerja` | Simulates worker portal UI |
+| `admin` | `SYSTEM_ADMIN` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `dokter-oh` | `DOCTOR_OH` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `dokter-klinik` | `DOCTOR_CLINIC` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `perawat` | `NURSE` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `apoteker` | `PHARMACIST` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `lab` | `LAB_ANALYST` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `admin-klinik` | — (tanpa padanan backend) | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `hr` | `HR_ADMIN` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `hse` | `HSE_OFFICER` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `manajemen` | `MANAGEMENT` | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
+| `pekerja` | — (tanpa padanan backend) | `lib/rbac.ts` (`ROLE_PERMISSIONS`) |
 
-Demo roles are UI-only simulations. Backend authorization is always enforced.
+## 2. Backend Role Code → Frontend Role
+
+| Backend Role Code | Frontend Role |
+|---|---|
+| `SYSTEM_ADMIN` | `admin` |
+| `DOCTOR_OH` | `dokter-oh` |
+| `DOCTOR_CLINIC` | `dokter-klinik` |
+| `NURSE` | `perawat` |
+| `PHARMACIST` | `apoteker` |
+| `LAB_ANALYST` | `lab` |
+| `RADIOLOGIST` | `lab` |
+| `HR_ADMIN` | `hr` |
+| `HSE_OFFICER` | `hse` |
+| `HSE_MANAGER` | `hse` |
+| `MANAGEMENT` | `manajemen` |
+
+## 3. Matriks Permission (role × permission)
+
+| Permission | admin | dokter-oh | dokter-klinik | perawat | apoteker | lab | admin-klinik | hr | hse | manajemen | pekerja |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `view-dashboard` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `manage-employees` | — | — | — | — | — | — | ✓ | ✓ | — | — | — |
+| `upload-document` | — | — | — | — | — | — | ✓ | ✓ | — | — | — |
+| `view-mcu` | — | ✓ | ✓ | ✓ | ✓ | — | — | — | ✓ | ✓ | ✓ |
+| `review-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `approve-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `create-mcu` | — | — | ✓ | ✓ | — | — | — | — | — | — | — |
+| `input-mcu-result` | — | ✓ | ✓ | ✓ | — | ✓ | — | — | — | — | — |
+| `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| `register-patient` | — | — | — | ✓ | — | — | ✓ | — | — | — | — |
+| `edit-visit` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
+| `view-clinical-notes` | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — |
+| `view-diagnosis` | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — |
+| `manage-stock` | — | — | — | — | ✓ | — | — | — | — | — | — |
+| `dispense-medicine` | — | — | — | — | ✓ | — | — | — | — | — | — |
+| `issue-certificate` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `view-reports` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `export-reports` | — | ✓ | — | — | — | — | — | ✓ | ✓ | ✓ | — |
+| `view-health-status` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `set-health-status` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `acknowledge-restriction` | — | — | — | — | — | — | — | — | ✓ | — | — |
+| `manage-users` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `manage-master-data` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `view-audit-logs` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
+| `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `view-profile` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `input-lab-result` | — | ✓ | — | — | — | ✓ | — | — | — | — | — |
+
+## 4. Akses Route per Role
+
+Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`).
+
+| Route | Permission | admin | dokter-oh | dokter-klinik | perawat | apoteker | lab | admin-klinik | hr | hse | manajemen | pekerja |
+|---|------|---|---|---|---|---|---|---|---|---|---|
+| `/dashboard` | `view-dashboard` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/demo` | — (route publik) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/people` | `manage-employees` | — | — | — | — | — | — | ✓ | ✓ | — | — | — |
+| `/employees` | `manage-employees` | — | — | — | — | — | — | ✓ | ✓ | — | — | — |
+| `/mcu` | `view-mcu` | — | ✓ | ✓ | ✓ | ✓ | — | — | — | ✓ | ✓ | ✓ |
+| `/mcu/review` | `review-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `/visits` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| `/visits/new` | `register-patient` | — | — | — | ✓ | — | — | ✓ | — | — | — | — |
+| `/visits/queue` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| `/medical-records` | `view-clinical-notes` | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — |
+| `/medicine` | `manage-stock` | — | — | — | — | ✓ | — | — | — | — | — | — |
+| `/medicine/dispense` | `dispense-medicine` | — | — | — | — | ✓ | — | — | — | — | — | — |
+| `/medicine/return` | `dispense-medicine` | — | — | — | — | ✓ | — | — | — | — | — | — |
+| `/certificates` | `issue-certificate` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `/reports` | `view-reports` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/health-status` | `view-health-status` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/waiver` | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
+| `/da` | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
+| `/emergency` | `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/users` | `manage-users` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `/master-data` | `manage-master-data` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `/audit-logs` | `view-audit-logs` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `/lab` | `input-lab-result` | — | ✓ | — | — | — | ✓ | — | — | — | — | — |
+
+## 5. Demo Role Mapping
+
+Demo role hanyalah simulasi UI. **Bukan** authorization produksi — backend tetap
+memverifikasi setiap request.
+
+| Demo Role | Role Frontend | Label |
+|---|---|---|
+| `ADMIN_CLINIC` | `admin-klinik` | Admin Klinik |
+| `HR_PIC` | `hr` | HR/PIC |
+| `SYSTEM_ADMIN` | `admin` | System Administrator |
+| `PUBLIC_WORKER` | `pekerja` | Worker/Public |
+
+## 6. Catatan aturan proposal
+
+- **System Administrator (`admin`)** — konfigurasi sistem, kelola user & role, audit log
+  (read-only), monitoring. **Tidak punya akses data klinis** (MCU, catatan klinis,
+  diagnosis, farmasi/dispense) maupun data pekerja.
+- **HR/PIC (`hr`)** — data pekerja dan status kepatuhan (MCU/FTW/restriction). Tidak
+  mengelola user & master data, tidak melihat detail medis.
+- **Analis Lab/Radiolog (`lab`)** — hanya data penunjang (input/impor dan verifikasi
+  hasil lab). Tidak punya akses data MCU penuh.
+- **Admin Klinik (`admin-klinik`)** — registrasi, antrean, dan entri berobat luar klinik.
+  Kolom klinis (keluhan utama, diagnosis) pada daftar kunjungan disembunyikan di UI.
+- **Penguatan sisi server tetap tanggung jawab backend.** Frontend hanya menyembunyikan
+  menu, menampilkan AccessDenied, dan menyembunyikan aksi.
+

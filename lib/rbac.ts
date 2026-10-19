@@ -42,7 +42,8 @@ export type Permission =
   | "view-profile"
   | "input-lab-result";
 
-const ALL_PERMISSIONS: readonly Permission[] = [
+/** Semua permission yang dikenal (dipakai untuk validasi, test, & generator docs). */
+export const ALL_PERMISSIONS: readonly Permission[] = [
   "view-dashboard",
   "manage-employees",
   "upload-document",
