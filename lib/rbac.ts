@@ -188,6 +188,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   // verifikasi hasil lab). Tidak punya akses data MCU penuh → view-mcu dicabut.
   lab: [
     "view-dashboard",
+    // A1 (proposal Lab & Radiologi): analis lab TIDAK memiliki view-mcu —
+    // role ini mengelola data penunjang (order & hasil lab/radiologi) saja,
+    // bukan modul MCU. Backend tetap menjadi otorisasi sebenarnya.
     "view-reports",
     "view-health-status",
     "view-emergency",
