@@ -1,4 +1,5 @@
 import { can, type Permission } from "../../lib/rbac";
+import { isLabRadiologyEnabled } from "@/lib/feature-flags";
 import type { Role } from "../../lib/types";
 
 /**
@@ -19,6 +20,8 @@ export interface NavigationItem {
   permission?: Permission;
   /** Item tanpa halaman (mis. Lab & Radiologi) — tampil disabled. */
   disabled?: boolean;
+  /** Feature flag lingkungan — item hanya tampil bila flag aktif. */
+  featureFlag?: "lab-radiology";
   /** Aktif hanya jika pathname persis sama (mis. /dashboard). */
   end?: boolean;
 }
@@ -57,6 +60,9 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Master Data", href: "/master-data", icon: "database", permission: "manage-master-data" },
   { label: "Audit Log", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
   { label: "Lab & Radiologi", href: "/lab", icon: "flask", permission: "input-lab-result" },
+  // A2: halaman radiolog terpisah dari alur analis lab. Di balik feature
+  // flag `NEXT_PUBLIC_FEATURE_LAB` (default mati → menu tidak tampil).
+  { label: "Radiologi", href: "/radiology", icon: "flask", permission: "write-radiology-report", featureFlag: "lab-radiology" },
   { label: "Tanda Tangan", href: "/signatures", icon: "pen-line", permission: "issue-certificate" },
   { label: "Dokumen", href: "/documents", icon: "file-text", permission: "issue-certificate" },
 ];
@@ -88,6 +94,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/master-data": "Master Data",
   "/audit-logs": "Audit Log",
   "/lab": "Lab & Radiologi",
+  "/lab/import": "Impor Hasil Lab",
+  "/radiology": "Radiologi",
   "/signatures": "Tanda Tangan",
   "/documents": "Dokumen",
   "/my": "Akun Saya",
@@ -124,7 +132,9 @@ function humanize(segment: string): string {
  */
 export function getNavigation(role: Role | null | undefined): NavigationItem[] {
   if (!role) return [];
+  const labFlagOn = isLabRadiologyEnabled();
   return NAVIGATION_ITEMS.filter((i) => {
+    if (i.featureFlag === "lab-radiology" && !labFlagOn) return false;
     if (!i.permission) return true;
     return can(role, i.permission);
   });

@@ -58,6 +58,10 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   { pattern: /^\/api-keys(?:\/.*)?$/, permission: "manage-api-keys" },
   { pattern: /^\/tte(?:\/.*)?$/, permission: "view-tte" },
   { pattern: /^\/emergency-detail(?:\/.*)?$/, permission: "monitor-emergency" },
+  // A2 (Lab & Radiologi): /radiology khusus penyusun laporan radiologi;
+  // /lab/import membutuhkan izin impor massal (lebih spesifik dari /lab).
+  { pattern: /^\/radiology(?:\/.*)?$/, permission: "write-radiology-report" },
+  { pattern: /^\/lab\/import(?:\/.*)?$/, permission: "import-lab-result" },
   // Lab & Radiologi sebelumnya tidak punya guard padahal menu mensyaratkan
   // `input-lab-result` → tautan langsung melewati guard. Kini diselaraskan.
   { pattern: /^\/lab(?:\/.*)?$/, permission: "input-lab-result" },
