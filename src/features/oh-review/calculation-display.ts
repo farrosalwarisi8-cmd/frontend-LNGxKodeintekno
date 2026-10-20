@@ -127,6 +127,10 @@ const SKIP_KEYS = new Set<string>([
   "abnormal_flag",
   "flag",
   "is_abnormal",
+  "unit",
+  "units",
+  "unit_symbol",
+  "satuan",
   ...WORSENING_FLAG_KEYS,
 ]);
 
