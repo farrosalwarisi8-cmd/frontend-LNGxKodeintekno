@@ -83,6 +83,11 @@ export interface McuListParams {
   page?: number;
   limit?: number;
   ftwStatus?: FtwStatus;
+  /**
+   * Kata kunci pencarian (backend: `GET /mcu/cycles?search=`).
+   * Ditambahkan pada A3 untuk antrean review MCU.
+   */
+  search?: string;
 }
 
 export const mcuService = {
@@ -94,6 +99,7 @@ export const mcuService = {
     if (params.page) query.set("page", String(params.page));
     if (params.limit) query.set("limit", String(params.limit));
     if (params.ftwStatus) query.set("ftwStatus", params.ftwStatus);
+    if (params.search) query.set("search", params.search);
     const qs = query.toString();
     const res = await apiClient.getPaged<BackendMcuCycle[]>(
       `/mcu/cycles${qs ? `?${qs}` : ""}`
