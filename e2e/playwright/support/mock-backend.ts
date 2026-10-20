@@ -36,6 +36,10 @@ export interface MockBackend {
   dispensings: MockDispensing[];
   queue: MockQueueTicket[];
   encounters: Map<string, MockEncounter>;
+  /** Encounter yang dikembalikan ketika frontend membuka encounter (POST /clinic/encounters). */
+  encounterIdForVisit?: string;
+  /** Username akun yang sedang login (dipakai mock /iam/users). */
+  currentUsername?: string;
   fail: (key: string, status?: number) => void;
   callsTo: (method: string, path: string) => number;
 }
@@ -217,8 +221,10 @@ function errorEnvelope(status: number, message: string) {
 }
 
 /** JWT palsu (payload base64) — dipakai resolveScope untuk organizationId. */
-export function fakeJwt(organizationId = "org-1"): string {
-  const payload = Buffer.from(JSON.stringify({ organizationId, sub: "e2e" })).toString("base64url");
+export function fakeJwt(organizationId = "org-1", username = "e2e"): string {
+  const payload = Buffer.from(
+    JSON.stringify({ organizationId, sub: "e2e", username })
+  ).toString("base64url");
   return `eyJhbGciOiJIUzI1NiJ9.${payload}.e2e-signature`;
 }
 
@@ -237,6 +243,8 @@ export function createMockBackend(): MockBackend {
     dispensings: [],
     queue: [],
     encounters: new Map(),
+    encounterIdForVisit: undefined,
+    currentUsername: undefined,
     fail(key: string, status = 500) {
       this.failures.set(key, status);
     },
@@ -282,11 +290,12 @@ export async function installMockBackend(page: Page, backend: MockBackend): Prom
     if (method === "POST" && path === "/auth/login") {
       const username = (body as { username?: string })?.username ?? "unknown";
       const roles = rolesForUsername(username);
+      backend.currentUsername = username;
       return json(
         route,
         200,
         envelope({
-          accessToken: fakeJwt(),
+          accessToken: fakeJwt("org-1", username),
           refreshToken: "e2e-refresh-token",
           expiresIn: 3600,
           user: { id: `user-${username}`, username, roles, isMedicalRole: roles[0] !== "HR_ADMIN" },
@@ -303,7 +312,7 @@ export async function installMockBackend(page: Page, backend: MockBackend): Prom
           [
             {
               id: "user-1",
-              username: "e2e",
+              username: backend.currentUsername ?? "e2e",
               user_roles: [
                 {
                   org_unit_id: "unit-1",
@@ -393,6 +402,18 @@ export async function installMockBackend(page: Page, backend: MockBackend): Prom
           { id: "icd-2", code: "M54.5", description: "Nyeri pinggang bawah" },
         ])
       );
+    }
+    if (method === "POST" && path === "/clinic/encounters") {
+      const id = backend.encounterIdForVisit ?? "enc-default";
+      const encounter = backend.encounters.get(id) ?? {
+        id,
+        patient_id: "patient-1",
+        status: "IN_SERVICE",
+        soap: null,
+        addenda: [],
+      };
+      backend.encounters.set(id, encounter);
+      return json(route, 201, envelope(encounter));
     }
     if (method === "PUT" && /^\/clinic\/encounters\/[^/]+\/soap$/.test(path)) {
       const id = path.split("/")[3];

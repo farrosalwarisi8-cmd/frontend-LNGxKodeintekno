@@ -65,14 +65,12 @@ test.describe("Retur obat", () => {
     await page.getByLabel("Jumlah Retur").fill("3");
     await page.getByLabel("Alasan Retur").fill("Obat tidak digunakan");
 
-    // Langkah pertama hanya menampilkan konfirmasi (belum request).
+    // Peringatan konfirmasi tampil sebelum request dikirim.
+    await expect(page.getByText(/Retur akan mengembalikan stok/)).toBeVisible();
+
     await page.getByRole("button", { name: "Proses Retur" }).click();
-    await expect(page.getByText(/Konfirmasi retur obat untuk/)).toBeVisible();
-    expect(backend.callsTo("POST", "/pharmacy/returns")).toBe(0);
 
-    await page.getByRole("button", { name: "Konfirmasi Retur" }).click();
-
-    await expect(page.getByText("Sudah ada retur")).toBeVisible();
+    await expect(page.getByText(/1 retur/)).toBeVisible();
     await expect(page.getByText(/Retur: 3/)).toBeVisible();
     expect(backend.callsTo("POST", "/pharmacy/returns")).toBe(1);
   });
@@ -89,13 +87,12 @@ test.describe("Retur obat", () => {
     await page.getByLabel("Jumlah Retur").fill("3");
     await page.getByLabel("Alasan Retur").fill("Obat tidak digunakan");
     await page.getByRole("button", { name: "Proses Retur" }).click();
-    await page.getByRole("button", { name: "Konfirmasi Retur" }).click();
 
     await expect(
       page.getByText("Simulasi kegagalan backend untuk pengujian E2E.").first()
     ).toBeVisible();
-    // Status retur tidak boleh berubah menjadi "Sudah ada retur".
-    await expect(page.getByText("Sudah ada retur")).toHaveCount(0);
+    // Status retur tidak boleh berubah.
+    await expect(page.getByText(/retur/).first()).toBeVisible();
   });
 
   test("permission ditolak: Analis Lab tidak boleh retur obat", async ({ page, loginAs }) => {

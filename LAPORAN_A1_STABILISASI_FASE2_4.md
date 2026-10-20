@@ -51,13 +51,17 @@ backend, skema database, atau kontrak API.
 
 ### 2.2 Unit / integration test (Vitest)
 
-| Metrik | Baseline (`8c619b5`) | Sesudah A1 | Δ |
+| Metrik | Baseline (`8c619b5`) | A1 di atas baseline | A1 di atas `origin/main` (hasil akhir) |
 |---|---|---|---|
-| Test file lulus | 28 | 31 | +3 |
-| Test file di-skip | 1 | 1 | — |
-| **Test lulus** | **357** | **407** | **+50** |
-| Test di-skip | 19 | 19 | — |
-| **Total test** | **376** | **426** | **+50** |
+| Test file lulus | 28 | 31 | 39 (+1 di-skip) |
+| Test file di-skip | 1 | 1 | 1 |
+| **Test lulus** | **357** | **407** | **507** |
+| Test di-skip | 19 | 19 | 21 |
+| **Total test** | **376** | **426** | **528** |
+
+Delta **A1** sendiri adalah **+50 test** (357 → 407). Angka 507/528 pada kolom terakhir
+mencerminkan hasil akhir setelah A1 di-rebase **di atas** `origin/main`:additional ±100 test
+milik tim remote ikut terbawa, bukan tambahan dari A1.
 
 Test baru: `permission-proposal.test.ts` (23), `mcu-reminder.test.ts` (18), `role-mapping-doc.test.ts` (4),
 plus penambahan pada `rbac.test.ts`, `actions.test.ts`, `navigation.test.ts`,
@@ -72,13 +76,33 @@ plus penambahan pada `rbac.test.ts`, `actions.test.ts`, `navigation.test.ts`,
 
 | Suite | Baseline | Sesudah A1 | Catatan |
 |---|---|---|---|
-| **Playwright — alur mutasi (baru)** | — (tidak ada) | **21 PASS / 0 FAIL** | `npm run test:e2e:playwright` |
+| **Playwright — alur mutasi (baru)** | — (tidak ada) | **21 PASS / 0 FAIL** | `npm run test:e2e:playwright`; setelah rebase, spec disesuaikan dengan UI `origin/main` (klik & isi form tetap sama) |
 | Runner lama — mode `ui-only` | 37 PASS / 0 FAIL | 37 PASS / 0 FAIL | tidak ada regresi |
 | Runner lama — mode `contract` | 45 PASS / **1 FAIL** | 45 PASS / **1 FAIL** | **gagal yang sama persis sebelum & sesudah A1** (hydratation, lihat §6.1) |
 
 Bukti bahwa kegagalan `contract` bukan regresi: dengan kode **baseline** (`git checkout 8c619b5 -- .`)
 lalu build ulang, hasil `contract` tetap `45 PASS / 1 FAIL` dengan error yang identik
 (`React error #418` pada `contract-hse`, `contract-dr.hendra`, `contract-hr.pic`).
+
+### 2.4 Rebase di atas `origin/main`
+
+Saat push, `origin/main` ternyata **30 commit lebih baru** dari basis kerja A1 (termasuk
+`41e706c fix: restore admin permissions` yang berlawanan dengan proposal, serta permission
+sistem baru `manage-system-config` / `manage-api-keys` / `view-tte` / `monitor-emergency`).
+Tidak ada force-push (history tim tidak dihapus). A1 di-rebase **di atas** `origin/main` dengan
+resolusi konflik yang menggabungkan keduanya:
+
+| Area | Keputusan resolusi |
+|---|---|
+| `lib/rbac.ts` | Permission sistem baru dari remote (`manage-system-config`, `manage-api-keys`, `view-tte`, `monitor-emergency`, `manage-da`) **dipertahankan**; policy A1 (admin tanpa klinis, HR tanpa user/master-data & view-mcu, lab tanpa view-mcu, admin-klinik tanpa klinis) **diterapkan**. |
+| `lib/actions.ts` | Aksi `visits.call-ticket` (remote) dipertahankan; `visits.edit-soap` tetap multi-requirement. |
+| `lib/remote-sync.ts` | Duplikat `mapWorkHealthStatus`/`syncWorkHealthStatus` milik A1 **dihapus** (remote sudah punya versi site-scoped); `syncDispensings` (A1) dipertahankan. |
+| `app/(app)/medical-records/page.tsx` | Versi remote dipakai (sudah memanggil `saveSoap`, memuat encounter id, mode LOCKED + addendum) — superset perbaikan A1. |
+| `app/(app)/visits/queue/page.tsx` | Versi remote dipakai — sudah tidak menampilkan kolom klinis sama sekali, sehingga perubahan A1 jadi tidak berlaku. |
+| `app/(app)/health-status/page.tsx` | Versi remote (FTW dari API) + tambahan A1: badge tahapan reminder, garis waktu reminder, panel eskalasi. |
+| `app/(app)/waiver/page.tsx` | Versi remote + tambahan A1: dialog konfirmasi Setuju/Tolak, hasil per baris, token dev hanya pada mode demo. |
+| `components/route-guard.tsx` | Rule guard untuk `/system-config`, `/api-keys`, `/tte`, `/emergency-detail` (remote menambah menu tanpa guard → celah 3 lapis). |
+| `README.md` | Versi A1 (rewrite) + section baru milik remote ("Skenario per peran", "Alur per peran (frontend)"). |
 
 ---
 

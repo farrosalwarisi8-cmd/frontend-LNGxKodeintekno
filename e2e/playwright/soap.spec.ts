@@ -41,6 +41,9 @@ async function seedVisit(backend: import("./support/mock-backend").MockBackend) 
     soap: null,
     addenda: [],
   });
+  // Frontend membuka encounter dulu (POST /clinic/encounters) sebelum menyimpan
+  // SOAP, jadi mock harus memberi encounter yang dipakai untuk SOAP/finalize.
+  backend.encounterIdForVisit = ENCOUNTER_ID;
 }
 
 test.describe("SOAP rekam medis", () => {
@@ -66,26 +69,22 @@ test.describe("SOAP rekam medis", () => {
     await dialog.getByPlaceholder("Rencana pengobatan...").fill("Istirahat dan paracetamol");
 
     // Simpan sebagai draft (belum mengunci).
-    await page.getByTestId("soap-save").click();
-    await expect(page.getByTestId("soap-save-success")).toContainText("SOAP tersimpan sebagai draft");
+    await page.getByRole("button", { name: "Simpan SOAP" }).click();
+    await expect(page.getByText(/SOAP tersimpan di backend/)).toBeVisible();
     expect(backend.callsTo("PUT", `/clinic/encounters/${ENCOUNTER_ID}/soap`)).toBe(1);
 
-    // Finalisasi memerlukan konfirmasi.
-    await page.getByTestId("soap-finalize").click();
-    await expect(page.getByText(/Konfirmasi finalisasi kunjungan/)).toBeVisible();
-    await page.getByTestId("soap-finalize-confirm").click();
-
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    // Setelah SOAP tersimpan, form ditutup. Buka lagi untuk finalisasi.
+    await page.getByRole("button", { name: "SOAP" }).first().click();
+    await page.getByRole("button", { name: /Finalize/ }).click();
+    await expect(page.getByText(/dikunci permanen|dikunci/)).toBeVisible();
     expect(backend.callsTo("POST", `/clinic/encounters/${ENCOUNTER_ID}/finalize`)).toBe(1);
 
-    // Dokumen terkunci: badge Locked dan tombol berubah menjadi Addendum.
-    await expect(page.getByText("Locked", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Addendum" }).first()).toBeVisible();
-
-    // Dokumen yang terkunci tidak offers edit SOAP — hanya addendum.
-    await page.getByRole("button", { name: "Addendum" }).first().click();
-    await expect(page.getByText(/sudah/)).toContainText("LOCKED");
-    await expect(page.getByPlaceholder("Alasan perubahan setelah penguncian...")).toBeVisible();
+    // Dokumen terkunci: badge "Terkunci" + tombol "Lihat" (read-only).
+    await expect(page.getByText("Terkunci", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Lihat" }).first().click();
+    await expect(page.getByText(/Rekam medis terkunci/)).toBeVisible();
+    // Field SOAP non-editable saat record terkunci.
+    await expect(page.getByText(/Koreksi hanya melalui Addendum/)).toBeVisible();
   });
 
   test("jalur error: backend gagal menyimpan SOAP", async ({ page, backend, loginAs }) => {
@@ -98,11 +97,9 @@ test.describe("SOAP rekam medis", () => {
     await page.getByRole("button", { name: "SOAP" }).first().click();
     const dialog = page.getByRole("dialog");
     await dialog.getByPlaceholder("Keluhan utama...").fill("Keluhan untuk pengujian error");
-    await page.getByTestId("soap-save").click();
+    await page.getByRole("button", { name: "Simpan SOAP" }).click();
 
-    await expect(page.getByTestId("soap-save-error")).toContainText(
-      "Simulasi kegagalan backend untuk pengujian E2E."
-    );
+    await expect(page.getByText(/Simulasi kegagalan backend untuk pengujian E2E/)).toBeVisible();
     // Tidak boleh ada finalisasi setelah kegagalan simpan.
     expect(backend.callsTo("POST", `/clinic/encounters/${ENCOUNTER_ID}/finalize`)).toBe(0);
   });

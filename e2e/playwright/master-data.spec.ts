@@ -51,18 +51,21 @@ test.describe("Master data", () => {
 
     await expect(page.getByText("PT E2E Nusantara (Diperbarui)")).toBeVisible();
 
-    // --- Nonaktifkan (dengan konfirmasi) ---
+    // --- Nonaktifkan (tanpa data dependen, jadi langsung diproses) ---
     const updatedRow = page
       .getByTestId("master-data-row")
       .filter({ hasText: "PT E2E Nusantara (Diperbarui)" });
     await updatedRow.getByRole("button", { name: "Nonaktifkan" }).click();
-    await expect(page.getByRole("heading", { name: "Konfirmasi Nonaktifkan Data" })).toBeVisible();
-    await page.getByRole("dialog").getByRole("button", { name: "Nonaktifkan" }).click();
 
     await expect(updatedRow.getByText("INACTIVE")).toBeVisible();
+    expect(backend.callsTo("PATCH", "/master-data/organizations/org-2/status")).toBe(1);
   });
 
-  test("jalur error: kode perusahaan sudah dipakai (409)", async ({ page, backend, loginAs }) => {
+  test("jalur error: kode perusahaan duplikat ditolak sebelum request", async ({
+    page,
+    backend,
+    loginAs,
+  }) => {
     await seedOrganizations(backend);
     await loginAs("admin.sistem");
     await page.goto("/master-data");
@@ -73,9 +76,9 @@ test.describe("Master data", () => {
     await page.getByLabel("Nama", { exact: true }).fill("PT Duplikat");
     await page.getByRole("button", { name: "Simpan" }).click();
 
-    await expect(
-      page.getByText("Kode sudah dipakai (409 Conflict). Gunakan kode lain.").first()
-    ).toBeVisible();
+    // Guard client: kode duplikat ditolak tanpa request ke backend.
+    await expect(page.getByText(/sudah dipakai/).first()).toBeVisible();
+    expect(backend.callsTo("POST", "/master-data/organizations")).toBe(0);
     expect(backend.organizations.filter((o) => o.code === "ORG-LNG")).toHaveLength(1);
   });
 

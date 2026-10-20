@@ -52,6 +52,20 @@ export async function expectAccessDenied(page: Page): Promise<void> {
 
 /** Pilih opsi pada komponen Select (Base UI combobox). */
 export async function selectOption(page: Page, label: string, optionLabel: string): Promise<void> {
-  await page.getByRole("combobox", { name: label }).click();
-  await page.getByRole("option", { name: optionLabel, exact: true }).click();
+  const control = page.getByLabel(label, { exact: true }).first();
+  const tag = await control.evaluate((el) => el.tagName.toLowerCase());
+
+  // Formulir native: pilih langsung lewat <select>.
+  if (tag === "select" && (await control.isVisible())) {
+    await control.selectOption({ label: optionLabel });
+    return;
+  }
+
+  // Base UI: trigger button + popup listbox. <select> tersembunyi (untuk
+  // submit form) ikut punya role combobox, jadi hanya yang terlihat diklik.
+  await page.getByRole("combobox", { name: label }).filter({ visible: true }).click();
+  await page
+    .getByRole("option", { name: optionLabel, exact: true })
+    .filter({ visible: true })
+    .click();
 }
