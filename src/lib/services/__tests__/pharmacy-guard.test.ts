@@ -216,13 +216,14 @@ describe("Fase 3 — stock ledger: retur mengubah stok", () => {
 });
 
 describe("Fase 3 — RBAC: role non-apoteker tidak punya aksi pharmacy", () => {
-  it("hanya admin/apoteker yang boleh dispensing & menerima stok", async () => {
+  it("hanya apoteker yang boleh dispensing & menerima stok", async () => {
     const { canPerform } = await import("@/lib/actions");
     const pharmacyActions = ["pharmacy.dispense", "pharmacy.receive-stock"] as const;
 
-    // admin-klinik boleh dispensing tetapi TIDAK boleh menerima stok,
-    // jadi hanya admin & apoteker yang berhak atas keduanya.
-    const allowed: Role[] = ["apoteker", "admin"];
+    // System Administrator (admin) tidak punya akses farmasi (proposal:
+    // "tidak punya akses data klinis"); admin-klinik juga tidak. Jadi hanya
+    // apoteker yang berhak atas dispensing & penerimaan stok.
+    const allowed: Role[] = ["apoteker"];
     const denied: Role[] = [
       "hr",
       "dokter-oh",

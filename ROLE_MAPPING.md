@@ -60,7 +60,7 @@ Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik 
 | `dispense-medicine` | — | — | — | — | ✓ | — | — | — | — | — | — |
 | `issue-certificate` | — | ✓ | — | — | — | — | — | — | — | — | — |
 | `view-reports` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `export-reports` | — | ✓ | — | — | — | — | — | ✓ | ✓ | ✓ | — |
+| `export-reports` | — | ✓ | — | — | — | — | ✓ | ✓ | ✓ | ✓ | — |
 | `view-health-status` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `set-health-status` | — | ✓ | — | — | — | — | — | — | — | — | — |
 | `acknowledge-restriction` | — | — | — | — | — | — | — | — | ✓ | — | — |
@@ -68,9 +68,14 @@ Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik 
 | `manage-master-data` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `view-audit-logs` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
+| `manage-da` | ✓ | ✓ | — | — | — | ✓ | — | — | — | — | — |
 | `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `view-profile` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `input-lab-result` | — | ✓ | — | — | — | ✓ | — | — | — | — | — |
+| `manage-system-config` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
+| `manage-api-keys` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
+| `view-tte` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
+| `monitor-emergency` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
 
 ## 4. Akses Route per Role
 
@@ -95,12 +100,18 @@ Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`)
 | `/reports` | `view-reports` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `/health-status` | `view-health-status` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `/waiver` | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
-| `/da` | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
+| `/da` | `manage-da` | ✓ | ✓ | — | — | — | ✓ | — | — | — | — | — |
 | `/emergency` | `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/system-config` | `manage-system-config` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
+| `/api-keys` | `manage-api-keys` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
+| `/tte` | `view-tte` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
+| `/emergency-detail` | `monitor-emergency` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
 | `/users` | `manage-users` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `/master-data` | `manage-master-data` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `/audit-logs` | `view-audit-logs` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `/lab` | `input-lab-result` | — | ✓ | — | — | — | ✓ | — | — | — | — | — |
+| `/signatures` | `issue-certificate` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `/documents` | `issue-certificate` | — | ✓ | — | — | — | — | — | — | — | — | — |
 
 ## 5. Demo Role Mapping
 

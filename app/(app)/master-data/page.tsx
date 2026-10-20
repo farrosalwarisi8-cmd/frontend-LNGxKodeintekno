@@ -466,9 +466,9 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {organizations.map((c) => (
-                <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    data-testid="master-data-row"
-                    data-row-code={c.code}
+                <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  data-testid="master-data-row"
+                  data-row-code={c.code}>
                   <div>
                     <p className="text-sm font-medium text-slate-900">{c.name}</p>
                     <p className="text-xs text-slate-500">{c.code}</p>
@@ -500,9 +500,9 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {departments.map((d) => (
-                <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    data-testid="master-data-row"
-                    data-row-code={d.code}
+                <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  data-testid="master-data-row"
+                  data-row-code={d.code}>
                   <div>
                     <p className="text-sm font-medium text-slate-900">{d.name}</p>
                     <p className="text-xs text-slate-500">
@@ -536,9 +536,9 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {sites.map((l) => (
-                <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    data-testid="master-data-row"
-                    data-row-code={l.code}
+                <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  data-testid="master-data-row"
+                  data-row-code={l.code}>
                   <div>
                     <p className="text-sm font-medium text-slate-900">{l.name}</p>
                     <p className="text-xs text-slate-500">

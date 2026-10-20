@@ -41,6 +41,11 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   { pattern: /^\/users(?:\/.*)?$/, permission: "manage-users" },
   { pattern: /^\/master-data(?:\/.*)?$/, permission: "manage-master-data" },
   { pattern: /^\/audit-logs(?:\/.*)?$/, permission: "view-audit-logs" },
+  // Kontrol sistem (System Administrator): konfigurasi, API key, monitoring TTE.
+  { pattern: /^\/system-config(?:\/.*)?$/, permission: "manage-system-config" },
+  { pattern: /^\/api-keys(?:\/.*)?$/, permission: "manage-api-keys" },
+  { pattern: /^\/tte(?:\/.*)?$/, permission: "view-tte" },
+  { pattern: /^\/emergency-detail(?:\/.*)?$/, permission: "monitor-emergency" },
   { pattern: /^\/waiver(?:\/.*)?$/, permission: "manage-hse" },
   // D&A forensik (modul da-test backend) hanya DOCTOR_OH / LAB_ANALYST /
   // SYSTEM_ADMIN. Sebelumnya route ini memakai `manage-hse` sehingga HSE bisa

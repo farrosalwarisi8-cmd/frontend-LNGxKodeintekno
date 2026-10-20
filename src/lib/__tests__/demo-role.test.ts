@@ -66,6 +66,10 @@ describe("konsistensi demo role dengan menu & bottom navigation", () => {
     // ADMIN_CLINIC dipetakan ke admin-klinik — bukan superuser.
     expect(canPerform(DEMO_ROLE_TO_ROLE.ADMIN_CLINIC, "users.manage")).toBe(false);
     expect(canPerform(DEMO_ROLE_TO_ROLE.ADMIN_CLINIC, "mcu.approve")).toBe(false);
-    expect(canPerform(DEMO_ROLE_TO_ROLE.ADMIN_CLINIC, "reports.export")).toBe(false);
+    // Admin Klinik boleh ekspor laporan (memantau kepatuhan), tapi TIDAK boleh
+    // mengelola user/master data atau menyentuh data klinis.
+    expect(canPerform(DEMO_ROLE_TO_ROLE.ADMIN_CLINIC, "reports.export")).toBe(true);
+    expect(canPerform(DEMO_ROLE_TO_ROLE.ADMIN_CLINIC, "users.manage")).toBe(false);
+    expect(canPerform(DEMO_ROLE_TO_ROLE.ADMIN_CLINIC, "master-data.edit")).toBe(false);
   });
 });
