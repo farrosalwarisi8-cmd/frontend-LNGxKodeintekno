@@ -28,7 +28,8 @@ try {
   // 3. /lab memakai halaman legacy (perilaku main) — bukan workspace baru
   s = await openA2Session(browser, { base: BASE, role: "lab", label: "flagoff-lab" });
   await s.page.goto(`${BASE}/lab`, { waitUntil: "domcontentloaded" });
-  await s.page.waitForTimeout(3000);
+  // Halaman legacy punya h1 "Lab & Radiologi" + tab — tunggu elemen, bukan sleep.
+  await s.page.getByRole("heading", { name: "Lab & Radiologi" }).waitFor({ timeout: 20000 });
   const text = await s.page.evaluate(() => document.body.innerText);
   const isNewWorkspace = /3 order ditemukan|Cari order lab/.test(text);
   check(!isNewWorkspace, "/lab memakai halaman lama (legacy) saat flag mati");

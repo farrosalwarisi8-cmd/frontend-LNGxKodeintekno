@@ -215,7 +215,8 @@ async function radiologyA11y(browser) {
   reporter.pageErrors.push(...pageErrors);
   try {
     await page.goto(`${BASE}/radiology`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1500);
+    // Tunggu state nyata halaman (h1 Radiologi) — tanpa sleep tetap.
+    await page.getByRole("heading", { name: "Radiologi" }).waitFor({ timeout: 20000 });
     await page.addScriptTag({ content: axeSource });
     const violations = await page.evaluate(async () => {
       const res = await window.axe.run(document, {

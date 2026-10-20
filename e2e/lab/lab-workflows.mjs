@@ -337,8 +337,13 @@ async function labImport(browser) {
     const hasRetry = await retryBtn.count();
     if (hasRetry > 0) {
       const before = calls.filter((c) => c.method === "POST" && c.path.endsWith("/diagnostic/lab-results")).length;
+      const respPromise = page.waitForResponse(
+        (r) => r.url().includes("/diagnostic/lab-results") && r.request().method() === "POST",
+        { timeout: 15000 }
+      );
       await retryBtn.click();
-      await page.waitForTimeout(1500);
+      await respPromise;
+      await page.getByText(/1\s+sukses/).waitFor({ timeout: 15000 });
       const after = calls.filter((c) => c.method === "POST" && c.path.endsWith("/diagnostic/lab-results")).length;
       record(
         "LAB-06-07",
@@ -388,7 +393,9 @@ async function labVerifyAndLock(browser) {
     await page.getByRole("button", { name: "Ya, verifikasi" }).click();
 
     // Setelah verified_at terisi: terkunci + status "menunggu tanda tangan".
-    await page.getByText("Hasil terkunci").waitFor({ timeout: 15000 });
+    // Tunggu tiap teks secara eksplisit (reload bisa kembali ke skeleton dulu).
+    await page.getByText("Hasil terkunci").first().waitFor({ timeout: 20000 });
+    await page.getByText("Terverifikasi, menunggu tanda tangan").first().waitFor({ timeout: 20000 });
     const lockedText = await bodyText(page);
     record(
       "LAB-07-02",
@@ -404,6 +411,7 @@ async function labVerifyAndLock(browser) {
       /koreksi dilakukan lewat addendum/i.test(lockedText),
       "penjelasan addendum tampil"
     );
+    await page.getByText("koreksi dilakukan lewat addendum").first().waitFor({ timeout: 20000 });
     const verifyBtnAfter = await page.getByRole("button", { name: "Verifikasi hasil ini" }).count();
     record(
       "LAB-07-04",
@@ -524,7 +532,8 @@ async function labA11y(browser) {
   try {
     for (const p of pages) {
       await page.goto(`${BASE}${p.url}`, { waitUntil: "domcontentloaded" });
-      await page.waitForTimeout(1500);
+      // Tunggu state nyata halaman (heading utama) — tanpa sleep tetap.
+      await page.getByRole("heading", { level: 1 }).first().waitFor({ timeout: 20000 });
       await page.addScriptTag({ content: axeSource });
       const violations = await page.evaluate(async () => {
         const res = await window.axe.run(document, {
