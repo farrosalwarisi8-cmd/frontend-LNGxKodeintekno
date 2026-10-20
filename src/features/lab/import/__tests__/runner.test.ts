@@ -35,7 +35,7 @@ describe("runImport — pool konkurensi kecil", () => {
 
   it("error non-Error tetap mendapat pesan default", async () => {
     const result = await runImport(["x"], async () => {
-      throw "sekali-kali string"; // eslint-disable-line no-throw-literal
+      throw "sekali-kali string";
     });
     expect(result.failed[0].error).toBe("Gagal mengirim baris.");
   });

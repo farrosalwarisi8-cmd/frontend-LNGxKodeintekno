@@ -70,7 +70,7 @@ export function ContextLinks({ role, encounterId, mcuCycleId }: ContextLinksProp
           <li className="inline-flex items-center gap-1.5 text-slate-600">
             <Activity className="size-4" aria-hidden="true" />
             Siklus MCU {mcuCycleId}
-            <span className="text-xs text-slate-400">(akses modul MCU tidak tersedia)</span>
+            <span className="text-xs text-slate-500">(akses modul MCU tidak tersedia)</span>
           </li>
         ))}
     </ul>
