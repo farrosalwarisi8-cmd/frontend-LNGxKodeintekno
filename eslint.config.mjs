@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
       "react-hooks/rules-of-hooks": "off",
     },
   },
+  // E2E Playwright Fase A3 (review MCU, sertifikat, D&A) — pola sama.
+  {
+    files: ["e2e/oh-review/**/*.{ts,tsx}", "e2e/dna/**/*.{ts,tsx}"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
