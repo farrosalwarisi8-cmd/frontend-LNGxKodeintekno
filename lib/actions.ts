@@ -60,6 +60,12 @@ export const ACTION_PERMISSIONS = {
   "input-lab-result": "input-lab-result",
   // Menjalankan mesin eskalasi reminder MCU (POST /admin/escalation/run-check).
   "escalation.run": "manage-hse",
+  // Fase A2 — Lab & Radiologi (penambahan murni; permission baru di lib/rbac.ts).
+  "lab.view-orders": "view-lab-orders",
+  "lab.receive-sample": "receive-sample",
+  "lab.import": "import-lab-result",
+  "lab.verify": "verify-lab-result",
+  "radiology.write-report": "write-radiology-report",
 } as const satisfies Record<string, ActionRequirement>;
 
 export type ActionId = keyof typeof ACTION_PERMISSIONS;
