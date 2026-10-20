@@ -76,6 +76,13 @@ Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik 
 | `manage-api-keys` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
 | `view-tte` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
 | `monitor-emergency` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
+| `set-ftw` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `manage-restriction` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `view-resume` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `view-certificate-preview` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `view-dna` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `record-dna-custody` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `record-dna-confirmation` | — | ✓ | — | — | — | — | — | — | — | — | — |
 
 ## 4. Akses Route per Role
 
@@ -101,6 +108,9 @@ Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`)
 | `/health-status` | `view-health-status` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `/waiver` | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
 | `/da` | `manage-da` | ✓ | ✓ | — | — | — | ✓ | — | — | — | — | — |
+| `/oh-review` | `review-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `/oh-review/restrictions` | `manage-restriction` | — | ✓ | — | — | — | — | — | — | — | — | — |
+| `/dna` | `view-dna` | — | ✓ | — | — | — | — | — | — | — | — | — |
 | `/emergency` | `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `/system-config` | `manage-system-config` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
 | `/api-keys` | `manage-api-keys` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
