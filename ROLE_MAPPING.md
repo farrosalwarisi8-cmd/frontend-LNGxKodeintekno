@@ -72,6 +72,11 @@ Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik 
 | `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `view-profile` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `input-lab-result` | — | ✓ | — | — | — | ✓ | — | — | — | — | — |
+| `view-lab-orders` | ✓ | ✓ | ✓ | ✓ | — | ✓ | — | — | — | — | — |
+| `receive-sample` | — | — | — | — | — | ✓ | — | — | — | — | — |
+| `import-lab-result` | ✓ | — | — | — | — | ✓ | — | — | — | — | — |
+| `verify-lab-result` | — | — | — | — | — | ✓ | — | — | — | — | — |
+| `write-radiology-report` | — | — | — | — | — | ✓ | — | — | — | — | — |
 | `manage-system-config` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
 | `manage-api-keys` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
 | `view-tte` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
@@ -110,6 +115,7 @@ Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`)
 | `/master-data` | `manage-master-data` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `/audit-logs` | `view-audit-logs` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `/lab` | `input-lab-result` | — | ✓ | — | — | — | ✓ | — | — | — | — | — |
+| `/radiology` | `write-radiology-report` | — | — | — | — | — | ✓ | — | — | — | — | — |
 | `/signatures` | `issue-certificate` | — | ✓ | — | — | — | — | — | — | — | — | — |
 | `/documents` | `issue-certificate` | — | ✓ | — | — | — | — | — | — | — | — | — |
 

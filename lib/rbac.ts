@@ -243,6 +243,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "register-patient",
     "edit-visit",
     "view-reports",
+    "export-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
