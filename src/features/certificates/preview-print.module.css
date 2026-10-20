@@ -1,0 +1,41 @@
+/*
+ * A3 — Aturan cetak (stylesheet browser) untuk pratinjau dokumen.
+ *
+ * Hanya area pratinjau (elemen bertanda `data-print-area`) yang dicetak;
+ * seluruh isi aplikasi lain disembunyikan. Tidak ada pustaka PDF baru dan
+ * tidak ada berkas yang diunduh sebagai dokumen final — dokumen sah hanya
+ * dihasilkan pada tahap TTE (A4).
+ */
+@media print {
+  :global(body) :global(*) {
+    visibility: hidden !important;
+  }
+
+  :global(body) [data-print-area],
+  :global(body) [data-print-area] * {
+    visibility: visible !important;
+  }
+
+  [data-print-area] {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+}
+
+/* Root pratinjau: saat dicetak, pratinjau tidak lagi berupa lapisan atas. */
+.printRoot {
+  position: relative;
+}
+
+@media print {
+  .printRoot {
+    position: static !important;
+    overflow: visible !important;
+  }
+}
