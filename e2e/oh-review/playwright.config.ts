@@ -30,7 +30,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: [
     ["list"],
-    ["json", { outputFile: "test-artifacts/a3-playwright-report.json" }],
+    ["json", { outputFile: path.join(ROOT, "test-artifacts", "a3-playwright-report.json") }],
   ],
   use: {
     baseURL: BASE_URL,
