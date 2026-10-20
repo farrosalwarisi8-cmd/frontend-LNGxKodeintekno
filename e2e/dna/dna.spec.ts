@@ -74,8 +74,26 @@ test.describe("A3 — Modul D&A", () => {
     expect(backend.callsTo("POST", "/da/tests/da-test-1/results")).toBe(1);
   });
 
-  test("data D&A tidak masuk URL", async ({ page, loginAs }) => {
+  test("pratinjau sertifikat D&A ditandai belum sah & area TTE kosong", async ({
+    page,
+    loginAs,
+  }) => {
     await loginAs("dokter.oh");
+    await page.goto("/dna");
+    await page.getByTestId("dna-test-da-test-1").click();
+    await page.getByTestId("reveal-dna-results").click();
+
+    await page.getByTestId("open-dna-certificate-preview").click();
+
+    await expect(page.getByTestId("dna-certificate-preview")).toBeVisible();
+    await expect(page.getByTestId("preview-notice")).toContainText("PRATINJAU, belum sah");
+    await expect(page.getByTestId("signature-placeholder")).toContainText(
+      "Area tanda tangan dan QR (diisi pada tahap TTE)"
+    );
+    await expect(page.getByRole("button", { name: /Unduh/i })).toHaveCount(0);
+  });
+
+  test("data D&A tidak masuk URL", async ({ page, loginAs }) => {    await loginAs("dokter.oh");
     await page.goto("/dna");
     await page.getByTestId("dna-test-da-test-1").click();
     await page.getByTestId("reveal-dna-results").click();

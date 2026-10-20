@@ -28,6 +28,8 @@ import {
   screeningResultLabel,
 } from "@/features/dna/results";
 import { toCustodyTimeline } from "@/features/dna/custody";
+import { DnaCertificatePreview } from "@/features/dna/components/dna-certificate-preview";
+import { PreviewFrame } from "@/features/certificates/components/preview-frame";
 import type { BackendDaTest } from "@/lib/services/da.service";
 import { Eye, EyeOff, FlaskConical, Info, ShieldCheck } from "lucide-react";
 
@@ -80,6 +82,7 @@ export function DnaWorkspace() {
   const [confirmationValue, setConfirmationValue] = useState("NEGATIVE");
   const [confirmationBusy, setConfirmationBusy] = useState(false);
   const [confirmationError, setConfirmationError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -532,6 +535,18 @@ export function DnaWorkspace() {
                         <EyeOff className="size-3.5" />
                         Sembunyikan hasil
                       </Button>
+
+                      {can("mcu.view-certificate-preview") && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPreviewOpen(true)}
+                          data-testid="open-dna-certificate-preview"
+                        >
+                          Pratinjau Sertifikat D&amp;A
+                        </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -540,6 +555,15 @@ export function DnaWorkspace() {
           )}
         </div>
       </div>
+
+      {previewOpen && selected ? (
+        <PreviewFrame
+          title="Pratinjau Sertifikat D&A"
+          onClose={() => setPreviewOpen(false)}
+        >
+          <DnaCertificatePreview test={selected} />
+        </PreviewFrame>
+      ) : null}
     </div>
   );
 }
