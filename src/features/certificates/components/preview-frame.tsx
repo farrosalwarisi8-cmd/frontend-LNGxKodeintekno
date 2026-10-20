@@ -50,7 +50,7 @@ export function PreviewFrame({
         </div>
         <div
           data-print-area
-          className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
+          className={`rounded-2xl border border-slate-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none ${printStyles.printArea ?? ""}`}
         >
           {children}
         </div>

@@ -48,12 +48,13 @@ export function decideDnaAccess(
       message: "Akses D&A diberikan sesuai permission peran.",
     };
   }
-  if (role === "hse" && !hseDesignated) {
+  if (role === "hse") {
     return {
       allowed: false,
-      reason: "not-designated",
-      message:
-        "Akses D&A untuk HSE memerlukan penunjukan dari server. Backend belum menyediakan data penunjukan HSE untuk D&A, sehingga akses ditolak.",
+      reason: hseDesignated ? "no-permission" : "not-designated",
+      message: hseDesignated
+        ? "Penunjukan D&A saja belum cukup: peran HSE belum memiliki izin akses modul D&A."
+        : "Akses D&A untuk HSE memerlukan penunjukan dari server. Backend belum menyediakan data penunjukan HSE untuk D&A, sehingga akses ditolak.",
     };
   }
   return {

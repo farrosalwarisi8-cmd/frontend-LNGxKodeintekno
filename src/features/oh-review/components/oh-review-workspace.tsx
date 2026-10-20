@@ -470,7 +470,10 @@ export function OhReviewWorkspace() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {selected.hasDecision ? (
-                    <div className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                    <div
+                      className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700"
+                      data-testid="ftw-locked-notice"
+                    >
                       <Info className="mt-0.5 size-4 shrink-0" />
                       <span>
                         Keputusan: <strong>{ftwLabel(selected.ftwStatus)}</strong>
