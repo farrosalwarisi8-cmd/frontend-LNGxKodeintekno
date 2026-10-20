@@ -18,7 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { createReporter, ensureDir, launchBrowser, loadPlaywright } from "../lib/browser.mjs";
-import { openA2Session } from "../lib/a2-fixtures.mjs";
+import { openA2Session } from "../lab/a2-fixtures.mjs";
 
 const require = createRequire(import.meta.url);
 const BASE = (process.env.E2E_BASE_URL ?? "http://localhost:3312").replace(/\/+$/, "");

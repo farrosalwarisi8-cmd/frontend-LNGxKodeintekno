@@ -1,5 +1,5 @@
 import { loadPlaywright, launchBrowser } from "../lib/browser.mjs";
-import { openA2Session } from "../lib/a2-fixtures.mjs";
+import { openA2Session } from "./a2-fixtures.mjs";
 
 const BASE = "http://localhost:3313";
 const pw = loadPlaywright();
