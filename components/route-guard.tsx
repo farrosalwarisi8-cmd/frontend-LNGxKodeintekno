@@ -55,6 +55,14 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   // Lab & Radiologi sebelumnya tidak punya guard padahal menu mensyaratkan
   // `input-lab-result` → tautan langsung melewati guard. Kini diselaraskan.
   { pattern: /^\/lab(?:\/.*)?$/, permission: "input-lab-result" },
+  // A3 — Review MCU (Dokter OH). Route dengan awalan lebih spesifik dulu.
+  // `/oh-review/restrictions` hanya untuk pengelola restriksi (Dokter OH);
+  // role lain (HR/HSE/manajemen) memakai halaman status kepatuhan yang sudah
+  // ada dan tidak diubah oleh A3.
+  { pattern: /^\/oh-review\/restrictions(?:\/.*)?$/, permission: "manage-restriction" },
+  { pattern: /^\/oh-review(?:\/.*)?$/, permission: "review-mcu" },
+  // A3 — Modul D&A (akses terbatas: Dokter OH; HSE hanya bila ditunjuk).
+  { pattern: /^\/dna(?:\/.*)?$/, permission: "view-dna" },
   { pattern: /^\/my(?:\/.*)?$/, permission: "view-profile" },
 ];
 

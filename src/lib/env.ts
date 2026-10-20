@@ -228,3 +228,30 @@ export function apiUrl(path: string): string {
   const base = requireApiBaseUrl();
   return path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
 }
+
+// ---------------------------------------------------------------------------
+// Feature flag publik — Fase A3 (Review MCU, Resume/Sertifikat, D&A)
+// ---------------------------------------------------------------------------
+//
+// Default MATI. Aktifkan hanya pada build environment yang sudah siap
+// (`NEXT_PUBLIC_FEATURE_OH_REVIEW=1` / `NEXT_PUBLIC_FEATURE_DNA=1`), agar
+// merge dengan flag mati tidak mengubah perilaku aplikasi yang ada.
+//
+// Pembacaan `NEXT_PUBLIC_*` tetap terpusat di berkas ini (satu-satunya
+// pembaca — dijaga test `src/lib/__tests__/frontend-config-audit.test.ts`).
+
+/** Flag review MCU + pembatasan FTW/restriksi (Dokter OH). */
+export function isFeatureOhReviewEnabled(
+  raw: string | undefined = process.env.NEXT_PUBLIC_FEATURE_OH_REVIEW
+): boolean {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return value === "true" || value === "1" || value === "yes" || value === "on";
+}
+
+/** Flag modul Drug & Alcohol (D&A) untuk Dokter OH. */
+export function isFeatureDnaEnabled(
+  raw: string | undefined = process.env.NEXT_PUBLIC_FEATURE_DNA
+): boolean {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return value === "true" || value === "1" || value === "yes" || value === "on";
+}
