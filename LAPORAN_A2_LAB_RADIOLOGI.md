@@ -76,10 +76,12 @@ Field yang tersedia pada tipe kontrak klien: `status`, `ordered_at`, `ordered_by
 
 ### Unit test (Vitest)
 
+> Angka diukur ulang pada 2026-10-20 **setelah cabang direbase ke `origin/main`** (baseline mengikuti main terbaru, termasuk test A1 upstream seperti `permission-proposal` dan `role-mapping-doc`).
+
 | | File | Tests |
 |---|---|---|
-| Baseline (tanpa 6 file test A2) | 36 passed + 1 skipped (37) | 458 passed + 21 skipped (479) |
-| **Hasil akhir A2** | **42 passed + 1 skipped (43)** | **542 passed + 21 skipped (563)** |
+| Baseline (tanpa 6 file test A2) | 39 passed + 1 skipped (40) | 508 passed + 21 skipped (529) |
+| **Hasil akhir A2** | **45 passed + 1 skipped (46)** | **592 passed + 21 skipped (613)** |
 | Delta A2 | +6 file | +84 tests, **semua lulus, 0 gagal** |
 
 Rincian 84 test A2: `order-utils` 19, `status-map` 11, `import/parsing` 15, `import/validation` 15, `import/runner` 6, `rbac-a2-lab` 18 (positif & negatif per role; `lab` tetap tanpa `view-mcu`).
@@ -106,7 +108,7 @@ Rincian 84 test A2: `order-utils` 19, `status-map` 11, `import/parsing` 15, `imp
 
 ## 4. Permission baru per role
 
-Ditambahkan murni di `lib/rbac.ts` (commit berlabel `shared:`), `ROLE_MAPPING.md` **digenerate ulang dari kode** lewat `scripts/generate-role-mapping.mjs` (tidak diedit manual; `git diff` = bersih setelah regenerasi).
+Ditambahkan murni di `lib/rbac.ts` (commit berlabel `shared:`), `ROLE_MAPPING.md` **digenerate ulang dari kode** lewat `npm run docs:role-matrix` (`scripts/generate-role-matrix.mjs`, generator resmi `main`; dijaga test `role-mapping-doc.test.ts`) — tidak diedit manual; `git diff` = bersih setelah regenerasi.
 
 | Permission | admin | dokter-oh | dokter-klinik | perawat | apoteker | **lab** | lainnya |
 |---|---|---|---|---|---|---|---|
@@ -176,30 +178,44 @@ E2E bisnis (`e2e/staging-business-flows.mjs`, butuh backend + seed) **tidak dija
 
 ## 8. Hal yang harus dicek manual
 
+### Catatan rebase ke `origin/main` (2026-10-20)
+
+- Cabang direbase ke `origin/main` (`d4ab4da`); keputusan RBAC mengikuti **main**: `hr` tetap tanpa `view-mcu`/`create-mcu`/`view-visits` (proposal 3-lapis diuji `permission-proposal.test.ts`), `admin-klinik` tetap memiliki `export-reports`, dan `lab` tetap tanpa `view-mcu` (prasyarat A2 tidak berubah).
+- `ROLE_MAPPING.md` kini memakai generator resmi main (`npm run docs:role-matrix`); generator kedua dari A1 (`generate-role-mapping.mjs`) dibuang agar tidak duplikat dan dijaga test `role-mapping-doc.test.ts`.
+- Verifikasi ulang pasca-rebase: tsc 0 error · vitest 592/592 · E2E A2 34/34 + 12/12 · flag mati 4/4 · ui-only 37/37 · role-scenarios 21/21 · axe 0 critical/serious.
+
 1. **Staging dengan backend yang punya GET diagnostic** — jalankan alur penuh: daftar order → buka detail → input hasil → verifikasi → terkunci; daftar radiologi → susun laporan → kirim. Saat ini semua GET route-404 (BLOCKER-01); setelah backend memperbaiki, cukup `node e2e/lab/real-api-check.mjs` (harus berubah: REAL-01 jadi bukti "GET ada", REAL-02..05 menyesuaikan) lalu jalankan `e2e/staging-business-flows.mjs` mode business.
 2. **Tampilan role lab vs radiolog** — akun `LAB_ANALYST` vs `RADIOLOGIST`: sampai BLOCKER-07 beres, keduanya memakai role frontend `lab` dan melihat menu yang sama; konfirmasikan dengan tim backend/perilaku login nyata apakah pemisahan peran dibutuhkan untuk rilis.
 3. **Perilaku flag mati di environment masing-masing** — build tanpa `NEXT_PUBLIC_FEATURE_LAB`: menu Radiologi hilang, `/lab` memakai halaman legacy, `/radiology` status nonaktif (sudah otomatis diverifikasi lokal: `e2e/lab/flag-off-check.mjs`; cek ulang di CI/staging build).
 4. **Ambang klinis** — `reference_range` & `abnormal_flag` berasal dari API/konfigurasi; setelah Dokter OH mengatur ambang di backend, pastikan nilai abnormal muncul di UI **tanpa perubahan kode frontend** (memang tidak ada ambang di kode frontend).
 5. **Data nyata pada impor** — unggah CSV template asli (dari order staging), baris valid & baris error, unduh laporan kesalahan, ulang hanya baris gagal — dipastikan tidak ada data pasien nyata yang bocor ke laporan/log.
 6. **Aksesibilitas lanjutan** — axe sudah 0 critical/serious pada halaman baru; audit keyboard penuh (tab/enter pada form hasil & pratinjau impor) pada pass a11y berikutnya.
-7. **Kebersihan lingkungan** — `npm audit` untuk dependensi lama (`next` critical) direncanakan terpisah; `ROLE_MAPPING.md` wajib digenerate ulang (`node scripts/generate-role-mapping.mjs`) bila ada permission berubah lagi.
+7. **Kebersihan lingkungan** — `npm audit` untuk dependensi lama (`next` critical) direncanakan terpisah; `ROLE_MAPPING.md` wajib digenerate ulang (`npm run docs:role-matrix`) bila ada permission berubah lagi.
 
 ---
 
 ## Lampiran A — Commit pada cabang `feat/a2-lab-radiologi`
 
+Hash di bawah adalah keadaan **setelah rebase ke `origin/main`** (urut dari yang tertua); dua commit pertama adalah sisa jalur A1 yang ikut terbawa:
+
 ```
-7b5ed4b shared: tambah permission A2 (view-lab-orders, receive-sample, import-lab-result, verify-lab-result, write-radiology-report)
-d1d7b4e shared: feature flag NEXT_PUBLIC_FEATURE_LAB, menu Radiologi, guard /radiology & /lab/import
-7deba67 shared: registry aksi A2 (lab.receive-sample, lab.import, lab.verify, radiology.write-report)
-85deaf6 feat(lab): workspace A2 — daftar order, detail, input manual, verifikasi, impor CSV
-9e02c8a feat(radiologi): halaman radiolog terpisah — daftar order & laporan temuan/kesimpulan
-d0f8763 test(lab): unit test A2 — permission, parser/validator impor, runner, pemetaan status
-86464e9 fix(a11y): kontras teks identitas MCU di panel lab + bersihkan eslint-disable usang
-8bb83bd test(e2e): suite A2 lab & radiologi (frontend-contract-test) + cek flag mati
-2c35821 test(e2e): pindahkan fixtures A2 ke e2e/lab (area milik A2)
-ba6581c test(e2e): ganti semua sleep tetap dengan tunggu elemen/response eksplisit
+2fb5106 fix(rbac): pulihkan permission HR & Admin Klinik yang terhapus di luar niat, tambah guard route kontrol sistem
+6f2359c feat(rbac): A1 — cabut view-mcu dari role lab, sesuaikan dashboard & test
+04d4426 shared: tambah permission A2 (view-lab-orders, receive-sample, import-lab-result, verify-lab-result, write-radiology-report)
+a6053b7 shared: feature flag NEXT_PUBLIC_FEATURE_LAB, menu Radiologi, guard /radiology & /lab/import
+484824d shared: registry aksi A2 (lab.receive-sample, lab.import, lab.verify, radiology.write-report)
+c41dd30 feat(lab): workspace A2 — daftar order, detail, input manual, verifikasi, impor CSV
+1ef033a feat(radiologi): halaman radiolog terpisah — daftar order & laporan temuan/kesimpulan
+77e5816 test(lab): unit test A2 — permission, parser/validator impor, runner, pemetaan status
+0311df1 fix(a11y): kontras teks identitas MCU di panel lab + bersihkan eslint-disable usang
+ac8aaa8 test(e2e): suite A2 lab & radiologi (frontend-contract-test) + cek flag mati
+9134a1d test(e2e): pindahkan fixtures A2 ke e2e/lab (area milik A2)
+85bdccb test(e2e): ganti semua sleep tetap dengan tunggu elemen/response eksplisit
+7382ad8 docs(a2): LAPORAN_A2_LAB_RADIOLOGI.md + cek real-API (bukti blocker GET diagnostic)
+8ca92c5 fix(shared): rekonsiliasi rebase ke origin/main — pulihkan export-reports admin-klinik & buang guard duplikat
 ```
+
+Commit A1 yang menambahkan generator `scripts/generate-role-mapping.mjs` sengaja **dibuang saat rebase** karena `origin/main` sudah memiliki generator setara (`generate-role-matrix.mjs`) beserta test sinkronisasi dokumennya.
 
 Perubahan file bersama hanya **tambahan murni** (permission baru, flag, menu, guard, registry aksi); `ROLE_MAPPING.md` digenerate dari kode; tidak ada file build/CI, backend, skema DB, atau logika fase lain yang diubah. `papaparse` = penambahan dependensi sesuai kebijakan A2 (dicatat di §7).
 
