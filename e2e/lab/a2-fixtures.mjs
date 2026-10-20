@@ -270,8 +270,12 @@ export function makeA2ApiHandler(state, calls) {
   };
 }
 
-/** Seed sesi internal (tanpa login sungguhan) + cookie untuk middleware. */
-export async function openA2Session(browser, { base, role, viewport = [1280, 900], label }) {
+/** Seed sesi internal (tanpa login sungguhan) + cookie untuk middleware.
+ *
+ * `mock: false` → TIDAK memasang page.route; semua request jaringan pergi ke
+ * backend sungguhan (NEXT_PUBLIC_API_URL) — dipakai cek real-API.
+ */
+export async function openA2Session(browser, { base, role, viewport = [1280, 900], label, mock = true }) {
   const user = {
     id: `u-a2-${role}`,
     username: `demo.${role}`,
@@ -317,7 +321,9 @@ export async function openA2Session(browser, { base, role, viewport = [1280, 900
   ]);
   const state = makeLabState();
   const calls = [];
-  await context.route("**/api/v1/**", makeA2ApiHandler(state, calls));
+  if (mock) {
+    await context.route("**/api/v1/**", makeA2ApiHandler(state, calls));
+  }
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(`${label}: ${e.message}`));
