@@ -60,6 +60,21 @@ export const ACTION_PERMISSIONS = {
   "input-lab-result": "input-lab-result",
   // Menjalankan mesin eskalasi reminder MCU (POST /admin/escalation/run-check).
   "escalation.run": "manage-hse",
+  // --- A3: Review MCU, FTW, restriksi, resume/sertifikat, D&A -------------
+  // Penetapan FTW (POST /mcu/cycles/:id/ftw-assessment) — Dokter OH saja.
+  "mcu.set-ftw": "set-ftw",
+  // Tambah/ubah/akhiri restriksi kerja — Dokter OH saja.
+  "mcu.manage-restriction": "manage-restriction",
+  // Melihat resume MCU (isi klinis) — tidak untuk HR/manajemen.
+  "mcu.view-resume": "view-resume",
+  // Melihat pratinjau sertifikat (belum sah) — bukan dokumen final.
+  "mcu.view-certificate-preview": "view-certificate-preview",
+  // Modul D&A: akses terbatas (Dokter OH; HSE hanya bila ditunjuk).
+  "dna.view": "view-dna",
+  // Pencatatan kejadian chain of custody (append-only).
+  "dna.record-custody": "record-dna-custody",
+  // Pencatatan hasil screening & confirmation test.
+  "dna.record-confirmation": "record-dna-confirmation",
 } as const satisfies Record<string, ActionRequirement>;
 
 export type ActionId = keyof typeof ACTION_PERMISSIONS;

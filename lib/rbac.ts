@@ -45,7 +45,16 @@ export type Permission =
   | "manage-system-config"
   | "manage-api-keys"
   | "view-tte"
-  | "monitor-emergency";
+  | "monitor-emergency"
+  // --- A3: Review MCU (Dokter OH), Resume/Sertifikat, D&A ----------------
+  // `review-mcu` sudah ada (dipakai halaman /mcu/review) — A3 memakai ulang.
+  | "set-ftw"
+  | "manage-restriction"
+  | "view-resume"
+  | "view-certificate-preview"
+  | "view-dna"
+  | "record-dna-custody"
+  | "record-dna-confirmation";
 
 /** Semua permission yang dikenal (dipakai untuk validasi, test, & generator docs). */
 export const ALL_PERMISSIONS: readonly Permission[] = [
@@ -82,6 +91,13 @@ export const ALL_PERMISSIONS: readonly Permission[] = [
   "manage-api-keys",
   "view-tte",
   "monitor-emergency",
+  "set-ftw",
+  "manage-restriction",
+  "view-resume",
+  "view-certificate-preview",
+  "view-dna",
+  "record-dna-custody",
+  "record-dna-confirmation",
 ];
 
 // ---------------------------------------------------------------------------
@@ -141,6 +157,19 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-emergency",
     "view-profile",
     "input-lab-result",
+    // --- A3: kewenangan Dokter OH (satu-satunya yang boleh menetapkan FTW
+    // dan mengelola restriction) -----------------------------------------
+    // Penetapan FTW & pengelolaan restriksi kerja.
+    "set-ftw",
+    "manage-restriction",
+    // Resume MCU & pratinjau sertifikat (area tanda tangan diisi pada TTE/A4).
+    "view-resume",
+    "view-certificate-preview",
+    // Modul D&A (akses terbatas; HSE hanya bila ditunjuk — data penunjukan
+    // belum tersedia dari API, lihat BLOCKER BACKEND di laporan A3).
+    "view-dna",
+    "record-dna-custody",
+    "record-dna-confirmation",
   ],
   "dokter-klinik": [
     "view-dashboard",
@@ -315,6 +344,11 @@ export const PRIVILEGED_PERMISSIONS: readonly Permission[] = [
   "input-lab-result",
   "manage-system-config",
   "manage-api-keys",
+  // A3 — aksi tulis (bukan sekadar lihat).
+  "set-ftw",
+  "manage-restriction",
+  "record-dna-custody",
+  "record-dna-confirmation",
 ];
 
 /** Semua permission yang dikenal (dipakai untuk validasi & test). */
