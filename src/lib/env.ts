@@ -217,6 +217,20 @@ export function isDemoModeEnabled(
  * dari env saat demo mode aktif, sehingga tidak ada kredensial pada bundle
  * production yang dibangun dengan benar.
  */
+/**
+ * Feature flag publik — Fase A2 (Laboratorium & Radiologi).
+ *
+ * Default MATI. Aktifkan hanya dengan `NEXT_PUBLIC_FEATURE_LAB=1|true` pada
+ * build environment yang sudah siap, agar merge dengan flag mati tidak
+ * mengubah perilaku yang ada. Lihat src/lib/feature-flags.ts.
+ */
+export function isFeatureLabEnabled(
+  raw: string | undefined = process.env.NEXT_PUBLIC_FEATURE_LAB
+): boolean {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return value === "true" || value === "1" || value === "yes" || value === "on";
+}
+
 export function getDemoPassword(
   raw: string | undefined = process.env.NEXT_PUBLIC_DEMO_PASSWORD
 ): string {
