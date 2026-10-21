@@ -42,6 +42,18 @@ jobs:
       - name: Keyboard-only login → SOAP flow
         run: A11Y_BASE_URL=http://localhost:3001 node scripts/a11y-keyboard-flow.mjs
 
+      # Skrip menulis diagnosis (URL, akun, link terlihat) + screenshot saat
+      # locator gagal; unggah terpisah agar mudah ditemukan ketika merah.
+      - name: Upload keyboard-flow failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-keyboard-failure
+          path: |
+            test-artifacts/a11y/keyboard-flow-failure.png
+            test-artifacts/a11y/keyboard-flow-failure.log
+          if-no-files-found: ignore
+
       # Skenario utama tiap peran + anggaran langkah (klik paling sedikit).
       - name: Role scenarios (steps per role)
         run: ROLE_BASE_URL=http://localhost:3001 node scripts/role-scenarios.mjs
