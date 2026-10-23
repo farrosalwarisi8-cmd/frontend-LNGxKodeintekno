@@ -1,4 +1,8 @@
 import { apiClient } from "@/lib/api-client";
+import {
+  BACKEND_UNAVAILABLE,
+  rethrowWithAvailability,
+} from "@/lib/services/backend-availability";
 
 export interface BackendLabOrderItem {
   id: string;
@@ -62,17 +66,40 @@ export interface BackendRadiologyResult {
   files?: Array<{ id: string; object_key: string; sha256_hash?: string }>;
 }
 
+/**
+ * Modul 10 — Layanan Penunjang Diagnostik.
+ *
+ * Endpoint baca (`GET /diagnostic/lab-orders`, `/diagnostic/lab-results`,
+ * `/diagnostic/radiology-orders`, dan detailnya) BELUM terdaftar pada backend
+ * yang berjalan saat ini; yang tersedia hanya lima endpoint tulis di bawah.
+ * Pemanggilan baca tetap dipertahankan agar otomatis berfungsi ketika backend
+ * menambahkannya, tetapi route-404 diterjemahkan menjadi
+ * `BackendFeatureUnavailableError` supaya UI dapat menjelaskan kapabilitas
+ * yang belum ada alih-alih menampilkan "Cannot GET /api/v1/...".
+ */
 export const diagnosticService = {
   async listLabOrders(): Promise<BackendLabOrder[]> {
-    return apiClient.get<BackendLabOrder[]>("/diagnostic/lab-orders");
+    try {
+      return await apiClient.get<BackendLabOrder[]>("/diagnostic/lab-orders");
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.labOrderList);
+    }
   },
 
   async getLabOrder(id: string): Promise<BackendLabOrder> {
-    return apiClient.get<BackendLabOrder>(`/diagnostic/lab-orders/${id}`);
+    try {
+      return await apiClient.get<BackendLabOrder>(`/diagnostic/lab-orders/${id}`);
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.labOrderDetail);
+    }
   },
 
   async listLabOrderResults(): Promise<BackendLabResult[]> {
-    return apiClient.get<BackendLabResult[]>("/diagnostic/lab-results");
+    try {
+      return await apiClient.get<BackendLabResult[]>("/diagnostic/lab-results");
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.labResultList);
+    }
   },
 
   async createLabOrder(input: {
@@ -106,11 +133,23 @@ export const diagnosticService = {
   },
 
   async listRadiologyOrders(): Promise<BackendRadiologyOrder[]> {
-    return apiClient.get<BackendRadiologyOrder[]>("/diagnostic/radiology-orders");
+    try {
+      return await apiClient.get<BackendRadiologyOrder[]>(
+        "/diagnostic/radiology-orders"
+      );
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.radiologyOrderList);
+    }
   },
 
   async getRadiologyOrder(id: string): Promise<BackendRadiologyOrder> {
-    return apiClient.get<BackendRadiologyOrder>(`/diagnostic/radiology-orders/${id}`);
+    try {
+      return await apiClient.get<BackendRadiologyOrder>(
+        `/diagnostic/radiology-orders/${id}`
+      );
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.radiologyOrderDetail);
+    }
   },
 
   async createRadiologyOrder(input: {

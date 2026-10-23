@@ -348,6 +348,39 @@ export async function installMockBackend(page: Page, backend: MockBackend): Prom
         envelope(matched, { page: 1, limit: 100, total: matched.length, totalPages: 1 })
       );
     }
+    if (method === "POST" && path === "/patients/check-duplicate") {
+      const input = (body ?? {}) as { identifierValue?: string };
+      const existing = backend.patients.find(
+        (p) => p.nationalId && p.nationalId === input.identifierValue
+      );
+      return json(
+        route,
+        200,
+        envelope(
+          existing
+            ? {
+                isDuplicate: true,
+                severity: "BLOCK",
+                message: "Identifier ini sudah terdaftar sebagai pekerja aktif.",
+                existingPerson: {
+                  id: existing.id,
+                  fullName: existing.fullName,
+                  mrn: existing.mrn,
+                  employeeNo: existing.employeeNo,
+                  maskedIdentifier: existing.maskedIdentifier,
+                  siteName: existing.site,
+                  employmentStatus: existing.employmentStatus ?? "ACTIVE",
+                },
+              }
+            : {
+                isDuplicate: false,
+                severity: "NONE",
+                message:
+                  "Nomor identitas tersedia dan belum terdaftar dalam sistem.",
+              }
+        )
+      );
+    }
     if (method === "POST" && path === "/patients") {
       const input = (body ?? {}) as { fullName?: string; employeeNo?: string };
       const created: MockPatient = {

@@ -17,6 +17,7 @@ import {
   type ReportDefinition,
   type TopDiseaseItem,
 } from "@/lib/services/reporting.service";
+import { isBackendFeatureUnavailable } from "@/lib/services/backend-availability";
 import { ErrorState } from "@/components/ui/error-state";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,9 @@ export default function ReportsPage() {
   // Peringatan ketika sebagian sumber data ditolak backend (mis. /patients untuk
   // role MANAGEMENT) agar angka parsial tidak disalahartikan sebagai "nol".
   const [partialNotice, setPartialNotice] = useState<string | null>(null);
+  // GET /pharmacy/dispensing/history belum terdaftar di backend: angka
+  // dispensing tidak boleh tampil sebagai 0 (seolah benar-benar kosong).
+  const [pharmacyGap, setPharmacyGap] = useState(false);
 
   // Modul 8 — data laporan & analitik dari backend
   const { loading, error, refetch } = useSyncedModules(async () => {
@@ -58,12 +62,24 @@ export default function ReportsPage() {
     const tasks: Array<Promise<unknown>> = [syncPatients(1, 100)];
     if (showMcuMetrics) tasks.push(syncMcu(1, 100));
     if (showVisitMetrics) tasks.push(syncQueues());
-    if (showPharmacyMetrics) tasks.push(syncDispensings());
+    let pharmacyUnavailable = false;
+    if (showPharmacyMetrics) {
+      tasks.push(
+        syncDispensings().catch((e: unknown) => {
+          if (isBackendFeatureUnavailable(e)) {
+            pharmacyUnavailable = true;
+            return [];
+          }
+          throw e;
+        })
+      );
+    }
     // Status kepatuhan selalu berasal dari assessment FTW backend (bukan seed).
     tasks.push(syncWorkHealthStatus());
 
     // Satu sumber yang ditolak tidak boleh mengosongkan seluruh halaman laporan.
     const syncResults = await Promise.allSettled(tasks);
+    setPharmacyGap(pharmacyUnavailable);
     const rejected = syncResults.filter(
       (r): r is PromiseRejectedResult => r.status === "rejected"
     );
@@ -214,8 +230,19 @@ export default function ReportsPage() {
                 <Pill className="size-6" />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-slate-900">{dispensings.length}</p>
-                <p className="text-xs text-slate-500">Dispensing</p>
+                <p
+                  className="text-2xl font-semibold text-slate-900"
+                  title={
+                    pharmacyGap
+                      ? "Riwayat dispensing belum tersedia di backend"
+                      : undefined
+                  }
+                >
+                  {pharmacyGap ? "—" : dispensings.length}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Dispensing{pharmacyGap ? " (belum tersedia)" : ""}
+                </p>
               </div>
             </CardContent>
           </Card>

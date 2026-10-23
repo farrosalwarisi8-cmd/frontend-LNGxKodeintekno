@@ -18,8 +18,8 @@ import {
   WifiOff,
 } from "lucide-react";
 import type { CreatePersonDraft, IdentifierType, Sex, CreatedPersonResult, DuplicateCheckResult } from "../api/people.types";
-import { apiUrl } from "@/lib/env";
 import { patientService } from "@/lib/services/patient.service";
+import { documentService } from "@/lib/services/document.service";
 import { useDraft, EMPTY_DRAFT } from "../hooks/use-draft";
 import { useOnlineStatus } from "../hooks/use-online-status";
 import { Button } from "@/components/ui/button";
@@ -211,23 +211,18 @@ export function RegistrationWizard() {
     setResending(false);
   };
 
+  /**
+   * Backend belum menyediakan endpoint unggah (`POST /documents/upload` tidak
+   * terdaftar), jadi berkas tidak dikirim. UI menjelaskan batas ini dan
+   * pendaftaran tetap dapat dilanjutkan tanpa lampiran.
+   */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const token = localStorage.getItem("kodein_token");
-        const res = await fetch(apiUrl("/documents/upload"), {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          body: formData,
-        });
-        if (!res.ok) throw new Error("Upload dokumen gagal.");
-        const result = await res.json();
-        setUploadedFiles((prev) => [...prev, { id: result.documentId, name: result.name, size: result.size, tamperCheck: result.tamperCheck }]);
+        await documentService.uploadDocument(file);
       }
     } catch (err) {
       setErrors({ upload: err instanceof Error ? err.message : "Upload gagal." });
@@ -571,6 +566,11 @@ export function RegistrationWizard() {
         {currentStep === 4 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">Dokumen Pendukung</h2>
+            <p className="rounded-xl border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-800">
+              Unggah dokumen pendukung belum tersedia di backend saat ini (endpoint
+              POST /documents/upload belum terdaftar). Pendaftaran tetap dapat dilanjutkan
+              tanpa lampiran.
+            </p>
             <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
               <Upload className="mx-auto mb-3 size-8 text-slate-500" />
               <p className="text-sm font-medium text-slate-700">Upload dokumen pendukung</p>

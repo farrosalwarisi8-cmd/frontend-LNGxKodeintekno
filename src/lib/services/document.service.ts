@@ -1,17 +1,25 @@
 import { apiClient } from "@/lib/api-client";
+import {
+  BACKEND_UNAVAILABLE,
+  BackendFeatureUnavailableError,
+  rethrowWithAvailability,
+} from "@/lib/services/backend-availability";
 
 /**
  * Modul 9 — Dokumen Medis, Tanda Tangan PSrE & Verifikasi Publik.
- * Endpoint backend (Domain 8):
+ * Endpoint backend yang TERDAFTAR (Domain 8):
+ *   GET  /api/v1/documents
  *   POST /api/v1/documents/render-pdf
  *   POST /api/v1/signatures/request
  *   POST /api/v1/signatures/callback   (webhook provider, bukan UI)
  *   GET  /api/v1/public/verify/:qrToken
  *
- * Fase 6 — tambahan endpoint untuk tracking & retry:
+ * BELUM terdaftar di backend saat ini (lihat `backend-availability.ts`):
  *   GET  /api/v1/signatures            (daftar signature request)
  *   GET  /api/v1/signatures/:id        (detail + audit trail)
  *   POST /api/v1/signatures/:id/retry  (retry signature yang gagal/expired)
+ *   GET  /api/v1/documents/:id/download
+ *   POST /api/v1/documents/upload
  */
 
 export interface RenderPdfResult {
@@ -119,8 +127,10 @@ export const documentService = {
   },
 
   /**
-   * Fase 6 — Daftar semua signature request.
-   * Endpoint: GET /signatures (tersedia di backend untuk admin/dokter).
+   * Daftar semua signature request.
+   * Route `GET /signatures` belum terdaftar di backend → 404 diterjemahkan
+   * menjadi `BackendFeatureUnavailableError` agar halaman /signatures dapat
+   * menampilkan penjelasan kapabilitas, bukan error mentah.
    */
   async getSignatures(params?: {
     page?: number;
@@ -132,23 +142,29 @@ export const documentService = {
     if (params?.limit) qs.set("limit", String(params.limit));
     if (params?.status) qs.set("status", params.status);
     const query = qs.toString();
-    return apiClient.get(`/signatures${query ? `?${query}` : ""}`);
+    try {
+      return await apiClient.get(`/signatures${query ? `?${query}` : ""}`);
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.signatureTracking);
+    }
   },
 
-  /**
-   * Fase 6 — Detail signature + audit trail.
-   * Endpoint: GET /signatures/:id
-   */
+  /** Detail signature + audit trail (`GET /signatures/:id`, belum terdaftar). */
   async getSignature(id: string): Promise<SignatureRequest> {
-    return apiClient.get<SignatureRequest>(`/signatures/${id}`);
+    try {
+      return await apiClient.get<SignatureRequest>(`/signatures/${id}`);
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.signatureTracking);
+    }
   },
 
-  /**
-   * Fase 6 — Retry signature yang FAILED atau EXPIRED.
-   * Endpoint: POST /signatures/:id/retry
-   */
+  /** Retry signature FAILED/EXPIRED (`POST /signatures/:id/retry`, belum terdaftar). */
   async retrySignature(id: string): Promise<SignatureRequest> {
-    return apiClient.post<SignatureRequest>(`/signatures/${id}/retry`);
+    try {
+      return await apiClient.post<SignatureRequest>(`/signatures/${id}/retry`);
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.signatureTracking);
+    }
   },
 
   /**
@@ -180,11 +196,29 @@ export const documentService = {
   },
 
   /**
-   * Fase 6 — Download dokumen yang sudah signed.
-   * Endpoint: GET /documents/:id/download (signed URL di production)
+   * Download dokumen yang sudah signed.
+   * `GET /documents/:id/download` belum terdaftar di backend → error kapabilitas.
    */
   async downloadDocument(documentId: string): Promise<{ downloadUrl?: string }> {
-    return apiClient.get<{ downloadUrl?: string }>(`/documents/${documentId}/download`);
+    try {
+      return await apiClient.get<{ downloadUrl?: string }>(
+        `/documents/${documentId}/download`
+      );
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.documentDownload);
+    }
+  },
+
+  /**
+   * Unggah dokumen pendukung pendaftaran pekerja.
+   *
+   * Backend belum mengekspos endpoint unggah apa pun (`POST /documents/upload`
+   * tidak terdaftar), jadi request TIDAK dikirim dan UI wajib menjelaskan
+   * bahwa lampiran belum didukung — bukan menampilkan kegagalan jaringan palsu.
+   */
+  async uploadDocument(file: File): Promise<never> {
+    void file; // berkas sengaja tidak dibaca: belum ada route penerima
+    throw new BackendFeatureUnavailableError(BACKEND_UNAVAILABLE.documentUpload);
   },
 
   async verifyPublic(qrToken: string): Promise<PublicVerifyResult> {

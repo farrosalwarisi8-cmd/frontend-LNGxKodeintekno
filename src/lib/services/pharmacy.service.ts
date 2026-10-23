@@ -1,15 +1,21 @@
 import { apiClient, getToken, decodeJwtPayload } from "@/lib/api-client";
 import type { BackendUserRow } from "@/lib/services/iam.service";
+import {
+  BACKEND_UNAVAILABLE,
+  rethrowWithAvailability,
+} from "@/lib/services/backend-availability";
 
 /**
  * Modul 5 — Farmasi & FEFO Inventory Engine.
- * Endpoint backend (Domain 6):
+ * Endpoint backend terdaftar (Domain 6):
  *   GET  /api/v1/pharmacy/inventory?siteId=
  *   GET  /api/v1/pharmacy/prescriptions/pending?siteId=
- *   GET  /api/v1/pharmacy/dispensing/history
  *   POST /api/v1/pharmacy/dispensing/recommend-batches
  *   POST /api/v1/pharmacy/dispensing
  *   POST /api/v1/pharmacy/returns
+ *
+ * BELUM terdaftar di backend (lihat `backend-availability.ts`):
+ *   GET  /api/v1/pharmacy/dispensing/history
  *
  * Fase 3 — pengamanan alur pharmacy di lapisan frontend:
  *   1. DispensingGuard   — satu resep hanya boleh didispensasi sekali
@@ -436,8 +442,20 @@ export const pharmacyService = {
     });
   },
 
+  /**
+   * Riwayat dispensing.
+   * Route `GET /pharmacy/dispensing/history` belum terdaftar di backend → 404
+   * diterjemahkan menjadi `BackendFeatureUnavailableError` (bukan ErrorState
+   * generik) agar halaman retur dapat menjelaskan kapabilitas yang belum ada.
+   */
   async getDispensingHistory(): Promise<DispensingHistoryItem[]> {
-    return apiClient.get<DispensingHistoryItem[]>("/pharmacy/dispensing/history");
+    try {
+      return await apiClient.get<DispensingHistoryItem[]>(
+        "/pharmacy/dispensing/history"
+      );
+    } catch (e) {
+      rethrowWithAvailability(e, BACKEND_UNAVAILABLE.dispensingHistory);
+    }
   },
 };
 

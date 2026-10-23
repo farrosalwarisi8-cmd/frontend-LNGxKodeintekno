@@ -20,6 +20,7 @@ import {
   type RenderPdfResult,
   type SignatureRequest,
 } from "@/lib/services/document.service";
+import { isBackendFeatureUnavailable } from "@/lib/services/backend-availability";
 import {
   FileText,
   Download,
@@ -103,6 +104,10 @@ export default function DocumentsPage() {
   const [genError, setGenError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"documents" | "signatures">("documents");
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  // GET /signatures/:id & POST /signatures/:id/retry belum terdaftar di backend.
+  // Selama itu terjadi, polling dan tombol retry dimatikan agar tidak menembak
+  // route yang tidak ada berulang kali.
+  const [signatureGap, setSignatureGap] = useState<string | null>(null);
 
   // Modal pembuatan dokumen baru — POST /documents/render-pdf
   const [showRenderModal, setShowRenderModal] = useState(false);
@@ -150,14 +155,18 @@ export default function DocumentsPage() {
             d.id === doc.id ? { ...d, signature: updated } : d
           )
         );
-      } catch {
-        // silent fail per document
+      } catch (e) {
+        if (isBackendFeatureUnavailable(e)) {
+          setSignatureGap(e.message);
+          return;
+        }
+        // silent fail per document (mis. 403 per-dokumen)
       }
     }
   }, [documents]);
 
   useEffect(() => {
-    if (!polling || !hasActiveSignatures) {
+    if (!polling || !hasActiveSignatures || signatureGap) {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
         pollingRef.current = null;
@@ -175,7 +184,7 @@ export default function DocumentsPage() {
         pollingRef.current = null;
       }
     };
-  }, [polling, hasActiveSignatures, refreshSignatureStatuses]);
+  }, [polling, hasActiveSignatures, refreshSignatureStatuses, signatureGap]);
 
   /** Render dokumen baru di backend, lalu muat ulang daftar dari GET /documents. */
   const handleRenderPdf = async () => {
@@ -232,7 +241,11 @@ export default function DocumentsPage() {
         prev.map((d) => (d.id === doc.id ? { ...d, signature: updated } : d))
       );
     } catch (e) {
-      setGenError(e instanceof Error ? e.message : "Gagal retry signature.");
+      if (isBackendFeatureUnavailable(e)) {
+        setSignatureGap(e.message);
+      } else {
+        setGenError(e instanceof Error ? e.message : "Gagal retry signature.");
+      }
     } finally {
       setRetryingId(null);
     }
@@ -263,6 +276,16 @@ export default function DocumentsPage() {
       {genError && (
         <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
           {genError}
+        </div>
+      )}
+
+      {signatureGap && (
+        <div
+          className="rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800"
+          role="status"
+        >
+          <p className="font-medium">Status tanda tangan tidak dapat dilacak</p>
+          <p className="mt-1">{signatureGap}</p>
         </div>
       )}
 
@@ -309,6 +332,7 @@ export default function DocumentsPage() {
             <div className="space-y-3">
               {documents.map((doc) => {
                 const canRetry =
+                  !signatureGap &&
                   doc.signature &&
                   (doc.signature.status === "FAILED" || doc.signature.status === "EXPIRED") &&
                   retryingId !== doc.id;

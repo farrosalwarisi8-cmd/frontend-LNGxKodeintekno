@@ -11,7 +11,7 @@ import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
-import { ApiError } from "@/lib/api-client";
+import { isBackendFeatureUnavailable } from "@/lib/services/backend-availability";
 import {
   pharmacyService,
   resolvePharmacySiteScope,
@@ -28,7 +28,7 @@ export default function ReturnMedicinePage() {
   const [history, setHistory] = useState<DispensingHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Fase 6 — `GET /pharmacy/dispensing/history` BELUM ada di backend (404).
+  // `GET /pharmacy/dispensing/history` BELUM terdaftar di backend.
   // Dibedakan dari kegagalan lain: inventory tetap dimuat & ditampilkan,
   // tombol retur disembunyikan (tanpa baris dispensing tidak ada yang bisa
   // dipilih), dan empty state menjelaskan apa yang kurang.
@@ -76,7 +76,7 @@ export default function ReturnMedicinePage() {
     try {
       historyData = await pharmacyService.getDispensingHistory();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 404) {
+      if (isBackendFeatureUnavailable(e)) {
         // Route backend belum tersedia — bukan kesalahan pengguna.
         setHistory([]);
         setHistoryMissing(true);

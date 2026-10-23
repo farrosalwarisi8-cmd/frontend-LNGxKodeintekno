@@ -2,6 +2,7 @@
 
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
@@ -18,6 +19,7 @@ import {
   type SignatureRequest,
   type SignatureStatus,
 } from "@/lib/services/document.service";
+import { isBackendFeatureUnavailable } from "@/lib/services/backend-availability";
 import {
   PenLine,
   CheckCircle,
@@ -63,6 +65,9 @@ export default function SignaturesPage() {
   const [signatures, setSignatures] = useState<SignatureRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Backend belum mendaftarkan GET /signatures (+ detail/retry). Kegagalan itu
+  // bukan error pengguna, jadi ditampilkan sebagai status kapabilitas.
+  const [unavailable, setUnavailable] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [retryingId, setRetryingId] = useState<string | null>(null);
@@ -84,8 +89,14 @@ export default function SignaturesPage() {
       if (statusFilter) params.status = statusFilter;
       const res = await documentService.getSignatures(params);
       setSignatures(res.data ?? []);
+      setUnavailable(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat data tanda tangan.");
+      if (isBackendFeatureUnavailable(e)) {
+        setSignatures([]);
+        setUnavailable(e.message);
+      } else {
+        setError(e instanceof Error ? e.message : "Gagal memuat data tanda tangan.");
+      }
     } finally {
       setLoading(false);
     }
@@ -156,6 +167,36 @@ export default function SignaturesPage() {
   const failedCount = signatures.filter(
     (s) => s.status === "FAILED" || s.status === "EXPIRED"
   ).length;
+
+  if (unavailable) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            Tanda Tangan Elektronik
+          </h1>
+          <p className="text-sm text-slate-500">
+            Tracking semua signature request PSrE/PTTE
+          </p>
+        </div>
+        <Card className="space-y-3 border-warning-200 bg-warning-50 p-6 text-sm text-warning-800">
+          <p className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="size-4" aria-hidden="true" />
+            Pelacakan tanda tangan belum tersedia di backend
+          </p>
+          <p>{unavailable}</p>
+          <p className="text-warning-700">
+            Permintaan tanda tangan baru tetap dapat diajukan dari halaman Dokumen. Daftar
+            status di halaman ini tidak ditampilkan agar tidak ada status tanda tangan yang
+            dikarang di sisi klien.
+          </p>
+          <Link href="/documents" className="inline-block">
+            <Button variant="outline">Buka Dokumen</Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

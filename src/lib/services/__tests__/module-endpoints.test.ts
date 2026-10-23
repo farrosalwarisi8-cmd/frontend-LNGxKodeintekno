@@ -15,6 +15,11 @@ const EXPECTED_ENDPOINTS: Array<{ module: string; method: string; path: RegExp }
   { module: "auth.mfa", method: "POST", path: /^\/api\/v1\/auth\/mfa\/verify$/ },
   // Modul 2 — Pasien / MPI & Consent
   { module: "patient.list", method: "GET", path: /^\/api\/v1\/patients(\?|$)/ },
+  {
+    module: "patient.duplicateCheck",
+    method: "POST",
+    path: /^\/api\/v1\/patients\/check-duplicate$/,
+  },
   { module: "patient.create", method: "POST", path: /^\/api\/v1\/patients$/ },
   { module: "patient.profile", method: "GET", path: /^\/api\/v1\/patients\/[^/]+\/profile$/ },
   { module: "patient.consentSend", method: "POST", path: /^\/api\/v1\/consents\/send$/ },
@@ -176,6 +181,41 @@ describe("Kontrak endpoint frontend <-> backend", () => {
     expect(calls[2].body).toEqual({ patientId: "p1", consentType: "DATA_PROCESSING" });
     expect(pathOf(calls[3].url)).toBe("/api/v1/public/consents/verify");
     expect(calls[3].body).toEqual({ token: "token-123", action: "AGREED" });
+  });
+
+  it("Modul 2 — deduplikasi memakai POST /patients/check-duplicate", async () => {
+    const calls = mockFetch(() => ({
+      body: envelope({
+        isDuplicate: true,
+        severity: "BLOCK",
+        message: "Sudah terdaftar",
+        existingPerson: {
+          id: "p1",
+          fullName: "Budi",
+          mrn: "MRN-1",
+          employeeNo: "EMP-1",
+          employmentStatus: "ACTIVE",
+        },
+      }),
+    }));
+    const { patientService } = await import("@/lib/services/patient.service");
+
+    const result = await patientService.duplicateCheck({
+      identifierType: "NIK",
+      identifierValue: "3201011405880001",
+      fullName: "Budi",
+    });
+
+    expect(pathOf(calls[0].url)).toBe("/api/v1/patients/check-duplicate");
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].body).toEqual({
+      identifierType: "NIK",
+      identifierValue: "3201011405880001",
+      fullName: "Budi",
+    });
+    expect(result.isDuplicate).toBe(true);
+    expect(result.severity).toBe("BLOCK");
+    expect(result.existingPerson?.mrn).toBe("MRN-1");
   });
 
   it("Modul 3 — encounter service memanggil endpoint klinik", async () => {
@@ -367,6 +407,7 @@ describe("Kontrak endpoint frontend <-> backend", () => {
       ["/api/v1/auth/refresh", "POST"],
       ["/api/v1/patients", "GET"],
       ["/api/v1/patients", "POST"],
+      ["/api/v1/patients/check-duplicate", "POST"],
       ["/api/v1/patients/:id/profile", "GET"],
       ["/api/v1/consents/send", "POST"],
       ["/api/v1/public/consents/verify", "POST"],

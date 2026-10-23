@@ -15,6 +15,7 @@ import type {
 /**
  * Modul 2 — Master Patient Index (MPI) & Digital Consent.
  * Endpoint backend (Domain 2):
+ *   POST /api/v1/patients/check-duplicate
  *   POST /api/v1/patients
  *   GET  /api/v1/patients?page=&limit=&search=
  *   GET  /api/v1/patients/:id/profile
@@ -94,6 +95,22 @@ interface BackendConsentResult {
   status?: string;
   consentStatus?: string;
   verifiedAt?: string;
+}
+
+/** Response `POST /patients/check-duplicate` (lihat patient.service backend). */
+interface BackendDuplicateResult {
+  isDuplicate: boolean;
+  severity: "NONE" | "WARNING" | "BLOCK";
+  message?: string;
+  existingPerson?: {
+    id: string;
+    fullName: string;
+    mrn: string;
+    employeeNo?: string | null;
+    maskedIdentifier?: string;
+    siteName?: string;
+    employmentStatus?: string;
+  };
 }
 
 /** GRANTED/REVOKED (backend) -> status yang dipahami UI frontend. */
@@ -256,29 +273,54 @@ export const patientService = {
     };
   },
 
+  /**
+   * Deduplikasi identitas lewat `POST /patients/check-duplicate`.
+   *
+   * Sebelumnya frontend menebak duplikat dari hasil pencarian daftar pasien;
+   * endpoint backend memakai hash identitas penuh sehingga lebih tepat dan
+   * tidak membocorkan daftar pasien ke layar registrasi.
+   */
   async duplicateCheck(input: DuplicateCheckInput): Promise<DuplicateCheckResult> {
-    const result = await patientService.list({
-      search: input.identifierValue,
-      pageSize: 1,
-    });
-    const existing = result.data[0];
-    if (!existing) {
-      return { isDuplicate: false, severity: "NONE", message: "Identifier tersedia." };
+    const result = await apiClient.post<BackendDuplicateResult>(
+      "/patients/check-duplicate",
+      {
+        identifierType: input.identifierType,
+        identifierValue: input.identifierValue,
+        fullName: input.fullName,
+      }
+    );
+
+    if (!result.isDuplicate) {
+      return {
+        isDuplicate: false,
+        severity: "NONE",
+        message: result.message ?? "Nomor identitas tersedia dan belum terdaftar.",
+      };
     }
+
+    const existing = result.existingPerson;
     return {
       isDuplicate: true,
-      severity: existing.employmentStatus === "ACTIVE" ? "BLOCK" : "WARNING",
+      // Backend menetapkan BLOCK untuk identitas yang sudah terdaftar.
+      severity: result.severity === "WARNING" ? "WARNING" : "BLOCK",
       message:
-        existing.employmentStatus === "ACTIVE"
-          ? "Identifier ini sudah terdaftar sebagai pekerja aktif."
-          : "Identifier terdeteksi sudah digunakan.",
-      existingPerson: {
-        id: existing.id,
-        fullName: existing.fullName,
-        mrn: existing.mrn,
-        employeeNo: existing.employeeNo,
-        employmentStatus: existing.employmentStatus,
-      },
+        result.message ??
+        (existing
+          ? `Identitas ini sudah terdaftar atas nama ${existing.fullName} (MRN: ${existing.mrn}).`
+          : "Identitas ini sudah terdaftar."),
+      existingPerson: existing
+        ? {
+            id: existing.id,
+            fullName: existing.fullName,
+            mrn: existing.mrn,
+            employeeNo: existing.employeeNo ?? "",
+            employmentStatus:
+              existing.employmentStatus === "INACTIVE" ||
+              existing.employmentStatus === "ARCHIVED"
+                ? existing.employmentStatus
+                : "ACTIVE",
+          }
+        : undefined,
     };
   },
 
