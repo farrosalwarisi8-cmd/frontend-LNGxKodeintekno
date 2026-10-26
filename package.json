@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:contrast": "node scripts/check-contrast.mjs",
     "test:a11y": "node scripts/a11y-audit.mjs",
     "test:a11y:keyboard": "node scripts/a11y-keyboard-flow.mjs",
     "test:roles": "node scripts/role-scenarios.mjs",
