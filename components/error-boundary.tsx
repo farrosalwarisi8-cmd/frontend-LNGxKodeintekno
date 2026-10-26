@@ -38,8 +38,8 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-danger-100">
               <AlertTriangle className="size-6 text-danger-600" />
             </div>
-            <h2 className="text-lg font-semibold text-slate-900">Terjadi Kesalahan</h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <h2 className="text-lg font-semibold text-foreground">Terjadi Kesalahan</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
               {this.state.error?.message || "Terjadi kesalahan yang tidak terduga."}
             </p>
             <Button

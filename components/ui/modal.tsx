@@ -31,20 +31,20 @@ export function Modal({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onClose} modal>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/40" />
+        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-foreground/40" />
         <DialogPrimitive.Popup
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 flex flex-col -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-slate-200 bg-white shadow-xl outline-none sm:max-w-[calc(100%-2rem)]",
+            "fixed top-1/2 left-1/2 z-50 flex flex-col -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-card shadow-xl outline-none sm:max-w-[calc(100%-2rem)]",
             sizes[size]
           )}
         >
-          <div className="flex items-start justify-between border-b border-slate-100 p-6">
+          <div className="flex items-start justify-between border-b border-border p-6">
             <div>
-              {title && <h2 className="text-lg font-semibold text-slate-900">{title}</h2>}
-              {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+              {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
+              {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
             </div>
             <DialogPrimitive.Close
-              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-text-secondary"
               aria-label="Tutup"
             >
               <X className="size-5" />

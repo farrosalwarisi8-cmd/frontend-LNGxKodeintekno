@@ -28,13 +28,13 @@ export function Breadcrumb({ className }: { className?: string }) {
         const isLast = i === list.length - 1;
         return (
           <span key={`${item.label}-${i}`} className="flex min-w-0 items-center gap-1.5">
-            {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-slate-500" aria-hidden="true" />}
+            {i > 0 && <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />}
             {isLast || !item.href ? (
               <span
                 aria-current={isLast ? "page" : undefined}
                 className={cn(
                   "truncate py-1",
-                  isLast ? "font-medium text-slate-900" : "text-slate-500"
+                  isLast ? "font-medium text-foreground" : "text-muted-foreground"
                 )}
               >
                 {item.label}
@@ -42,7 +42,7 @@ export function Breadcrumb({ className }: { className?: string }) {
             ) : (
               <Link
                 href={item.href}
-                className="truncate py-1 text-slate-500 transition-colors hover:text-slate-900"
+                className="truncate py-1 text-muted-foreground transition-colors hover:text-foreground"
               >
                 {item.label}
               </Link>

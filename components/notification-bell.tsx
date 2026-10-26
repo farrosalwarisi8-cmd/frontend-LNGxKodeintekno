@@ -129,15 +129,15 @@ export function NotificationBell() {
         aria-controls="notification-panel"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative flex size-11 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 lg:size-9",
-          open && "bg-slate-100"
+          "relative flex size-11 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-muted lg:size-9",
+          open && "bg-muted"
         )}
       >
         <Bell className="size-5" aria-hidden="true" />
         {badge && (
           <span
             aria-hidden="true"
-            className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-semibold leading-4 text-white"
+            className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-semibold leading-4 text-danger-foreground"
           >
             {badge}
           </span>
@@ -150,10 +150,10 @@ export function NotificationBell() {
           ref={panelRef}
           role="dialog"
           aria-label="Daftar notifikasi"
-          className="fixed inset-x-0 bottom-0 z-50 max-h-[75vh] overflow-y-auto rounded-t-2xl border-t bg-white p-4 shadow-2xl lg:absolute lg:inset-auto lg:right-0 lg:top-full lg:mt-2 lg:max-h-96 lg:w-96 lg:rounded-2xl lg:border"
+          className="fixed inset-x-0 bottom-0 z-50 max-h-[75vh] overflow-y-auto rounded-t-2xl border-t bg-card p-4 shadow-2xl lg:absolute lg:inset-auto lg:right-0 lg:top-full lg:mt-2 lg:max-h-96 lg:w-96 lg:rounded-2xl lg:border"
         >
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-900">Notifikasi</h2>
+            <h2 className="text-sm font-semibold text-foreground">Notifikasi</h2>
             {unread > 0 && (
               <Button variant="ghost" size="sm" onClick={handleMarkAllRead}>
                 <CheckCheck className="size-4" /> Tandai semua
@@ -170,14 +170,14 @@ export function NotificationBell() {
           {fetchState === "loading" && (
             <ul className="space-y-2" aria-busy="true">
               {[0, 1, 2].map((i) => (
-                <li key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+                <li key={i} className="h-14 animate-pulse rounded-xl bg-muted" />
               ))}
             </ul>
           )}
 
           {fetchState === "error" && (
             <div className="py-6 text-center">
-              <p className="text-sm text-slate-600">Gagal memuat notifikasi.</p>
+              <p className="text-sm text-text-secondary">Gagal memuat notifikasi.</p>
               <Button variant="outline" size="sm" className="mt-2" onClick={retry}>
                 <RefreshCw className="size-4" /> Coba lagi
               </Button>
@@ -185,7 +185,7 @@ export function NotificationBell() {
           )}
 
           {fetchState === "idle" && mine.length === 0 && (
-            <p className="py-6 text-center text-sm text-slate-500">Tidak ada notifikasi.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">Tidak ada notifikasi.</p>
           )}
 
           {fetchState === "idle" && mine.length > 0 && (
@@ -200,22 +200,22 @@ export function NotificationBell() {
                       if (n.link) router.push(n.link);
                     }}
                     className={cn(
-                      "w-full rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-slate-50",
+                      "w-full rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted",
                       !n.read && "bg-primary-50/60"
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-medium text-slate-900">{n.title}</span>
+                      <span className="text-sm font-medium text-foreground">{n.title}</span>
                       {!n.read && (
                         <span className="mt-1 size-2 shrink-0 rounded-full bg-primary-600" aria-label="Belum dibaca" />
                       )}
                     </div>
                     {n.message && (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{n.message}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{n.message}</p>
                     )}
                     <time
                       dateTime={n.createdAt}
-                      className="mt-1 block text-[11px] text-slate-500"
+                      className="mt-1 block text-[11px] text-muted-foreground"
                       title={formatDateTime(n.createdAt)}
                     >
                       {formatDateTime(n.createdAt)}

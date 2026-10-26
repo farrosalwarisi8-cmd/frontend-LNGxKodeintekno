@@ -22,7 +22,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-slate-700">
+          <label htmlFor={selectId} className="block text-sm font-medium text-text-secondary">
             {label}
           </label>
         )}
@@ -31,8 +31,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             className={cn(
-              "flex h-11 w-full appearance-none rounded-xl border bg-white px-3.5 pr-10 text-base text-slate-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-slate-50",
-              error ? "border-danger-500" : "border-slate-200",
+              "flex h-11 w-full appearance-none rounded-xl border bg-card px-3.5 pr-10 text-base text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted",
+              error ? "border-danger-500" : "border-input",
               className
             )}
             aria-label={ariaLabel}
@@ -51,7 +51,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         </div>
         {error && (
           <p id={`${selectId}-error`} className="text-sm text-danger-600">
@@ -59,7 +59,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </p>
         )}
         {!error && helper && (
-          <p id={`${selectId}-helper`} className="text-sm text-slate-500">
+          <p id={`${selectId}-helper`} className="text-sm text-muted-foreground">
             {helper}
           </p>
         )}

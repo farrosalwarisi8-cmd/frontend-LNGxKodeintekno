@@ -153,17 +153,17 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
   if (access === "denied") {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center p-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center">
+          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <ShieldAlert className="size-6" />
           </div>
-          <h2 className="text-lg font-semibold text-slate-900">Akses Ditolak</h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <h2 className="text-lg font-semibold text-foreground">Akses Ditolak</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
             Anda tidak punya izin untuk membuka halaman ini.
           </p>
           <Link
             href="/dashboard"
-            className="mt-4 inline-flex items-center justify-center rounded-xl border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            className="mt-4 inline-flex items-center justify-center rounded-xl border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
           >
             Kembali ke Dashboard
           </Link>

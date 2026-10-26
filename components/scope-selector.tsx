@@ -99,10 +99,10 @@ export function ScopeSelector({ className }: { className?: string }) {
 
   return (
     <div className={`flex items-center gap-2 ${className ?? ""}`}>
-      <span className="text-xs text-slate-500">Scope:</span>
+      <span className="text-xs text-muted-foreground">Scope:</span>
       <select
         aria-label="Pilih scope site"
-        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-700"
+        className="rounded-lg border border-input bg-card px-2 py-1 text-sm text-text-secondary"
         value={activeSiteId ?? ""}
         onChange={(e) => {
           const newSiteId = e.target.value || null;
@@ -120,7 +120,7 @@ export function ScopeSelector({ className }: { className?: string }) {
         ))}
       </select>
       {activeSiteName && (
-        <span className="hidden text-xs text-slate-500 xl:inline">
+        <span className="hidden text-xs text-muted-foreground xl:inline">
           Menampilkan: {activeSiteName}
         </span>
       )}

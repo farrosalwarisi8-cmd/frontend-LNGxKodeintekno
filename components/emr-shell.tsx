@@ -46,10 +46,11 @@ const ROLE_ICONS: Record<DemoRole, typeof ShieldCheck> = {
 };
 
 const ROLE_COLORS: Record<DemoRole, string> = {
-  ADMIN_CLINIC: "bg-primary-100 text-primary-700",
-  HR_PIC: "bg-info-100 text-info-600",
-  SYSTEM_ADMIN: "bg-purple-100 text-purple-600",
-  PUBLIC_WORKER: "bg-slate-100 text-slate-600",
+  // Lencana peran selalu netral (warna disimpan untuk status klinis).
+  ADMIN_CLINIC: "bg-muted text-text-secondary",
+  HR_PIC: "bg-muted text-text-secondary",
+  SYSTEM_ADMIN: "bg-muted text-text-secondary",
+  PUBLIC_WORKER: "bg-muted text-text-secondary",
 };
 
 // Peta nama ikon → komponen lucide dipakai bersama dashboard
@@ -107,7 +108,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const roleLabel = demoEnabled
     ? ROLE_LABELS[demoRole]
     : user?.title || (role ? ROLES[role]?.label : "") || "—";
-  const badgeClass = demoEnabled ? ROLE_COLORS[demoRole] : "bg-slate-100 text-slate-600";
+  const badgeClass = demoEnabled ? ROLE_COLORS[demoRole] : "bg-muted text-text-secondary";
 
   // Satu sumber navigasi: difilter per permission role efektif
   // (lihat @/lib/navigation). Sidebar dan bottom navigation memakai filter yang sama.
@@ -121,10 +122,10 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-muted">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
       >
         Lewati ke konten utama
       </a>
@@ -132,18 +133,18 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
       <EnvironmentBanner />
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex" aria-label="Navigasi utama">
-          <div className="flex h-14 items-center gap-2.5 border-b border-slate-100 px-5">
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-card lg:flex" aria-label="Navigasi utama">
+          <div className="flex h-14 items-center gap-2.5 border-b border-border px-5">
             <div className="flex size-8 items-center justify-center rounded-xl bg-primary-600">
-              <Activity className="size-4 text-white" aria-hidden="true" />
+              <Activity className="size-4 text-primary-foreground" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-900">Kodein Klinik</p>
-              <p className="text-[10px] text-slate-500">EMR Okupasi</p>
+              <p className="text-sm font-semibold text-foreground">Kodein Klinik</p>
+              <p className="text-[10px] text-muted-foreground">EMR Okupasi</p>
             </div>
           </div>
 
-          <div className="border-b border-slate-100 px-4 py-3">
+          <div className="border-b border-border px-4 py-3">
             <div className={cn("flex items-center gap-2 rounded-xl p-2.5", badgeClass)}>
               <RoleIcon className="size-4 shrink-0" aria-hidden="true" />
               <div className="min-w-0">
@@ -152,7 +153,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               </div>
               <Link
                 href="/demo"
-                className="ml-auto -my-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:bg-black/5 hover:opacity-100"
+                className="ml-auto -my-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:bg-foreground/5 hover:opacity-100"
                 aria-label="Ubah demo role"
               >
                 <ChevronRight className="size-4" aria-hidden="true" />
@@ -169,12 +170,12 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   <span
                     key={item.href}
                     aria-disabled="true"
-                    className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300"
+                    className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground"
                     title="Segera hadir"
                   >
                     <Icon className="size-4 shrink-0" aria-hidden="true" />
                     <span className="min-w-0 truncate">{item.label}</span>
-                    <span className="ml-auto shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-normal text-slate-500">
+                    <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-normal text-muted-foreground">
                       Segera
                     </span>
                   </span>
@@ -188,7 +189,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                     active
                       ? "bg-primary-50 text-primary-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      : "text-text-secondary hover:bg-muted hover:text-foreground"
                   )}
                   aria-current={active ? "page" : undefined}
                 >
@@ -199,24 +200,24 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="border-t border-slate-100 px-4 py-3">
-            <p className="text-[10px] text-slate-500">Kodein Klinik · EMR Okupasi</p>
+          <div className="border-t border-border px-4 py-3">
+            <p className="text-[10px] text-muted-foreground">Kodein Klinik · EMR Okupasi</p>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 items-center justify-center rounded-lg bg-primary-600">
-                <Activity className="size-3.5 text-white" aria-hidden="true" />
+                <Activity className="size-3.5 text-primary-foreground" aria-hidden="true" />
               </div>
-              <span className="text-sm font-semibold text-slate-900">Kodein Klinik</span>
+              <span className="text-sm font-semibold text-foreground">Kodein Klinik</span>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="flex size-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+                className="flex size-11 items-center justify-center rounded-lg text-text-secondary hover:bg-muted"
                 aria-label="Menu"
                 aria-expanded={mobileMenuOpen}
               >
@@ -226,17 +227,17 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Breadcrumb compact di mobile */}
-          <div className="border-b border-slate-100 bg-white px-4 py-2 lg:hidden">
+          <div className="border-b border-border bg-card px-4 py-2 lg:hidden">
             <Breadcrumb />
           </div>
 
           {mobileMenuOpen && (
             <div className="fixed inset-0 z-40 lg:hidden">
-              <div className="fixed inset-0 bg-black/40" onClick={() => setMobileMenuOpen(false)} />
-              <div className="scrollbar-subtle fixed right-0 top-0 h-full w-72 overflow-y-auto bg-white p-4 shadow-xl">
+              <div className="fixed inset-0 bg-foreground/40" onClick={() => setMobileMenuOpen(false)} />
+              <div className="scrollbar-subtle fixed right-0 top-0 h-full w-72 overflow-y-auto bg-card p-4 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="font-semibold text-slate-900">Menu</span>
-                  <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-1 text-slate-500 hover:bg-slate-100">
+                  <span className="font-semibold text-foreground">Menu</span>
+                  <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-1 text-muted-foreground hover:bg-muted">
                     <X className="size-5" />
                   </button>
                 </div>
@@ -253,11 +254,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                         <span
                           key={item.href}
                           aria-disabled="true"
-                          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300"
+                          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground"
                         >
                           <Icon className="size-4" />
                           {item.label}
-                          <span className="ml-auto text-[10px] text-slate-500">Segera hadir</span>
+                          <span className="ml-auto text-[10px] text-muted-foreground">Segera hadir</span>
                         </span>
                       );
                     }
@@ -268,7 +269,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                         onClick={() => setMobileMenuOpen(false)}
                         className={cn(
                           "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                          active ? "bg-primary-50 text-primary-700" : "text-slate-600 hover:bg-slate-100"
+                          active ? "bg-primary-50 text-primary-700" : "text-text-secondary hover:bg-muted"
                         )}
                         aria-current={active ? "page" : undefined}
                       >
@@ -283,7 +284,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           )}
 
           {/* Topbar desktop: breadcrumb + offline + notifikasi + user menu */}
-          <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 lg:flex">
+          <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-border bg-card px-6 lg:flex">
             <Breadcrumb />
             <div className="flex items-center gap-2">
               {!isOnline && (
@@ -304,26 +305,26 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   aria-haspopup="menu"
                   aria-expanded={userMenuOpen}
                   onClick={() => setUserMenuOpen((v) => !v)}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-100"
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted"
                 >
                   <span className="flex size-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
                     {(user?.name ?? "?").charAt(0).toUpperCase()}
                   </span>
                   <span className="hidden text-left xl:block">
-                    <span className="block text-xs font-semibold leading-tight text-slate-900">{user?.name}</span>
-                    <span className="block text-[10px] leading-tight text-slate-500">{user?.title}</span>
+                    <span className="block text-xs font-semibold leading-tight text-foreground">{user?.name}</span>
+                    <span className="block text-[10px] leading-tight text-muted-foreground">{user?.title}</span>
                   </span>
-                  <ChevronRight className="size-3.5 rotate-90 text-slate-500" aria-hidden="true" />
+                  <ChevronRight className="size-3.5 rotate-90 text-muted-foreground" aria-hidden="true" />
                 </button>
                 {userMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                    <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+                    <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-border bg-card p-1 shadow-lg">
                       <Link
                         href="/my/profile"
                         role="menuitem"
                         onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted"
                       >
                         <User className="size-4" aria-hidden="true" /> Profil Saya
                       </Link>
@@ -331,7 +332,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                         type="button"
                         role="menuitem"
                         onClick={handleLogout}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted"
                       >
                         <LogOut className="size-4" aria-hidden="true" /> Keluar
                       </button>
@@ -371,7 +372,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
         aria-label="Navigasi bawah"
       >
         {bottomNav.map((item) => {
@@ -383,11 +384,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               className={cn(
                 "flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors",
-                active ? "text-primary-600" : "text-slate-500 hover:text-slate-700"
+                active ? "text-primary-600" : "text-muted-foreground hover:text-text-secondary"
               )}
               aria-current={active ? "page" : undefined}
             >
-              <Icon className={cn("size-5", active ? "text-primary-600" : "text-slate-500")} aria-hidden="true" />
+              <Icon className={cn("size-5", active ? "text-primary-600" : "text-muted-foreground")} aria-hidden="true" />
               <span>{item.label}</span>
             </Link>
           );
@@ -395,7 +396,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
         {hasMoreNav && (
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-slate-500 hover:text-slate-700"
+            className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-muted-foreground hover:text-text-secondary"
             aria-label="Menu lainnya"
           >
             <MoreHorizontal className="size-5" aria-hidden="true" />

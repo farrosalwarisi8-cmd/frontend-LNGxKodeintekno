@@ -32,14 +32,14 @@ function SelectTrigger({ className, children, ...props }: SelectPrimitive.Trigge
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        "flex w-full items-center justify-between gap-1.5 rounded-xl border bg-white px-3.5 pr-10 text-base text-slate-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-slate-50 data-placeholder:text-slate-500",
+        "flex w-full items-center justify-between gap-1.5 rounded-xl border border-input bg-card px-3.5 pr-10 text-base text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted data-placeholder:text-muted-foreground",
         className
       )}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon
-        render={<ChevronDown className="pointer-events-none size-4 text-slate-400" />}
+        render={<ChevronDown className="pointer-events-none size-4 text-muted-foreground" />}
       />
     </SelectPrimitive.Trigger>
   );
@@ -52,7 +52,7 @@ function SelectContent({ className, children, ...props }: SelectPrimitive.Popup.
         <SelectPrimitive.Popup
           data-slot="select-content"
           className={cn(
-            "relative z-50 max-h-[240px] min-w-[200px] overflow-x-hidden overflow-y-auto rounded-xl border border-slate-200 bg-white text-slate-900 shadow-lg ring-1 ring-slate-200",
+            "relative z-50 max-h-[240px] min-w-[200px] overflow-x-hidden overflow-y-auto rounded-xl border border-border bg-card text-foreground shadow-lg ring-1 ring-ring",
             className
           )}
           {...props}
@@ -70,7 +70,7 @@ function SelectLabel({ className, ...props }: SelectPrimitive.GroupLabel.Props) 
   return (
     <SelectPrimitive.GroupLabel
       data-slot="select-label"
-      className={cn("block text-sm font-medium text-slate-700", className)}
+      className={cn("block text-sm font-medium text-text-secondary", className)}
       {...props}
     />
   );
@@ -102,7 +102,7 @@ function SelectSeparator({ className, ...props }: SelectPrimitive.Separator.Prop
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"
-      className={cn("pointer-events-none -mx-1 my-1 h-px bg-slate-200", className)}
+      className={cn("pointer-events-none -mx-1 my-1 h-px bg-border", className)}
       {...props}
     />
   );
@@ -128,7 +128,7 @@ export function Select({
   return (
     <div className="space-y-1.5">
       {label && (
-        <label htmlFor={selectId} className="block text-sm font-medium text-slate-700">
+        <label htmlFor={selectId} className="block text-sm font-medium text-text-secondary">
           {label}
         </label>
       )}
@@ -157,7 +157,7 @@ export function Select({
         {options.length > 0 && (
           <SelectContent>
             {placeholder && (
-              <SelectItem value="" disabled className="text-slate-400">
+              <SelectItem value="" disabled className="text-muted-foreground">
                 {placeholder}
               </SelectItem>
             )}
@@ -175,7 +175,7 @@ export function Select({
         </p>
       )}
       {!error && helper && (
-        <p id={`${selectId}-helper`} className="text-sm text-slate-500">
+        <p id={`${selectId}-helper`} className="text-sm text-muted-foreground">
           {helper}
         </p>
       )}
