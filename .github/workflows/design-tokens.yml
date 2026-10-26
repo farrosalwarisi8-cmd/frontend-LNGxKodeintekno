@@ -53,18 +53,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      # Blok `node -e "..."` lama sengaja diganti skrip: backtick template
+      # literal di dalam double quotes dieksekusi bash sebagai command
+      # substitution, sehingga job crash (`bad substitution`) sebelum sempat
+      # menilai pelanggaran warna sama sekali.
       - name: Guard warna mentah (hanya aturan rebrand/no-raw-colors)
-        run: |
-          npx eslint --format json app components lib src e2e scripts middleware.ts > lint-raw.json || true
-          node -e "
-          const report = require('./lint-raw.json');
-          const bad = report.flatMap((f) =>
-            f.messages.filter((m) => m.ruleId === 'rebrand/no-raw-colors')
-              .map((m) => `${f.filePath}:${m.line}:${m.column} ${m.message}`)
-          );
-          if (bad.length) {
-            console.error('Warna tertulis langsung ditemukan:\n' + bad.join('\n'));
-            process.exit(1);
-          }
-          console.log('0 pelanggaran warna mentah di luar app/globals.css');
-          "
+        run: node scripts/check-raw-colors.mjs
