@@ -309,8 +309,8 @@ export default function MedicalRecordsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Rekam Medis</h1>
-        <p className="text-sm text-slate-500">SOAP notes dan diagnosis ICD-10</p>
+        <h1 className="text-2xl font-semibold text-foreground">Rekam Medis</h1>
+        <p className="text-sm text-muted-foreground">SOAP notes dan diagnosis ICD-10</p>
       </div>
 
       {error && (
@@ -323,12 +323,12 @@ export default function MedicalRecordsPage() {
         <div className="rounded-xl bg-success-50 p-3 text-sm text-success-700">{saveMsg}</div>
       )}
       {loading && !error && (
-        <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-10 animate-pulse rounded-xl bg-muted" />
       )}
 
       <Card className="p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Cari nomor kunjungan, nama pasien..."
             value={search}
@@ -338,7 +338,7 @@ export default function MedicalRecordsPage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} rekam medis</p>
+      <p className="text-sm text-muted-foreground">{filtered.length} rekam medis</p>
 
       <div className="space-y-3">
         {filtered.map((v) => {
@@ -350,11 +350,11 @@ export default function MedicalRecordsPage() {
                 <div className="flex items-center gap-3">
                   <Avatar name={emp?.fullName ?? "?"} />
                   <div>
-                    <p className="font-medium text-slate-900">{emp?.fullName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-foreground">{emp?.fullName}</p>
+                    <p className="text-xs text-muted-foreground">
                       {v.visitNumber} · {formatDate(v.date)} · {v.time}
                     </p>
-                    <p className="text-xs text-slate-500">Keluhan: {v.chiefComplaint}</p>
+                    <p className="text-xs text-muted-foreground">Keluhan: {v.chiefComplaint}</p>
                     {visitDiagnoses.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {visitDiagnoses.map((d) => (
@@ -407,10 +407,10 @@ export default function MedicalRecordsPage() {
         <div className="space-y-4">
           {/* Ringkasan riwayat pasien — konteks cepat sebelum menulis SOAP. */}
           {visitEmployee && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+            <div className="rounded-xl border border-border bg-muted/60 p-3">
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <History className="size-4 text-slate-500" aria-hidden="true" />
-                <p className="text-sm font-medium text-slate-800">Riwayat {visitEmployee.fullName}</p>
+                <History className="size-4 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-medium text-foreground">Riwayat {visitEmployee.fullName}</p>
                 {patientFtw && (
                   <Badge
                     variant={
@@ -429,11 +429,11 @@ export default function MedicalRecordsPage() {
                 <p className="mb-2 text-xs text-warning-700">Restriction: {patientFtw.restriction}</p>
               )}
               {historyVisits.length === 0 ? (
-                <p className="text-xs text-slate-500">Belum ada kunjungan sebelumnya.</p>
+                <p className="text-xs text-muted-foreground">Belum ada kunjungan sebelumnya.</p>
               ) : (
                 <ul className="space-y-1">
                   {historyVisits.map((h) => (
-                    <li key={h.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                    <li key={h.id} className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
                       <span className="font-medium">{formatDate(h.date)}</span>
                       <span>{h.visitNumber}</span>
                       {h.chiefComplaint && <span className="truncate">— {h.chiefComplaint}</span>}
@@ -453,10 +453,10 @@ export default function MedicalRecordsPage() {
 
           {/* Indikator terkunci — record final hanya bisa dibaca. */}
           {isLocked && (
-            <div className="flex items-start gap-2 rounded-xl bg-slate-100 p-3 text-sm text-slate-600">
+            <div className="flex items-start gap-2 rounded-xl bg-muted p-3 text-sm text-text-secondary">
               <Lock className="mt-0.5 size-4 shrink-0" />
               <div>
-                <p className="font-medium text-slate-800">Rekam medis terkunci (LOCKED)</p>
+                <p className="font-medium text-foreground">Rekam medis terkunci (LOCKED)</p>
                 <p className="text-xs">
                   Record final tidak dapat diedit. Koreksi hanya melalui Addendum formal.
                 </p>
@@ -464,7 +464,7 @@ export default function MedicalRecordsPage() {
             </div>
           )}
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">S — Subjective</h3>
+            <h3 className="mb-2 text-sm font-medium text-text-secondary">S — Subjective</h3>
             <Input
               value={soapData.subjective}
               onChange={(e) => setSoapData((s) => ({ ...s, subjective: e.target.value }))}
@@ -473,7 +473,7 @@ export default function MedicalRecordsPage() {
             />
           </div>
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">O — Objective</h3>
+            <h3 className="mb-2 text-sm font-medium text-text-secondary">O — Objective</h3>
             <Input
               value={soapData.objective}
               onChange={(e) => setSoapData((s) => ({ ...s, objective: e.target.value }))}
@@ -482,7 +482,7 @@ export default function MedicalRecordsPage() {
             />
           </div>
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">A — Assessment</h3>
+            <h3 className="mb-2 text-sm font-medium text-text-secondary">A — Assessment</h3>
             <div className="space-y-2">
               {/* Pencarian ICD-10 cepat (kode maupun nama) — bukan daftar gulir. */}
               <Icd10Search
@@ -503,7 +503,7 @@ export default function MedicalRecordsPage() {
                         className={
                           isLocked
                             ? ""
-                            : "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                            : "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         }
                         role={isLocked ? undefined : "button"}
                         tabIndex={isLocked ? undefined : 0}
@@ -540,7 +540,7 @@ export default function MedicalRecordsPage() {
             </div>
           </div>
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">P — Plan</h3>
+            <h3 className="mb-2 text-sm font-medium text-text-secondary">P — Plan</h3>
             <Input
               value={treatment}
               onChange={(e) => setTreatment(e.target.value)}
@@ -549,7 +549,7 @@ export default function MedicalRecordsPage() {
             />
           </div>
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-700">Catatan Dokter</h3>
+            <h3 className="mb-2 text-sm font-medium text-text-secondary">Catatan Dokter</h3>
             <Input
               value={doctorNote}
               onChange={(e) => setDoctorNote(e.target.value)}
@@ -559,7 +559,7 @@ export default function MedicalRecordsPage() {
           </div>
 
           {!isLocked && (
-            <p className="flex items-center gap-1.5 text-xs text-slate-500" role="status">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
               <CheckCircle className="size-3.5 text-success-600" aria-hidden="true" />
               {draftRestored ? `${soapDraftLabel(draftSavedAt)} (draft dipulihkan)` : soapDraftLabel(draftSavedAt)}
             </p>

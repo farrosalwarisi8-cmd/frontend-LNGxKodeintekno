@@ -30,7 +30,7 @@ export function ReceiveSampleAction({ disabledByFlow }: { disabledByFlow?: boole
             <TestTubeDiagonal className="size-4" aria-hidden="true" /> Terima sampel
           </Button>
         </div>
-        <p id="receive-sample-reason" className="text-xs text-slate-500">
+        <p id="receive-sample-reason" className="text-xs text-muted-foreground">
           {disabledByFlow
             ? "Sampel tidak dapat diterima untuk order ini (status tidak mendukung)."
             : "Penerimaan sampel membutuhkan pembaruan status order dari backend; endpoint " +

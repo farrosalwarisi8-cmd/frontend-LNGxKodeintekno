@@ -71,8 +71,8 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Manajemen User</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Manajemen User</h1>
+          <p className="text-sm text-muted-foreground">
             Daftar akun, role, dan scope dari backend (GET /iam/users)
           </p>
         </div>
@@ -81,7 +81,7 @@ export default function UsersPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari nama, username..."
               value={search}
@@ -98,7 +98,7 @@ export default function UsersPage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} user</p>
+      <p className="text-sm text-muted-foreground">{filtered.length} user</p>
 
       {actionError && (
         <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">{actionError}</div>
@@ -139,8 +139,8 @@ export default function UsersPage() {
                 <div className="flex items-center gap-3">
                   <Avatar name={user.name} />
                   <div>
-                    <p className="font-medium text-slate-900">{user.name}</p>
-                    <p className="text-xs text-slate-500">@{user.username} · {user.title}</p>
+                    <p className="font-medium text-foreground">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">@{user.username} · {user.title}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <Badge variant="outline" className={roleMeta?.color}>
                         {roleMeta?.label}

@@ -53,7 +53,7 @@ const CUSTODY_ACTION_LABEL: Record<string, string> = {
 function CustodyTimeline({ entries }: { entries: BackendCustodyEntry[] }) {
   if (entries.length === 0) {
     return (
-      <p className="text-xs text-slate-500 italic">Belum ada chain of custody tercatat.</p>
+      <p className="text-xs text-muted-foreground italic">Belum ada chain of custody tercatat.</p>
     );
   }
   return (
@@ -66,22 +66,22 @@ function CustodyTimeline({ entries }: { entries: BackendCustodyEntry[] }) {
               className={`mt-1 size-3 rounded-full border-2 ${
                 i === 0
                   ? "border-success-500 bg-success-100"
-                  : "border-slate-300 bg-slate-100"
+                  : "border-border bg-muted"
               }`}
             />
             {i < entries.length - 1 && (
-              <div className="w-px flex-1 border-l border-slate-200" />
+              <div className="w-px flex-1 border-l border-border" />
             )}
           </div>
           {/* Content */}
           <div className="pb-3">
-            <p className="text-xs font-medium text-slate-700">
+            <p className="text-xs font-medium text-text-secondary">
               {CUSTODY_ACTION_LABEL[entry.action] ?? entry.action}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {entry.from_party} → {entry.to_party}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               {formatDate(entry.event_at)} ·{" "}
               <span className="font-mono text-[10px]">
                 #{entry.signature_hash.slice(0, 12)}…
@@ -274,8 +274,8 @@ export default function DAPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Drug & Alcohol Test</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Drug & Alcohol Test</h1>
+          <p className="text-sm text-muted-foreground">
             Kelola tes D&A dengan chain of custody kriptografis
           </p>
         </div>
@@ -288,13 +288,13 @@ export default function DAPage() {
       </div>
 
       {msg && (
-        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{msg}</div>
+        <div className="rounded-xl bg-muted p-3 text-sm text-text-secondary">{msg}</div>
       )}
 
       {/* Search & Filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Cari pekerja / MRN / ID tes..."
             value={search}
@@ -324,10 +324,10 @@ export default function DAPage() {
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-foreground">
                 {tests.filter((t) => t.status === "REGISTERED" || t.status === "SAMPLE_COLLECTED").length}
               </p>
-              <p className="text-xs text-slate-500">Pending</p>
+              <p className="text-xs text-muted-foreground">Pending</p>
             </div>
           </CardContent>
         </Card>
@@ -337,10 +337,10 @@ export default function DAPage() {
               <CheckCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-foreground">
                 {tests.filter((t) => t.status === "FINALIZED").length}
               </p>
-              <p className="text-xs text-slate-500">Finalized</p>
+              <p className="text-xs text-muted-foreground">Finalized</p>
             </div>
           </CardContent>
         </Card>
@@ -350,10 +350,10 @@ export default function DAPage() {
               <FlaskConical className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">
+              <p className="text-xl font-semibold text-foreground">
                 {tests.filter((t) => t.certificate).length}
               </p>
-              <p className="text-xs text-slate-500">Certified</p>
+              <p className="text-xs text-muted-foreground">Certified</p>
             </div>
           </CardContent>
         </Card>
@@ -400,10 +400,10 @@ export default function DAPage() {
                   <div className="flex items-start gap-3">
                     <Avatar name={emp?.fullName ?? test.patient?.full_name ?? "?"} />
                     <div className="space-y-1">
-                      <p className="font-medium text-slate-900">
+                      <p className="font-medium text-foreground">
                         {emp?.fullName ?? test.patient?.full_name ?? "Unknown"}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         {test.patient?.medical_record_no ?? test.patient_id ?? "—"} ·{" "}
                         {formatDate(test.created_at ?? "")}
                       </p>
@@ -489,10 +489,10 @@ export default function DAPage() {
 
                 {/* Chain of Custody Timeline */}
                 {hasCustody && (
-                  <div className="mt-4 rounded-xl border border-slate-200 p-3">
+                  <div className="mt-4 rounded-xl border border-border p-3">
                     <div className="mb-2 flex items-center gap-2">
-                      <ShieldCheck className="size-4 text-slate-500" />
-                      <h3 className="text-xs font-semibold text-slate-700">
+                      <ShieldCheck className="size-4 text-muted-foreground" />
+                      <h3 className="text-xs font-semibold text-text-secondary">
                         Chain of Custody ({custodyEntries.length} event)
                       </h3>
                     </div>
@@ -565,12 +565,12 @@ export default function DAPage() {
               { value: "PENDING", label: "Pending" },
             ]}
           />
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-text-secondary">
             <input
               type="checkbox"
               checked={formData.confirmationTest}
               onChange={(e) => setFormData((f) => ({ ...f, confirmationTest: e.target.checked }))}
-              className="size-4 rounded border-slate-300"
+              className="size-4 rounded border-input"
             />
             Confirmation Test
           </label>

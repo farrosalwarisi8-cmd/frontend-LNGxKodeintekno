@@ -101,8 +101,8 @@ export function VerifyPanel({
           <Card key={result.id} className="space-y-3 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">{itemName(result)}</h3>
-                <p className="font-mono text-xs text-slate-500">{result.id}</p>
+                <h3 className="text-base font-semibold text-foreground">{itemName(result)}</h3>
+                <p className="font-mono text-xs text-muted-foreground">{result.id}</p>
               </div>
               <LabStatusBadge info={info} />
             </div>
@@ -112,19 +112,19 @@ export function VerifyPanel({
                 Nilai hasil {itemName(result)} yang akan diverifikasi
               </caption>
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-500">
+                <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
                   <th scope="col" className="py-2">Parameter</th>
                   <th scope="col" className="py-2">Nilai</th>
                   <th scope="col" className="py-2">Satuan</th>
                   <th scope="col" className="py-2">Penandaan (API)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {(result.values ?? []).map((v) => (
                   <tr key={v.id}>
-                    <td className="py-2 font-medium text-slate-800">{v.parameter_name}</td>
-                    <td className="py-2 font-mono text-slate-700">{resultValueText(v)}</td>
-                    <td className="py-2 text-slate-600">{v.unit ?? "—"}</td>
+                    <td className="py-2 font-medium text-foreground">{v.parameter_name}</td>
+                    <td className="py-2 font-mono text-text-secondary">{resultValueText(v)}</td>
+                    <td className="py-2 text-text-secondary">{v.unit ?? "—"}</td>
                     <td className="py-2">
                       {v.abnormal_flag ? (
                         <span className="inline-flex items-center gap-1 font-medium text-danger-600">
@@ -132,7 +132,7 @@ export function VerifyPanel({
                           Di luar rentang
                         </span>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                   </tr>

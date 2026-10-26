@@ -56,16 +56,16 @@ export function DemoPage() {
 
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold text-slate-900">Demo Role Switcher</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Demo Role Switcher</h1>
           <Badge variant={enabled ? "warning" : "outline"}>
             {enabled ? `Demo mode: ${DEMO_ROLE_LABELS[demoRole]}` : "Demo mode non-aktif"}
           </Badge>
         </div>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Pilih role untuk mendemonstrasikan variasi menu, navigasi, route guard, dan tombol.
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          Role efektif saat ini: <span className="font-medium text-slate-700">{effectiveRole ?? "—"}</span>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Role efektif saat ini: <span className="font-medium text-text-secondary">{effectiveRole ?? "—"}</span>
           {enabled ? " (dari demo mode)" : " (dari sesi login)"}.
         </p>
       </div>
@@ -79,15 +79,15 @@ export function DemoPage() {
             className={`flex items-start gap-3 rounded-2xl border-2 p-4 text-left transition-colors ${
               enabled && demoRole === r
                 ? "border-primary-600 bg-primary-50"
-                : "border-slate-200 bg-white hover:border-slate-300"
+                : "border-border bg-card hover:border-border"
             }`}
           >
-            <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${enabled && demoRole === r ? "bg-primary-100 text-primary-600" : "bg-slate-100 text-slate-500"}`}>
+            <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${enabled && demoRole === r ? "bg-primary-100 text-primary-600" : "bg-muted text-muted-foreground"}`}>
               <Icon className="size-5" />
             </div>
             <div>
-              <p className="font-medium text-slate-900">{label}</p>
-              <p className="text-xs text-slate-500">{description}</p>
+              <p className="font-medium text-foreground">{label}</p>
+              <p className="text-xs text-muted-foreground">{description}</p>
             </div>
           </button>
         ))}
@@ -107,10 +107,10 @@ export function DemoPage() {
                 { label: "Token Delivery Failed", token: "consent-token-delivery-failed" },
                 { label: "Token Invalid", token: "consent-token-unknown" },
               ].map((item) => (
-                <div key={item.token} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                <div key={item.token} className="flex items-center justify-between rounded-xl border border-border p-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{item.label}</p>
-                    <p className="font-mono text-xs text-slate-500">{item.token}</p>
+                    <p className="text-sm font-medium text-text-secondary">{item.label}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{item.token}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
@@ -129,7 +129,7 @@ export function DemoPage() {
               ))}
             </>
           ) : (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Token contoh tidak ditampilkan karena mode demo nonaktif. Gunakan tautan consent
               yang dikirim backend ke email host.
             </p>

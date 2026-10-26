@@ -61,7 +61,7 @@ export function EscalationPanel() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Menjalankan pemeriksaan backend untuk tahap H-30, H-14, H-7, hari-H, dan status
           overdue. Eskalasi berjenjang mengikuti konfigurasi yang disimpan di backend.
         </p>
@@ -74,7 +74,7 @@ export function EscalationPanel() {
                 <RefreshCw className="size-4" />
                 Jalankan pemeriksaan eskalasi
               </Button>
-              <span className="text-xs text-slate-500">{disabledReason}</span>
+              <span className="text-xs text-muted-foreground">{disabledReason}</span>
             </div>
           }
         >
@@ -91,7 +91,7 @@ export function EscalationPanel() {
         </Can>
 
         {state.status === "loading" && (
-          <p className="text-sm text-slate-500" role="status" data-testid="escalation-loading">
+          <p className="text-sm text-muted-foreground" role="status" data-testid="escalation-loading">
             Menjalankan pemeriksaan eskalasi...
           </p>
         )}

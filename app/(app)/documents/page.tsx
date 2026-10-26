@@ -242,8 +242,8 @@ export default function DocumentsPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Dokumen & Tanda Tangan</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Dokumen & Tanda Tangan</h1>
+          <p className="text-sm text-muted-foreground">
             Daftar dokumen dari backend, render PDF, dan tanda tangan digital
           </p>
         </div>
@@ -324,8 +324,8 @@ export default function DocumentsPage() {
                           <FileText className="size-5" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900">{doc.title}</p>
-                          <p className="text-xs text-slate-500">
+                          <p className="font-medium text-foreground">{doc.title}</p>
+                          <p className="text-xs text-muted-foreground">
                             {doc.documentType} · {formatDate(doc.createdAt)}
                           </p>
                           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -358,7 +358,7 @@ export default function DocumentsPage() {
                             )}
                             {doc.signature?.retry_count != null &&
                               doc.signature.retry_count > 0 && (
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-muted-foreground">
                                   Retry: {doc.signature.retry_count}x
                                 </span>
                               )}
@@ -412,22 +412,22 @@ export default function DocumentsPage() {
 
                     {/* Signed URL / Object Key info */}
                     {doc.renderResult && (
-                      <div className="mt-3 rounded-xl border border-slate-200 p-3">
-                        <p className="text-xs font-medium text-slate-700">Detail Dokumen:</p>
+                      <div className="mt-3 rounded-xl border border-border p-3">
+                        <p className="text-xs font-medium text-text-secondary">Detail Dokumen:</p>
                         <div className="mt-1 space-y-1">
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             <span className="font-medium">Document ID:</span>{" "}
                             <span className="font-mono">{doc.renderResult.documentId}</span>
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             <span className="font-medium">Object Key:</span>{" "}
                             <span className="font-mono">{doc.renderResult.objectKey}</span>
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             <span className="font-medium">QR Token:</span>{" "}
                             <span className="font-mono">{doc.renderResult.qrToken}</span>
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             <span className="font-medium">Verification URL:</span>{" "}
                             <a
                               href={doc.renderResult.verificationUrl}
@@ -469,7 +469,7 @@ export default function DocumentsPage() {
       {activeTab === "signatures" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted-foreground">
               Tracking semua signature request — auto-refresh setiap 5 detik untuk status PENDING/PROCESSING
             </p>
             <Button

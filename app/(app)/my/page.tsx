@@ -58,16 +58,16 @@ export default function MyPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Akun Saya</h1>
-        <p className="text-sm text-slate-500">Profil, MCU, sertifikat, dan notifikasi Anda</p>
+        <h1 className="text-2xl font-semibold text-foreground">Akun Saya</h1>
+        <p className="text-sm text-muted-foreground">Profil, MCU, sertifikat, dan notifikasi Anda</p>
       </div>
 
       <Card className="p-4">
         <div className="flex items-center gap-3">
           <Avatar name={user.name} />
           <div className="min-w-0">
-            <p className="truncate font-medium text-slate-900">{user.name}</p>
-            <p className="truncate text-xs text-slate-500">@{user.username}</p>
+            <p className="truncate font-medium text-foreground">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
           </div>
           <Badge variant="outline" className={cn("ml-auto shrink-0", roleMeta.color)}>
             {roleMeta.label}
@@ -84,7 +84,7 @@ export default function MyPage() {
               <HeartPulse className="size-5" aria-hidden="true" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-slate-500">Status kesehatan kerja saya</p>
+              <p className="text-xs text-muted-foreground">Status kesehatan kerja saya</p>
               {myStatus ? (
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <Badge
@@ -98,12 +98,12 @@ export default function MyPage() {
                   >
                     {myStatus.status}
                   </Badge>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     Berlaku s.d. {formatDate(myStatus.validUntil)}
                   </span>
                 </div>
               ) : (
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Belum ada status Fitness to Work untuk akun ini.
                 </p>
               )}
@@ -126,16 +126,16 @@ export default function MyPage() {
           <Link
             key={href}
             href={href}
-            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/30"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/30"
           >
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
               <Icon className="size-5" aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-slate-900">{label}</p>
-              <p className="text-xs text-slate-500">{description}</p>
+              <p className="font-medium text-foreground">{label}</p>
+              <p className="text-xs text-muted-foreground">{description}</p>
             </div>
-            <ChevronRight className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </Link>
         ))}
       </div>

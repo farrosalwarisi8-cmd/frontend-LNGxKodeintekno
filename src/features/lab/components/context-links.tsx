@@ -29,7 +29,7 @@ export function ContextLinks({ role, encounterId, mcuCycleId }: ContextLinksProp
 
   if (!encounterId && !mcuCycleId) {
     return (
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Tidak ada tautan kunjungan/MCU pada order ini (sesuai data API).
       </p>
     );
@@ -49,7 +49,7 @@ export function ContextLinks({ role, encounterId, mcuCycleId }: ContextLinksProp
             </Link>
           </li>
         ) : (
-          <li className="inline-flex items-center gap-1.5 text-slate-600">
+          <li className="inline-flex items-center gap-1.5 text-text-secondary">
             <ClipboardList className="size-4" aria-hidden="true" />
             Kunjungan {encounterId}
             <span className="sr-only">(akses halaman kunjungan tidak tersedia)</span>
@@ -67,10 +67,10 @@ export function ContextLinks({ role, encounterId, mcuCycleId }: ContextLinksProp
             </Link>
           </li>
         ) : (
-          <li className="inline-flex items-center gap-1.5 text-slate-600">
+          <li className="inline-flex items-center gap-1.5 text-text-secondary">
             <Activity className="size-4" aria-hidden="true" />
             Siklus MCU {mcuCycleId}
-            <span className="text-xs text-slate-500">(akses modul MCU tidak tersedia)</span>
+            <span className="text-xs text-muted-foreground">(akses modul MCU tidak tersedia)</span>
           </li>
         ))}
     </ul>

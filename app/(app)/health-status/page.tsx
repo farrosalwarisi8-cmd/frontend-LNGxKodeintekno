@@ -20,6 +20,7 @@ import { useSavedFilters } from "@/shared/hooks/use-saved-filters";
 import { MCU_DUE_SOON_DAYS, isDueSoon, todayIso } from "@/shared/utils/due-soon";
 import { formatDate } from "@/lib/format";
 import { Search, AlertTriangle, CheckCircle, Clock, ClipboardCheck, Filter, X } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 
 export default function HealthStatusPage() {
   const workHealthStatus = useStore((s) => s.workHealthStatus);
@@ -70,8 +71,8 @@ export default function HealthStatusPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Status Kesehatan Kerja</h1>
-        <p className="text-sm text-slate-500">Pantau status kesehatan kerja pekerja</p>
+        <h1 className="text-2xl font-semibold text-foreground">Status Kesehatan Kerja</h1>
+        <p className="text-sm text-muted-foreground">Pantau status kesehatan kerja pekerja</p>
       </div>
 
       {/* HSE only: komponen ini mengembalikan null bila role tidak punya
@@ -84,7 +85,7 @@ export default function HealthStatusPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
             <Search
-              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
+              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
@@ -123,7 +124,7 @@ export default function HealthStatusPage() {
           </Button>
         </div>
         {filtersActive && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <Filter className="size-3.5" aria-hidden="true" />
             Filter tersimpan otomatis
             {savedAt && <span>· {new Date(savedAt).toLocaleTimeString("id-ID")}</span>}
@@ -135,7 +136,7 @@ export default function HealthStatusPage() {
         )}
       </Card>
 
-      <p className="text-sm text-slate-500" role="status">
+      <p className="text-sm text-muted-foreground" role="status">
         {filtered.length} dari {workHealthStatus.length} status kesehatan
       </p>
 
@@ -183,12 +184,10 @@ export default function HealthStatusPage() {
                 <div className="flex items-center gap-3">
                   <Avatar name={emp?.fullName ?? "?"} />
                   <div>
-                    <p className="font-medium text-slate-900">{emp?.fullName}</p>
-                    <p className="text-xs text-slate-500">{emp?.employeeId} · {emp?.jobTitle}</p>
+                    <p className="font-medium text-foreground">{emp?.fullName}</p>
+                    <p className="text-xs text-muted-foreground">{emp?.employeeId} · {emp?.jobTitle}</p>
                     <div className="mt-1 flex items-center gap-2">
-                      <Badge variant="outline" className={statusMeta?.color}>
-                        {statusMeta?.label}
-                      </Badge>
+                      <StatusBadge meta={statusMeta} />
                       {isExpiringSoon && (
                         <Badge variant="warning">
                           <Clock className="size-3" />
@@ -199,7 +198,7 @@ export default function HealthStatusPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-right text-xs text-slate-500">
+                <div className="text-right text-xs text-muted-foreground">
                   <p>Berlaku: {formatDate(whs.validFrom)} — {formatDate(whs.validUntil)}</p>
                   {whs.reviewDate && <p>Review: {formatDate(whs.reviewDate)}</p>}
                   <Button
@@ -218,8 +217,8 @@ export default function HealthStatusPage() {
                 </div>
               </div>
               {expandedReminderId === whs.id && (
-                <div className="mt-3 rounded-xl bg-slate-50 p-3">
-                  <p className="mb-2 text-xs font-medium text-slate-600">
+                <div className="mt-3 rounded-xl bg-muted p-3">
+                  <p className="mb-2 text-xs font-medium text-text-secondary">
                     Tahapan reminder (H-30 → H-14 → H-7 → Hari-H → Overdue)
                   </p>
                   <McuReminderTimeline validUntil={whs.validUntil} />

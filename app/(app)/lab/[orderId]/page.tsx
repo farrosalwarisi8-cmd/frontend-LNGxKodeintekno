@@ -74,14 +74,14 @@ export default function LabOrderDetailPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/lab"
-            className="inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="inline-flex size-10 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-muted"
             aria-label="Kembali ke daftar order lab"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
           </Link>
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Detail order lab</h1>
-            <p className="font-mono text-sm text-slate-500">{order.id}</p>
+            <h1 className="text-xl font-semibold text-foreground">Detail order lab</h1>
+            <p className="font-mono text-sm text-muted-foreground">{order.id}</p>
           </div>
         </div>
         <LabStatusBadge info={status} />
@@ -90,23 +90,23 @@ export default function LabOrderDetailPage() {
       <Card className="space-y-3 p-4">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-slate-500">Waktu order</dt>
-            <dd className="font-medium text-slate-800">{formatDateTime(order.ordered_at)}</dd>
+            <dt className="text-muted-foreground">Waktu order</dt>
+            <dd className="font-medium text-foreground">{formatDateTime(order.ordered_at)}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Pemesan</dt>
-            <dd className="font-mono text-slate-800">{order.ordered_by ?? "—"}</dd>
+            <dt className="text-muted-foreground">Pemesan</dt>
+            <dd className="font-mono text-foreground">{order.ordered_by ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">Jumlah item</dt>
-            <dd className="font-medium text-slate-800">
+            <dt className="text-muted-foreground">Jumlah item</dt>
+            <dd className="font-medium text-foreground">
               {order.order_items?.length ?? 0} pemeriksaan
             </dd>
           </div>
         </dl>
 
-        <div className="border-t border-slate-100 pt-3">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-slate-500">
+        <div className="border-t border-border pt-3">
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Konteks tertaut (dari data API)
           </p>
           <ContextLinks
@@ -116,7 +116,7 @@ export default function LabOrderDetailPage() {
           />
         </div>
 
-        <div className="border-t border-slate-100 pt-3">
+        <div className="border-t border-border pt-3">
           <ReceiveSampleAction
             disabledByFlow={order.status === "CANCELLED" || order.status === "COMPLETED"}
           />
@@ -124,11 +124,11 @@ export default function LabOrderDetailPage() {
       </Card>
 
       <section aria-labelledby="items-heading" className="space-y-3">
-        <h2 id="items-heading" className="text-base font-semibold text-slate-900">
+        <h2 id="items-heading" className="text-base font-semibold text-foreground">
           Item pemeriksaan
         </h2>
         {(order.order_items ?? []).length === 0 ? (
-          <p className="text-sm text-slate-500">Order ini tidak memiliki item.</p>
+          <p className="text-sm text-muted-foreground">Order ini tidak memiliki item.</p>
         ) : (
           <ul className="space-y-2">
             {(order.order_items ?? []).map((item) => {
@@ -136,14 +136,14 @@ export default function LabOrderDetailPage() {
               return (
                 <li
                   key={item.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                      <FlaskConical className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <FlaskConical className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       {item.test_type?.name ?? item.lab_test_type_id}
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                       {item.test_type?.code ? `${item.test_type.code} · ` : ""}
                       {item.test_type?.specimen_type ?? "Spesimen tidak disebutkan"}
                     </div>
@@ -161,7 +161,7 @@ export default function LabOrderDetailPage() {
 
       {pendingItems.length > 0 && (
         <section aria-labelledby="input-heading" className="space-y-3">
-          <h2 id="input-heading" className="text-base font-semibold text-slate-900">
+          <h2 id="input-heading" className="text-base font-semibold text-foreground">
             Input hasil manual
           </h2>
           <Card className="p-4">
@@ -171,7 +171,7 @@ export default function LabOrderDetailPage() {
       )}
 
       <section aria-labelledby="verify-heading" className="space-y-3">
-        <h2 id="verify-heading" className="text-base font-semibold text-slate-900">
+        <h2 id="verify-heading" className="text-base font-semibold text-foreground">
           Verifikasi analis
         </h2>
         <VerifyPanel order={order} results={results} onVerified={reloadAll} />

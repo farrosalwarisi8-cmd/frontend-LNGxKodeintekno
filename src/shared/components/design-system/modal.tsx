@@ -93,7 +93,7 @@ export function Modal({ open, onClose, title, description, children, size = "md"
   return createPortal(
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 p-0 sm:items-center sm:p-4"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
@@ -101,7 +101,7 @@ export function Modal({ open, onClose, title, description, children, size = "md"
       <div
         ref={dialogRef}
         className={cn(
-          "relative w-full rounded-t-3xl bg-white shadow-xl sm:rounded-3xl",
+          "relative w-full rounded-t-3xl bg-card shadow-xl sm:rounded-3xl",
           sizes[size]
         )}
         role="dialog"
@@ -111,15 +111,15 @@ export function Modal({ open, onClose, title, description, children, size = "md"
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
       >
-        <div className="flex items-start justify-between border-b border-slate-100 p-6">
+        <div className="flex items-start justify-between border-b border-border p-6">
           <div>
             {title && (
-              <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+              <h2 id={titleId} className="text-lg font-semibold text-foreground">
                 {title}
               </h2>
             )}
             {description && (
-              <p id={descriptionId} className="mt-1 text-sm text-slate-500">
+              <p id={descriptionId} className="mt-1 text-sm text-muted-foreground">
                 {description}
               </p>
             )}
@@ -127,7 +127,7 @@ export function Modal({ open, onClose, title, description, children, size = "md"
           <button
             type="button"
             onClick={onClose}
-            className="flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Tutup"
           >
             <X className="size-5" aria-hidden="true" />

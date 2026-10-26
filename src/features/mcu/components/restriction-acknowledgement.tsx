@@ -146,7 +146,7 @@ export function RestrictionAcknowledgementSection() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Konfirmasi penerimaan restriksi kerja pekerja. {pendingCount > 0
             ? `${pendingCount} restriksi belum di-acknowledge.`
             : "Semua restriksi pada sesi ini sudah ditangani."}
@@ -184,21 +184,21 @@ export function RestrictionAcknowledgementSection() {
               return (
                 <li
                   key={item.id}
-                  className="rounded-xl border border-slate-200 p-3"
+                  className="rounded-xl border border-border p-3"
                   data-testid={`restriction-${item.id}`}
                   data-ack-state={session.state}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900">{item.description}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-medium text-foreground">{item.description}</p>
+                      <p className="text-xs text-muted-foreground">
                         {item.patientName ?? "Pekerja"}{item.employeeNo ? ` · ${item.employeeNo}` : ""}
                         {item.ftwStatus ? ` · FTW: ${item.ftwStatus}` : ""}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         {item.status && <Badge variant="outline">{item.status}</Badge>}
                         {item.reviewDate && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-muted-foreground">
                             Review: {formatDate(item.reviewDate)}
                           </span>
                         )}
@@ -259,7 +259,7 @@ export function RestrictionAcknowledgementSection() {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-text-secondary">
             Saya mengonfirmasi telah menerima dan menindaklanjuti restriksi kerja
             {selected?.patientName ? ` untuk ${selected.patientName}` : ""}. Tindakan ini tercatat
             di server.

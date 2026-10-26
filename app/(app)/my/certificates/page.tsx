@@ -13,12 +13,13 @@ import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { BadgeCheck, QrCode } from "lucide-react";
 import Link from "next/link";
+import { StatusBadge } from "@/components/status-badge";
 
 function PageTitle() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Sertifikat Saya</h1>
-      <p className="text-sm text-slate-500">Sertifikat kesehatan kerja</p>
+      <h1 className="text-2xl font-semibold text-foreground">Sertifikat Saya</h1>
+      <p className="text-sm text-muted-foreground">Sertifikat kesehatan kerja</p>
     </div>
   );
 }
@@ -98,8 +99,8 @@ export default function MyCertificatesPage() {
                       <BadgeCheck className="size-6" />
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">{cert.certNumber}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="font-medium text-foreground">{cert.certNumber}</p>
+                      <p className="text-xs text-muted-foreground">
                         {cert.healthStatus} · Berlaku s.d. {formatDate(cert.validUntil)}
                       </p>
                       {cert.restrictions && (
@@ -108,9 +109,7 @@ export default function MyCertificatesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={statusMeta?.color}>
-                      {statusMeta?.label}
-                    </Badge>
+                    <StatusBadge meta={statusMeta} />
                     {cert.qrToken && (
                       <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
                         <Badge variant="info" className="cursor-pointer">

@@ -1,0 +1,70 @@
+name: Design tokens (kontras WCAG + larang warna mentah)
+
+# Gerbang visual rebrand LNG:
+#  1. kontras WCAG AA semua pasangan token (light + dark) — gagal = exit 1
+#  2. larangan warna tertulis langsung (hex/rgb/kelas palet) di luar
+#     app/globals.css, lewat aturan ESLint `rebrand/no-raw-colors`
+#
+# Catatan: job `raw-colors` hanya menilai aturan rebrand, bukan seluruh baseline
+# lint (yang sudah merah sejak sebelum rebrand — lihat LAPORAN_UI_REBRAND_LNG.md).
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  contrast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Skrip hanya memakai modul bawaan Node dan membaca app/globals.css,
+      # jadi tidak perlu `npm ci`.
+      - name: Cek kontras WCAG token (light + dark)
+        env:
+          CONTRAST_JSON: contrast-report.json
+        run: node scripts/check-contrast.mjs
+
+      - name: Unggah laporan kontras
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contrast-report
+          path: contrast-report.json
+          if-no-files-found: ignore
+
+  raw-colors:
+    runs-on: ubuntu-latest
+    env:
+      # Backend tidak dipakai; hanya dibutuhkan agar konfigurasi env valid.
+      NEXT_PUBLIC_API_URL: https://tokens.example.com/api/v1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Guard warna mentah (hanya aturan rebrand/no-raw-colors)
+        run: |
+          npx eslint --format json app components lib src e2e scripts middleware.ts > lint-raw.json || true
+          node -e "
+          const report = require('./lint-raw.json');
+          const bad = report.flatMap((f) =>
+            f.messages.filter((m) => m.ruleId === 'rebrand/no-raw-colors')
+              .map((m) => `${f.filePath}:${m.line}:${m.column} ${m.message}`)
+          );
+          if (bad.length) {
+            console.error('Warna tertulis langsung ditemukan:\n' + bad.join('\n'));
+            process.exit(1);
+          }
+          console.log('0 pelanggaran warna mentah di luar app/globals.css');
+          "

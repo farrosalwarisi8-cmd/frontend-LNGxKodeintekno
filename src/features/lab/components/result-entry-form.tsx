@@ -147,19 +147,19 @@ export function ResultEntryForm({
 
   if (!item) {
     return (
-      <p className="text-sm text-slate-500">Order ini tidak memiliki item pemeriksaan.</p>
+      <p className="text-sm text-muted-foreground">Order ini tidak memiliki item pemeriksaan.</p>
     );
   }
 
   if (existingResult) {
     return (
       <div className="space-y-3">
-        <h3 className="text-base font-semibold text-slate-900">Hasil tersimpan</h3>
+        <h3 className="text-base font-semibold text-foreground">Hasil tersimpan</h3>
         <ul className="space-y-2">
           {(existingResult.values ?? []).map((v) => (
             <li key={v.id} className="flex flex-wrap items-baseline gap-2 text-sm">
-              <span className="font-medium text-slate-800">{v.parameter_name}</span>
-              <span className="font-mono text-slate-700">
+              <span className="font-medium text-foreground">{v.parameter_name}</span>
+              <span className="font-mono text-text-secondary">
                 {v.numeric_value ?? v.text_value ?? "—"}
                 {v.unit ? ` ${v.unit}` : ""}
               </span>
@@ -172,7 +172,7 @@ export function ResultEntryForm({
             </li>
           ))}
         </ul>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Hasil sudah diinput untuk item ini. Koreksi dilakukan lewat addendum (alur addendum
           dikerjakan Fase A4).
         </p>
@@ -230,13 +230,13 @@ export function ResultEntryForm({
             }))}
           />
         </div>
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-muted-foreground">
           Order: <span className="font-mono">{order.id}</span>
         </div>
       </div>
 
       {testType && (
-        <Card className="bg-slate-50 p-3 text-sm text-slate-700">
+        <Card className="bg-muted p-3 text-sm text-text-secondary">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span>
               <span className="font-medium">Jenis tes (API):</span> {testType.name}
@@ -285,7 +285,7 @@ export function ResultEntryForm({
           {rows.map((row, index) => (
             <div
               key={index}
-              className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-12"
+              className="grid grid-cols-1 gap-2 rounded-xl border border-border p-3 sm:grid-cols-12"
             >
               <div className="sm:col-span-4">
                 <Input
@@ -395,31 +395,31 @@ export function ResultEntryForm({
 
       {step === "review" && (
         <Card className="space-y-3 p-4">
-          <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
             <FileText className="size-4" aria-hidden="true" /> Ringkasan sebelum kirim
           </h3>
           <table className="w-full text-sm">
             <caption className="sr-only">Ringkasan hasil yang akan dikirim</caption>
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
                 <th scope="col" className="py-2">Parameter</th>
                 <th scope="col" className="py-2">Nilai</th>
                 <th scope="col" className="py-2">Satuan</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {rows.map((r, i) => (
                 <tr key={i}>
-                  <td className="py-2 font-medium text-slate-800">{r.parameterName}</td>
+                  <td className="py-2 font-medium text-foreground">{r.parameterName}</td>
                   <td className="py-2 font-mono">
                     {r.valueType === "number" ? r.numberValue : r.textValue}
                   </td>
-                  <td className="py-2 text-slate-600">{r.unit || testType?.unit || "—"}</td>
+                  <td className="py-2 text-text-secondary">{r.unit || testType?.unit || "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Item: {testType?.name ?? item.lab_test_type_id} · Order{" "}
             <span className="font-mono">{order.id}</span>
           </p>

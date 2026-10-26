@@ -71,7 +71,7 @@ export function EnvironmentBanner() {
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-black/5"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-foreground/5"
           aria-label="Tutup banner"
         >
           <X className="size-3.5" aria-hidden="true" />

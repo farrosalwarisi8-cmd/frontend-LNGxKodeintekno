@@ -95,7 +95,7 @@ export function RadiologyReportForm({
     return (
       <Card className="space-y-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-base font-semibold text-slate-900">Laporan tersimpan</h3>
+          <h3 className="text-base font-semibold text-foreground">Laporan tersimpan</h3>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-info-100 px-2.5 py-0.5 text-xs font-medium text-info-600">
             {existing.verified_at ? (
               <>
@@ -108,20 +108,20 @@ export function RadiologyReportForm({
           </span>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Temuan</p>
-          <p className="whitespace-pre-wrap text-sm text-slate-800">{existing.findings || "—"}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Temuan</p>
+          <p className="whitespace-pre-wrap text-sm text-foreground">{existing.findings || "—"}</p>
         </div>
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Kesimpulan</p>
-          <p className="whitespace-pre-wrap text-sm text-slate-800">{existing.impression || "—"}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kesimpulan</p>
+          <p className="whitespace-pre-wrap text-sm text-foreground">{existing.impression || "—"}</p>
         </div>
-        <p className="flex items-center gap-1.5 text-xs text-slate-500">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Lock className="size-3.5" aria-hidden="true" />
           Laporan tidak dapat diedit langsung — koreksi dilakukan lewat addendum (alur addendum
           dikerjakan Fase A4).
         </p>
         {existing.verified_at && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Diverifikasi {formatDateTime(existing.verified_at)}
             {existing.verified_by ? ` oleh ${existing.verified_by}` : ""}
           </p>
@@ -159,8 +159,8 @@ export function RadiologyReportForm({
   return (
     <Card className="space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-slate-900">Susun laporan radiologi</h3>
-        <span className="text-xs text-slate-500">
+        <h3 className="text-base font-semibold text-foreground">Susun laporan radiologi</h3>
+        <span className="text-xs text-muted-foreground">
           {order.modality} · {order.body_part} · <span className="font-mono">{order.id}</span>
         </span>
       </div>
@@ -172,7 +172,7 @@ export function RadiologyReportForm({
       )}
 
       <div className="space-y-1.5">
-        <label htmlFor="rad-findings" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="rad-findings" className="block text-sm font-medium text-text-secondary">
           Temuan (findings)
         </label>
         <textarea
@@ -187,13 +187,13 @@ export function RadiologyReportForm({
           aria-required="true"
           aria-invalid={error && !findings.trim() ? true : undefined}
           aria-describedby={error && !findings.trim() ? "rad-report-error" : undefined}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-slate-50"
+          className="w-full rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm text-foreground focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-muted"
           placeholder="Deskripsi temuan radiologis..."
         />
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="rad-impression" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="rad-impression" className="block text-sm font-medium text-text-secondary">
           Kesimpulan (impression)
         </label>
         <textarea
@@ -208,12 +208,12 @@ export function RadiologyReportForm({
           aria-required="true"
           aria-invalid={error && !impression.trim() ? true : undefined}
           aria-describedby={error && !impression.trim() ? "rad-report-error" : undefined}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-slate-50"
+          className="w-full rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm text-foreground focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-muted"
           placeholder="Kesimpulan/impresi pemeriksaan..."
         />
       </div>
 
-      <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      <div className="flex items-start gap-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs text-text-secondary">
         <Paperclip className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
         <span>
           Lampiran gambar/PDF dinonaktifkan: field <code>files</code> membutuhkan{" "}

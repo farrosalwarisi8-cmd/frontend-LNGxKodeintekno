@@ -247,20 +247,20 @@ export function RegistrationWizard() {
           <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-success-100">
             <Check className="size-8 text-success-600" />
           </div>
-          <h1 className="text-2xl font-semibold text-slate-900">Pekerja berhasil didaftarkan</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Pekerja berhasil didaftarkan</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
             {consentSent
               ? "Data pekerja tersimpan dan permintaan consent dikirim."
               : "Data pekerja tersimpan, namun permintaan consent BELUM terkirim."}
           </p>
 
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left">
+          <div className="mt-6 rounded-xl border border-border bg-muted p-4 text-left">
             <div className="space-y-2 text-sm">
-              <p><span className="font-medium text-slate-700">MRN:</span> <span className="font-mono text-slate-900">{submitResult.mrn}</span></p>
-              <p><span className="font-medium text-slate-700">Employee ID:</span> <span className="font-mono text-slate-900">{submitResult.employeeId}</span></p>
+              <p><span className="font-medium text-text-secondary">MRN:</span> <span className="font-mono text-foreground">{submitResult.mrn}</span></p>
+              <p><span className="font-medium text-text-secondary">Employee ID:</span> <span className="font-mono text-foreground">{submitResult.employeeId}</span></p>
               {/* Status consent hanya boleh mencerminkan hasil API, bukan nilai tetap. */}
               <p>
-                <span className="font-medium text-slate-700">Consent:</span>{" "}
+                <span className="font-medium text-text-secondary">Consent:</span>{" "}
                 {consentSent ? (
                   <Badge variant="warning">Menunggu keputusan pekerja</Badge>
                 ) : (
@@ -268,7 +268,7 @@ export function RegistrationWizard() {
                 )}
               </p>
               <p>
-                <span className="font-medium text-slate-700">Delivery:</span>{" "}
+                <span className="font-medium text-text-secondary">Delivery:</span>{" "}
                 <Badge variant={consentSent ? "success" : "danger"}>
                   {consentSent ? "Terkirim (simulasi provider)" : "Gagal"}
                 </Badge>
@@ -326,8 +326,8 @@ export function RegistrationWizard() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Registrasi Pekerja Baru</h1>
-        <p className="text-sm text-slate-500">Lengkapi data pekerja dalam 5 langkah mudah.</p>
+        <h1 className="text-2xl font-semibold text-foreground">Registrasi Pekerja Baru</h1>
+        <p className="text-sm text-muted-foreground">Lengkapi data pekerja dalam 5 langkah mudah.</p>
       </div>
 
       <div className="mb-6">
@@ -343,10 +343,10 @@ export function RegistrationWizard() {
                   <div
                     className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors sm:size-10 ${
                       isCompleted
-                        ? "border-primary-600 bg-primary-600 text-white"
+                        ? "border-primary-600 bg-primary-600 text-primary-foreground"
                         : isActive
-                          ? "border-primary-600 bg-white text-primary-600"
-                          : "border-slate-200 bg-white text-slate-500"
+                          ? "border-primary-600 bg-card text-primary-600"
+                          : "border-border bg-card text-muted-foreground"
                     }`}
                     aria-current={isActive ? "step" : undefined}
                   >
@@ -355,7 +355,7 @@ export function RegistrationWizard() {
                   {/* Label hanya di layar >= sm; di mobile cukup indikator + keterangan di bawah. */}
                   <span
                     className={`mt-1 hidden max-w-24 text-center text-xs font-medium leading-tight sm:block ${
-                      isActive ? "text-primary-600" : "text-slate-500"
+                      isActive ? "text-primary-600" : "text-muted-foreground"
                     }`}
                   >
                     {s.label}
@@ -364,7 +364,7 @@ export function RegistrationWizard() {
                 {index < STEPS.length - 1 && (
                   <div
                     className={`mx-1.5 mt-4 h-0.5 min-w-2 flex-1 sm:mx-3 sm:mt-5 ${
-                      currentStep > s.id ? "bg-primary-600" : "bg-slate-200"
+                      currentStep > s.id ? "bg-primary-600" : "bg-border"
                     }`}
                   />
                 )}
@@ -372,7 +372,7 @@ export function RegistrationWizard() {
             );
           })}
         </div>
-        <p className="mt-2 text-center text-xs font-medium text-slate-500 sm:hidden">
+        <p className="mt-2 text-center text-xs font-medium text-muted-foreground sm:hidden">
           Langkah {currentStep} dari {STEPS.length} ·{" "}
           <span className="text-primary-700">{STEPS.find((s) => s.id === currentStep)?.label}</span>
         </p>
@@ -388,7 +388,7 @@ export function RegistrationWizard() {
       <Card className="p-6">
         {currentStep === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Identitas Pekerja</h2>
+            <h2 className="text-lg font-semibold text-foreground">Identitas Pekerja</h2>
             <Input
               label="Nama Lengkap"
               value={formData.fullName}
@@ -465,7 +465,7 @@ export function RegistrationWizard() {
 
         {currentStep === 2 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Penempatan Pekerja</h2>
+            <h2 className="text-lg font-semibold text-foreground">Penempatan Pekerja</h2>
             <Select
               label="Organization"
               value={formData.organizationId}
@@ -519,7 +519,7 @@ export function RegistrationWizard() {
 
         {currentStep === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Kontak Pekerja</h2>
+            <h2 className="text-lg font-semibold text-foreground">Kontak Pekerja</h2>
             <Input
               label="Email Pekerja"
               type="email"
@@ -536,8 +536,8 @@ export function RegistrationWizard() {
               error={errors.phone}
               placeholder="081234567890"
             />
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="mb-3 text-sm font-medium text-slate-700">Kontak Darurat</p>
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <p className="mb-3 text-sm font-medium text-text-secondary">Kontak Darurat</p>
               <div className="space-y-3">
                 <Input
                   label="Nama"
@@ -570,11 +570,11 @@ export function RegistrationWizard() {
 
         {currentStep === 4 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Dokumen Pendukung</h2>
-            <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
-              <Upload className="mx-auto mb-3 size-8 text-slate-500" />
-              <p className="text-sm font-medium text-slate-700">Upload dokumen pendukung</p>
-              <p className="mt-1 text-xs text-slate-500">PDF, JPG, PNG · Maksimum 5 MB per file</p>
+            <h2 className="text-lg font-semibold text-foreground">Dokumen Pendukung</h2>
+            <div className="rounded-xl border-2 border-dashed border-border bg-muted/50 p-8 text-center">
+              <Upload className="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-text-secondary">Upload dokumen pendukung</p>
+              <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG · Maksimum 5 MB per file</p>
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
@@ -586,7 +586,7 @@ export function RegistrationWizard() {
               />
               <label
                 htmlFor="file-upload"
-                className={`mt-3 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 ${(uploading || !isOnline) ? "pointer-events-none opacity-50" : ""}`}
+                className={`mt-3 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-muted ${(uploading || !isOnline) ? "pointer-events-none opacity-50" : ""}`}
               >
                 {uploading ? "Mengupload..." : "Pilih File"}
               </label>
@@ -597,18 +597,18 @@ export function RegistrationWizard() {
             {uploadedFiles.length > 0 && (
               <div className="space-y-2">
                 {uploadedFiles.map((file) => (
-                  <div key={file.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                    <FileText className="size-5 shrink-0 text-slate-500" />
+                  <div key={file.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <FileText className="size-5 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-700">{file.name}</p>
-                      <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
+                      <p className="truncate text-sm font-medium text-text-secondary">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
                     </div>
                     <Badge variant={file.tamperCheck === "PASSED" ? "success" : "warning"}>
                       {file.tamperCheck}
                     </Badge>
                     <button
                       onClick={() => removeFile(file.id)}
-                      className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-600"
+                      className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-text-secondary"
                       aria-label="Hapus file"
                     >
                       <X className="size-4" />
@@ -622,16 +622,16 @@ export function RegistrationWizard() {
 
         {currentStep === 5 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Consent & Review</h2>
+            <h2 className="text-lg font-semibold text-foreground">Consent & Review</h2>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">Ringkasan Data</h3>
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-secondary">Ringkasan Data</h3>
               <div className="space-y-2 text-sm">
-                <p><span className="font-medium text-slate-600">Nama:</span> <span className="text-slate-900">{formData.fullName}</span></p>
-                <p><span className="font-medium text-slate-600">Identifier:</span> <span className="font-mono text-slate-900">{maskIdentifier(formData.identifierValue, formData.identifierType)}</span></p>
-                <p><span className="font-medium text-slate-600">Employee ID:</span> <span className="font-mono text-slate-900">{formData.employeeNo}</span></p>
-                <p><span className="font-medium text-slate-600">Email:</span> <span className="text-slate-900">{formData.email}</span></p>
-                <p><span className="font-medium text-slate-600">Dokumen:</span> <span className="text-slate-900">{uploadedFiles.length} file</span></p>
+                <p><span className="font-medium text-text-secondary">Nama:</span> <span className="text-foreground">{formData.fullName}</span></p>
+                <p><span className="font-medium text-text-secondary">Identifier:</span> <span className="font-mono text-foreground">{maskIdentifier(formData.identifierValue, formData.identifierType)}</span></p>
+                <p><span className="font-medium text-text-secondary">Employee ID:</span> <span className="font-mono text-foreground">{formData.employeeNo}</span></p>
+                <p><span className="font-medium text-text-secondary">Email:</span> <span className="text-foreground">{formData.email}</span></p>
+                <p><span className="font-medium text-text-secondary">Dokumen:</span> <span className="text-foreground">{uploadedFiles.length} file</span></p>
               </div>
             </div>
 
@@ -657,15 +657,15 @@ export function RegistrationWizard() {
               placeholder="1.0"
             />
 
-            <div className="flex items-start gap-3 rounded-xl border border-slate-200 p-4">
+            <div className="flex items-start gap-3 rounded-xl border border-border p-4">
               <input
                 type="checkbox"
                 id="acknowledge"
                 checked={acknowledged}
                 onChange={(e) => setAcknowledged(e.target.checked)}
-                className="mt-0.5 size-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                className="mt-0.5 size-4 rounded border-input text-primary-600 focus:ring-ring"
               />
-              <label htmlFor="acknowledge" className="text-sm text-slate-700">
+              <label htmlFor="acknowledge" className="text-sm text-text-secondary">
                 Saya sudah memeriksa data dan memahami bahwa consent link akan dikirim ke email pekerja.
               </label>
             </div>
@@ -682,7 +682,7 @@ export function RegistrationWizard() {
         )}
 
         {/* Mobile: tombol ditumpuk full-width (tidak melebar ke luar layar); desktop: satu baris. */}
-        <div className="mt-6 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             variant="ghost"
             onClick={handleBack}
@@ -717,7 +717,7 @@ export function RegistrationWizard() {
       </Card>
 
       {hasSavedDraft && savedAt && (
-        <p className="mt-3 text-center text-xs text-slate-500">
+        <p className="mt-3 text-center text-xs text-muted-foreground">
           Draft tersimpan otomatis · {formatDate(savedAt)}
         </p>
       )}

@@ -9,7 +9,6 @@ import { useStore } from "@/lib/store";
 import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { EMPLOYEE_STATUS } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -20,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, Users, ChevronRight } from "lucide-react";
 import { VirtualList } from "@/shared/components/virtual-list";
 import { useDebounce } from "@/shared/utils/use-debounce";
+import { StatusBadge } from "@/components/status-badge";
 
 export default function EmployeesPage() {
   const employees = useStore((s) => s.employees);
@@ -52,8 +52,8 @@ export default function EmployeesPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Pekerja</h1>
-          <p className="text-sm text-slate-500">Kelola data pekerja dan employment</p>
+          <h1 className="text-2xl font-semibold text-foreground">Pekerja</h1>
+          <p className="text-sm text-muted-foreground">Kelola data pekerja dan employment</p>
         </div>
         <Can action="people.create">
           {/* /employees/new tidak ada — registrasi pekerja memakai wizard /people/new */}
@@ -69,7 +69,7 @@ export default function EmployeesPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               label="Cari pekerja"
               placeholder="Cari nama, Employee ID, MRN..."
@@ -97,7 +97,7 @@ export default function EmployeesPage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} pekerja ditemukan</p>
+      <p className="text-sm text-muted-foreground">{filtered.length} pekerja ditemukan</p>
 
       {error && (
         <ErrorState
@@ -132,30 +132,28 @@ export default function EmployeesPage() {
               <div
                 key={emp.id}
                 style={style}
-                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 cursor-pointer transition-colors hover:bg-slate-50"
+                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 cursor-pointer transition-colors hover:bg-muted"
                 onClick={() => router.push(`/people/${emp.id}`)}
                 role="button"
                 tabIndex={0}
               >
                 <Avatar name={emp.fullName} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-slate-900 truncate">
+                  <div className="font-medium text-foreground truncate">
                     {emp.fullName}
                   </div>
-                  <div className="text-xs text-slate-500 truncate">
+                  <div className="text-xs text-muted-foreground truncate">
                     {emp.employeeId} · {emp.mrn}
                   </div>
                   {company?.name && (
-                    <div className="text-xs text-slate-500 truncate">
+                    <div className="text-xs text-muted-foreground truncate">
                       {company.name}
                     </div>
                   )}
                 </div>
                 <div className="ml-auto flex items-center gap-2">
-                  <Badge variant="outline" className={statusMeta?.color}>
-                    {statusMeta?.label}
-                  </Badge>
-                  <ChevronRight className="size-4 shrink-0 text-slate-400" />
+                  <StatusBadge meta={statusMeta} />
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                 </div>
               </div>
             );

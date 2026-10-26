@@ -193,8 +193,8 @@ export default function ReturnMedicinePage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Retur Obat</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Retur Obat</h1>
+        <p className="text-sm text-muted-foreground">
           Proses retur obat yang sudah dispensing kembali ke stok inventory
         </p>
       </div>
@@ -206,7 +206,7 @@ export default function ReturnMedicinePage() {
       )}
 
       <div className="relative w-full sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Cari dispensing / pasien / obat..."
           value={search}
@@ -220,8 +220,8 @@ export default function ReturnMedicinePage() {
       {ledgerEntries.length > 0 && (
         <Card className="p-4">
           <div className="mb-3 flex items-center gap-2">
-            <ScrollText className="size-4 text-slate-500" />
-            <h2 className="text-sm font-semibold text-slate-900">
+            <ScrollText className="size-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">
               Stock Ledger — Retur
             </h2>
           </div>
@@ -229,25 +229,25 @@ export default function ReturnMedicinePage() {
             {ledgerEntries.map((entry, i) => (
               <div
                 key={`${entry.recordedAt}-${i}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-sm"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-foreground">
                     {entry.genericName}{" "}
-                    <span className="text-xs font-normal text-slate-500">
+                    <span className="text-xs font-normal text-muted-foreground">
                       ({entry.medicationCode}) · {entry.siteName}
                     </span>
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {formatDate(entry.recordedAt)} · movement: {entry.movement}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-slate-500">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {entry.before}
                   </span>
-                  <span className="text-slate-500">→</span>
-                  <span className="font-mono text-xs font-semibold text-slate-900">
+                  <span className="text-muted-foreground">→</span>
+                  <span className="font-mono text-xs font-semibold text-foreground">
                     {entry.after}
                   </span>
                   <Badge variant="success">+{entry.delta}</Badge>
@@ -286,8 +286,8 @@ export default function ReturnMedicinePage() {
       {!loading && !error && inventory.length > 0 && (
         <Card className="p-4">
           <div className="mb-3 flex items-center gap-2">
-            <ScrollText className="size-4 text-slate-500" />
-            <h2 className="text-sm font-semibold text-slate-900">
+            <ScrollText className="size-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">
               Inventory Saat Ini
             </h2>
           </div>
@@ -295,16 +295,16 @@ export default function ReturnMedicinePage() {
             {inventory.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-sm"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-foreground">
                     {item.genericName}{" "}
-                    <span className="text-xs font-normal text-slate-500">
+                    <span className="text-xs font-normal text-muted-foreground">
                       {item.medicationCode}
                     </span>
                   </p>
-                  <p className="text-xs text-slate-500">{item.siteName}</p>
+                  <p className="text-xs text-muted-foreground">{item.siteName}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={item.currentStock <= item.minimumStock ? "warning" : "success"}>
@@ -330,12 +330,12 @@ export default function ReturnMedicinePage() {
               <Card key={d.id} className="p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-1">
-                    <p className="font-medium text-slate-900">{patientName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-foreground">{patientName}</p>
+                    <p className="text-xs text-muted-foreground">
                       {formatDate(d.dispensed_at ?? "")} · {medications}
                     </p>
                     {d.dispensing_items?.map((item) => (
-                      <p key={item.id} className="text-xs text-slate-500">
+                      <p key={item.id} className="text-xs text-muted-foreground">
                         Batch: {item.stock_batch?.batch_no ?? item.stock_batch_id} · Qty:{" "}
                         {item.quantity}
                       </p>
@@ -346,7 +346,7 @@ export default function ReturnMedicinePage() {
                           {d.medication_returns?.length ?? 0} retur
                         </Badge>
                         {d.medication_returns?.map((r) => (
-                          <p key={r.id} className="text-xs text-slate-500">
+                          <p key={r.id} className="text-xs text-muted-foreground">
                             Retur: {r.quantity} · {r.reason} · {formatDate(r.returned_at ?? "")}
                           </p>
                         ))}
@@ -388,7 +388,7 @@ export default function ReturnMedicinePage() {
       >
         <div className="space-y-4">
           {selectedDispensing && (
-            <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+            <div className="rounded-lg bg-muted p-3 text-sm text-text-secondary">
               <p>
                 Pasien:{" "}
                 <span className="font-medium">
@@ -406,12 +406,12 @@ export default function ReturnMedicinePage() {
 
           {selectedDispensing?.dispensing_items && selectedDispensing.dispensing_items.length > 0 && (
             <div>
-              <label htmlFor="return-batch" className="mb-1 block text-sm font-medium text-slate-700">
+              <label htmlFor="return-batch" className="mb-1 block text-sm font-medium text-text-secondary">
                 Pilih Batch
               </label>
               <select
                 id="return-batch"
-                className="w-full rounded-lg border border-slate-200 p-2 text-sm"
+                className="w-full rounded-lg border border-input p-2 text-sm"
                 value={returnBatchId}
                 onChange={(e) => setReturnBatchId(e.target.value)}
               >
@@ -453,10 +453,10 @@ export default function ReturnMedicinePage() {
           />
 
           <div>
-            <label htmlFor="return-reason" className="mb-1 block text-sm font-medium text-slate-700">Alasan Retur</label>
+            <label htmlFor="return-reason" className="mb-1 block text-sm font-medium text-text-secondary">Alasan Retur</label>
             <textarea
               id="return-reason"
-              className="w-full rounded-lg border border-slate-200 p-2 text-sm"
+              className="w-full rounded-lg border border-input p-2 text-sm"
               rows={2}
               value={returnReason}
               onChange={(e) => setReturnReason(e.target.value)}

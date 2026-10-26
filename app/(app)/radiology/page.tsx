@@ -84,8 +84,8 @@ function RadiologyWorkspace() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Radiologi</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Radiologi</h1>
+        <p className="text-sm text-muted-foreground">
           Daftar order radiologi dan penyusunan laporan radiolog — terpisah dari alur analis lab
         </p>
       </div>
@@ -120,18 +120,18 @@ function RadiologyWorkspace() {
             />
 
             {orders.length > 0 && (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-border">
                 {orders.map((o) => (
                   <li
                     key={o.id}
                     className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
                   >
                     <div className="min-w-0">
-                      <span className="font-mono font-medium text-slate-800">{o.id}</span>
-                      <span className="ml-2 text-slate-600">
+                      <span className="font-mono font-medium text-foreground">{o.id}</span>
+                      <span className="ml-2 text-text-secondary">
                         {o.modality} · {o.body_part} · {formatDateTime(o.ordered_at)}
                       </span>
-                      <div className="mt-1 text-xs text-slate-500">
+                      <div className="mt-1 text-xs text-muted-foreground">
                         Kunjungan {o.encounter_id ?? "—"}
                       </div>
                     </div>
@@ -196,9 +196,9 @@ function RadiologyWorkspace() {
 function FeatureInactive() {
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">Radiologi</h1>
-      <Card className="space-y-3 p-6 text-sm text-slate-600">
-        <p className="flex items-center gap-2 font-medium text-slate-800">
+      <h1 className="text-2xl font-semibold text-foreground">Radiologi</h1>
+      <Card className="space-y-3 p-6 text-sm text-text-secondary">
+        <p className="flex items-center gap-2 font-medium text-foreground">
           Fitur Radiologi belum aktif pada environment ini.
         </p>
         <p>

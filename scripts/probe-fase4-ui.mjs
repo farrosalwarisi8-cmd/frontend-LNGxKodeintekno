@@ -305,7 +305,7 @@ async function phaseDuplicateCode(context) {
 
   // Ambil kode organisasi pertama yang tampil di daftar (baris: nama + kode)
   const codes = await page
-    .locator("p.text-xs.text-slate-500")
+    .locator("p.text-xs.text-muted-foreground")
     .allInnerTexts()
     .catch(() => []);
   const code = (codes.find((t) => /^[A-Z0-9][A-Z0-9._-]+$/.test(t.trim())) ?? "").trim();

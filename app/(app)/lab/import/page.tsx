@@ -134,14 +134,14 @@ export default function LabImportPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/lab"
-          className="inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+          className="inline-flex size-10 items-center justify-center rounded-xl border border-border text-text-secondary hover:bg-muted"
           aria-label="Kembali ke daftar order lab"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
         </Link>
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Impor hasil lab (CSV)</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl font-semibold text-foreground">Impor hasil lab (CSV)</h1>
+          <p className="text-sm text-muted-foreground">
             Parsing di browser · maksimal {Math.round(MAX_FILE_BYTES / 1024)} KB dan {MAX_ROWS}{" "}
             baris per berkas
           </p>
@@ -160,7 +160,7 @@ export default function LabImportPage() {
               onChange={(e) => void onPickFile(e.target.files?.[0])}
               aria-describedby="import-format-help"
             />
-            <p id="import-format-help" className="text-xs text-slate-500">
+            <p id="import-format-help" className="text-xs text-muted-foreground">
               Kolom wajib: <code>order_id</code>, <code>parameter_name</code>, <code>value</code>.
               Kolom opsional: <code>value_type</code> (number/text), <code>unit</code>. Berkas
               Excel (.xlsx) belum didukung — gunakan CSV.
@@ -175,7 +175,7 @@ export default function LabImportPage() {
           </div>
 
           {parsing && (
-            <p className="text-sm text-slate-600" role="status">
+            <p className="text-sm text-text-secondary" role="status">
               Membaca berkas...
             </p>
           )}
@@ -197,7 +197,7 @@ export default function LabImportPage() {
       {step === "preview" && validation && (
         <div className="space-y-4">
           <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="text-sm text-slate-700">
+            <div className="text-sm text-text-secondary">
               <span className="font-medium">{fileName}</span> · {rows.length} baris dibaca ·{" "}
               <span className="font-medium text-success-600">{validation.valid.length} valid</span>{" "}
               ·{" "}
@@ -236,7 +236,7 @@ export default function LabImportPage() {
           )}
 
           <section aria-labelledby="preview-valid" className="space-y-2">
-            <h2 id="preview-valid" className="text-base font-semibold text-slate-900">
+            <h2 id="preview-valid" className="text-base font-semibold text-foreground">
               Pratinjau baris valid ({validation.valid.length})
             </h2>
             {validation.valid.length === 0 ? (
@@ -246,11 +246,11 @@ export default function LabImportPage() {
                 description="Perbaiki berkas sesuai format kolom, atau unduh laporan kesalahan di bawah."
               />
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+              <div className="overflow-x-auto rounded-2xl border border-border bg-card">
                 <table className="w-full text-sm">
                   <caption className="sr-only">Pratinjau baris impor yang valid</caption>
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/50 text-left text-xs uppercase text-slate-500">
+                    <tr className="border-b border-border bg-muted/50 text-left text-xs uppercase text-muted-foreground">
                       <th scope="col" className="px-3 py-2">Baris</th>
                       <th scope="col" className="px-3 py-2">order_id</th>
                       <th scope="col" className="px-3 py-2">parameter_name</th>
@@ -258,16 +258,16 @@ export default function LabImportPage() {
                       <th scope="col" className="px-3 py-2">unit</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-border">
                     {validation.valid.map((r) => (
                       <tr key={`${r.line}-${r.labOrderItemId}`}>
-                        <td className="px-3 py-1.5 text-slate-500">{r.line}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{r.line}</td>
                         <td className="px-3 py-1.5 font-mono">{r.orderId}</td>
                         <td className="px-3 py-1.5">{r.parameterName}</td>
                         <td className="px-3 py-1.5 font-mono">
                           {r.numericValue !== undefined ? r.numericValue : r.textValue}
                         </td>
-                        <td className="px-3 py-1.5 text-slate-600">{r.unit ?? "—"}</td>
+                        <td className="px-3 py-1.5 text-text-secondary">{r.unit ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -296,23 +296,23 @@ export default function LabImportPage() {
                   <Download className="size-4" aria-hidden="true" /> Unduh laporan kesalahan
                 </Button>
               </div>
-              <div className="overflow-x-auto rounded-2xl border border-danger-200 bg-white">
+              <div className="overflow-x-auto rounded-2xl border border-danger-200 bg-card">
                 <table className="w-full text-sm">
                   <caption className="sr-only">Kesalahan per baris</caption>
                   <thead>
-                    <tr className="border-b border-slate-100 bg-danger-50 text-left text-xs uppercase text-danger-700">
+                    <tr className="border-b border-border bg-danger-50 text-left text-xs uppercase text-danger-700">
                       <th scope="col" className="px-3 py-2">Baris</th>
                       <th scope="col" className="px-3 py-2">Kolom</th>
                       <th scope="col" className="px-3 py-2">Alasan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-border">
                     {validation.invalid.flatMap(({ issues }) =>
                       issues.map((issue) => (
                         <tr key={`${issue.line}-${issue.column}-${issue.reason}`}>
-                          <td className="px-3 py-1.5 text-slate-600">{issue.line}</td>
+                          <td className="px-3 py-1.5 text-text-secondary">{issue.line}</td>
                           <td className="px-3 py-1.5 font-mono">{issue.column}</td>
-                          <td className="px-3 py-1.5 text-slate-700">{issue.reason}</td>
+                          <td className="px-3 py-1.5 text-text-secondary">{issue.reason}</td>
                         </tr>
                       ))
                     )}
@@ -326,9 +326,9 @@ export default function LabImportPage() {
 
       {step === "sending" && (
         <Card className="space-y-3 p-5" aria-busy="true">
-          <h2 className="text-base font-semibold text-slate-900">Mengirim baris...</h2>
+          <h2 className="text-base font-semibold text-foreground">Mengirim baris...</h2>
           <div
-            className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
+            className="h-2 w-full overflow-hidden rounded-full bg-muted"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={progress.total}
@@ -342,7 +342,7 @@ export default function LabImportPage() {
               }}
             />
           </div>
-          <p className="text-sm text-slate-600" role="status">
+          <p className="text-sm text-text-secondary" role="status">
             {progress.done} dari {progress.total} baris · konkurensi {IMPORT_CONCURRENCY}
           </p>
         </Card>
@@ -351,8 +351,8 @@ export default function LabImportPage() {
       {step === "summary" && summary && (
         <div className="space-y-4">
           <Card className="space-y-3 p-5">
-            <h2 className="text-base font-semibold text-slate-900">Ringkasan pengiriman</h2>
-            <p className="text-sm text-slate-700">
+            <h2 className="text-base font-semibold text-foreground">Ringkasan pengiriman</h2>
+            <p className="text-sm text-text-secondary">
               <span className="font-medium text-success-600">{summary.succeeded.length} sukses</span>{" "}
               ·{" "}
               <span className={summary.failed.length ? "font-medium text-danger-600" : ""}>
@@ -367,20 +367,20 @@ export default function LabImportPage() {
             )}
 
             {summary.failed.length > 0 && (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <div className="overflow-x-auto rounded-2xl border border-border">
                 <table className="w-full text-sm">
                   <caption className="sr-only">Baris yang gagal dikirim</caption>
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50 text-left text-xs uppercase text-slate-500">
+                    <tr className="border-b border-border bg-muted text-left text-xs uppercase text-muted-foreground">
                       <th scope="col" className="px-3 py-2">Baris</th>
                       <th scope="col" className="px-3 py-2">order_id</th>
                       <th scope="col" className="px-3 py-2">Kesalahan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-border">
                     {summary.failed.map((f, i) => (
                       <tr key={i}>
-                        <td className="px-3 py-1.5 text-slate-600">{f.item.line}</td>
+                        <td className="px-3 py-1.5 text-text-secondary">{f.item.line}</td>
                         <td className="px-3 py-1.5 font-mono">{f.item.orderId}</td>
                         <td className="px-3 py-1.5 text-danger-700">{f.error}</td>
                       </tr>

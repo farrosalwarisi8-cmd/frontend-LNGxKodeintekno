@@ -26,8 +26,8 @@ function LabWorkspace() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Laboratorium</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Laboratorium</h1>
+          <p className="text-sm text-muted-foreground">
             Daftar order dan hasil pemeriksaan penunjang laboratorium
           </p>
         </div>

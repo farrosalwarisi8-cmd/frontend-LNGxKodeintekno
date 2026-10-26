@@ -45,11 +45,11 @@ export function PeopleList() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Registrasi &amp; Consent</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Registrasi &amp; Consent</h1>
+          <p className="text-sm text-muted-foreground">
             MPI Modul 01 — pendaftaran pekerja, MRN, dan consent digital
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Butuh direktori pekerja dari backend?{" "}
             <Link href="/employees" className="font-medium text-primary-600 hover:underline">
               Buka Direktori Pekerja
@@ -69,7 +69,7 @@ export function PeopleList() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari nama, MRN, atau Employee ID..."
               value={search}
@@ -82,7 +82,7 @@ export function PeopleList() {
             />
           </div>
         </div>
-        <p className="mt-3 flex items-start gap-2 text-xs text-slate-500" role="status">
+        <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground" role="status">
           <Info className="mt-0.5 size-3.5 shrink-0" />
           <span>
             Filter site/unit/status/consent belum tersedia: API daftar pekerja saat ini hanya mendukung
@@ -117,29 +117,29 @@ export function PeopleList() {
         />
       ) : (
         <>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {data.total} pekerja · Diperbarui {formatRelativeTime(data.data[0]?.updatedAt)}
           </p>
 
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Nama</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">MRN</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Employee ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Site</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nama</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">MRN</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Employee ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Site</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {data.data.map((person) => (
                   <tr
                     key={person.id}
                     role="link"
                     tabIndex={0}
                     aria-label={`Buka profil ${person.fullName}`}
-                    className="cursor-pointer transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+                    className="cursor-pointer transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     onClick={() => router.push(`/people/${person.id}`)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -149,14 +149,14 @@ export function PeopleList() {
                     }}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">{person.fullName}</div>
-                      <div className="text-xs text-slate-500">{maskEmail(person.emailMasked)}</div>
+                      <div className="font-medium text-foreground">{person.fullName}</div>
+                      <div className="text-xs text-muted-foreground">{maskEmail(person.emailMasked)}</div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-sm text-slate-600">{person.mrn}</td>
-                    <td className="px-4 py-3 font-mono text-sm text-slate-600">{person.employeeNo}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{person.siteName}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-text-secondary">{person.mrn}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-text-secondary">{person.employeeNo}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{person.siteName}</td>
                     <td className="px-4 py-3">
-                      <ChevronRight className="size-4 text-slate-500" />
+                      <ChevronRight className="size-4 text-muted-foreground" />
                     </td>
                   </tr>
                 ))}
@@ -172,12 +172,12 @@ export function PeopleList() {
                     {person.fullName.split(/\s+/).map((p) => p[0]).slice(0, 2).join("")}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-slate-900">{person.fullName}</div>
-                    <div className="text-xs text-slate-500">
+                    <div className="font-medium text-foreground">{person.fullName}</div>
+                    <div className="text-xs text-muted-foreground">
                       {person.mrn} · {person.employeeNo}
                     </div>
                   </div>
-                  <ChevronRight className="size-4 shrink-0 text-slate-500" />
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                 </Card>
               </Link>
             ))}
@@ -193,7 +193,7 @@ export function PeopleList() {
               >
                 Sebelumnya
               </Button>
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-muted-foreground">
                 Halaman {data.page} dari {data.totalPages}
               </span>
               <Button

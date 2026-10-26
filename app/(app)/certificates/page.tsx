@@ -9,13 +9,13 @@ import { syncCertificates, syncMcu, syncPatients, useSyncedModules } from "@/lib
 import { documentService } from "@/lib/services/document.service";
 import { CERT_STATUS } from "@/lib/constants";
 import { Card, CardContent } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
 import { Search, BadgeCheck, Plus, QrCode, ChevronRight, ShieldCheck, ExternalLink } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 
 export default function CertificatesPage() {
   const certificates = useStore((s) => s.certificates);
@@ -124,8 +124,8 @@ export default function CertificatesPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Sertifikat Kesehatan</h1>
-        <p className="text-sm text-slate-500">Sertifikat kesehatan kerja dengan QR verification</p>
+        <h1 className="text-2xl font-semibold text-foreground">Sertifikat Kesehatan</h1>
+        <p className="text-sm text-muted-foreground">Sertifikat kesehatan kerja dengan QR verification</p>
       </div>
 
       {error && (
@@ -135,16 +135,16 @@ export default function CertificatesPage() {
         </div>
       )}
       {msg && (
-        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{msg}</div>
+        <div className="rounded-xl bg-muted p-3 text-sm text-text-secondary">{msg}</div>
       )}
       {loading && !error && (
-        <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-10 animate-pulse rounded-xl bg-muted" />
       )}
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari nomor sertifikat, nama pekerja..."
               value={search}
@@ -168,10 +168,10 @@ export default function CertificatesPage() {
             {approvedMCUs.map((mcu) => {
               const emp = employees.find((e) => e.id === mcu.employeeId);
               return (
-                <div key={mcu.id} className="flex items-center justify-between rounded-xl border border-primary-100 bg-white p-3">
+                <div key={mcu.id} className="flex items-center justify-between rounded-xl border border-primary-100 bg-card p-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{emp?.fullName}</p>
-                    <p className="text-xs text-slate-500">{mcu.mcuNumber} · {mcu.decision}</p>
+                    <p className="text-sm font-medium text-foreground">{emp?.fullName}</p>
+                    <p className="text-xs text-muted-foreground">{mcu.mcuNumber} · {mcu.decision}</p>
                   </div>
                   <Can action="certificates.issue">
                     <Button size="sm" onClick={() => handleIssue(mcu.id)} loading={busy} disabled={busy}>
@@ -186,7 +186,7 @@ export default function CertificatesPage() {
         </Card>
       )}
 
-      <p className="text-sm text-slate-500">{filtered.length} sertifikat</p>
+      <p className="text-sm text-muted-foreground">{filtered.length} sertifikat</p>
 
       <div className="space-y-3">
         {filtered.map((cert) => {
@@ -200,9 +200,9 @@ export default function CertificatesPage() {
                     <BadgeCheck className="size-6" />
                   </div>
                   <div>
-                    <p className="font-medium text-slate-900">{cert.certNumber}</p>
-                    <p className="text-xs text-slate-500">{emp?.fullName} · {emp?.employeeId}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-foreground">{cert.certNumber}</p>
+                    <p className="text-xs text-muted-foreground">{emp?.fullName} · {emp?.employeeId}</p>
+                    <p className="text-xs text-muted-foreground">
                       {cert.healthStatus} · Berlaku s.d. {formatDate(cert.validUntil)}
                     </p>
                     {cert.restrictions && (
@@ -211,9 +211,7 @@ export default function CertificatesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={statusMeta?.color}>
-                    {statusMeta?.label}
-                  </Badge>
+                  <StatusBadge meta={statusMeta} />
                   {/* Fase 6 — Tombol Verifikasi QR langsung dari sini */}
                   {cert.qrToken && (
                     <Button
@@ -259,7 +257,7 @@ export default function CertificatesPage() {
           {qrVerifying && (
             <div className="flex flex-col items-center gap-2 py-6">
               <div className="size-8 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
-              <p className="text-sm text-slate-500">Memverifikasi token...</p>
+              <p className="text-sm text-muted-foreground">Memverifikasi token...</p>
             </div>
           )}
 
@@ -278,7 +276,7 @@ export default function CertificatesPage() {
                   <p className="text-xs text-success-600">{qrResult.status}</p>
                 </div>
               </div>
-              <div className="rounded-xl bg-slate-50 p-3 text-sm space-y-1">
+              <div className="rounded-xl bg-muted p-3 text-sm space-y-1">
                 <p><span className="font-medium">Judul:</span> {qrResult.documentTitle ?? "—"}</p>
                 <p><span className="font-medium">Penerbit:</span> {qrResult.issuer ?? "—"}</p>
                 <p><span className="font-medium">Terbit:</span> {qrResult.issuedAt ? formatDate(qrResult.issuedAt) : "—"}</p>

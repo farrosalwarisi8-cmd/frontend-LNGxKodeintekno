@@ -135,8 +135,8 @@ export default function VisitNewPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Kunjungan Baru</h1>
-        <p className="text-sm text-slate-500">Registrasi kunjungan klinik</p>
+        <h1 className="text-2xl font-semibold text-foreground">Kunjungan Baru</h1>
+        <p className="text-sm text-muted-foreground">Registrasi kunjungan klinik</p>
       </div>
 
       <div className="mb-6 flex items-center justify-between">
@@ -150,20 +150,20 @@ export default function VisitNewPage() {
                 <div
                   className={`flex size-10 items-center justify-center rounded-full border-2 transition-colors ${
                     isCompleted
-                      ? "border-primary-600 bg-primary-600 text-white"
+                      ? "border-primary-600 bg-primary-600 text-primary-foreground"
                       : isActive
-                        ? "border-primary-600 bg-white text-primary-600"
-                        : "border-slate-200 bg-white text-slate-500"
+                        ? "border-primary-600 bg-card text-primary-600"
+                        : "border-border bg-card text-muted-foreground"
                   }`}
                 >
                   {isCompleted ? <Check className="size-4" /> : <Icon className="size-4" />}
                 </div>
-                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-slate-500"}`}>
+                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-muted-foreground"}`}>
                   {s.label}
                 </span>
               </div>
               {index < STEPS.length - 1 && (
-                <div className={`mx-2 h-0.5 flex-1 ${currentStep > s.id ? "bg-primary-600" : "bg-slate-200"}`} />
+                <div className={`mx-2 h-0.5 flex-1 ${currentStep > s.id ? "bg-primary-600" : "bg-border"}`} />
               )}
             </div>
           );
@@ -173,7 +173,7 @@ export default function VisitNewPage() {
       <Card className="p-6">
         {currentStep === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Pilih Pasien</h2>
+            <h2 className="text-lg font-semibold text-foreground">Pilih Pasien</h2>
             <Select
               label="Pasien"
               value={employeeId}
@@ -195,14 +195,14 @@ export default function VisitNewPage() {
               </div>
             )}
             {selectedEmployee && (
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-muted p-4">
                 <Avatar name={selectedEmployee.fullName} />
                 <div>
-                  <p className="font-medium text-slate-900">{selectedEmployee.fullName}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-medium text-foreground">{selectedEmployee.fullName}</p>
+                  <p className="text-xs text-muted-foreground">
                     {selectedEmployee.employeeId} · {selectedEmployee.mrn}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {selectedEmployee.jobTitle} · {selectedEmployee.status}
                   </p>
                 </div>
@@ -213,7 +213,7 @@ export default function VisitNewPage() {
 
         {currentStep === 2 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Lokasi Klinik</h2>
+            <h2 className="text-lg font-semibold text-foreground">Lokasi Klinik</h2>
             <Select
               label="Lokasi"
               value={locationId}
@@ -222,9 +222,9 @@ export default function VisitNewPage() {
               options={locations.map((l) => ({ value: l.id, label: l.name }))}
             />
             {selectedLocation && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="font-medium text-slate-900">{selectedLocation.name}</p>
-                <p className="text-xs text-slate-500 capitalize">{selectedLocation.type}</p>
+              <div className="rounded-xl border border-border bg-muted p-4">
+                <p className="font-medium text-foreground">{selectedLocation.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{selectedLocation.type}</p>
               </div>
             )}
           </div>
@@ -232,7 +232,7 @@ export default function VisitNewPage() {
 
         {currentStep === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Keluhan Utama</h2>
+            <h2 className="text-lg font-semibold text-foreground">Keluhan Utama</h2>
             <Input
               label="Keluhan Utama"
               value={chiefComplaint}
@@ -250,8 +250,8 @@ export default function VisitNewPage() {
 
         {currentStep === 4 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Vital Sign</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-lg font-semibold text-foreground">Vital Sign</h2>
+            <p className="text-sm text-muted-foreground">
               Nilai di luar rentang wajar ditandai sebelum disimpan (mis. salah ketik).
             </p>
             {/* Validasi rentang: `error` memblokir langkah berikutnya,
@@ -334,16 +334,16 @@ export default function VisitNewPage() {
 
         {currentStep === 5 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Review & Submit</h2>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">Ringkasan</h3>
+            <h2 className="text-lg font-semibold text-foreground">Review & Submit</h2>
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-secondary">Ringkasan</h3>
               <div className="space-y-2 text-sm">
-                <p><span className="font-medium text-slate-600">Pasien:</span> {selectedEmployee?.fullName}</p>
-                <p><span className="font-medium text-slate-600">Lokasi:</span> {selectedLocation?.name}</p>
-                <p><span className="font-medium text-slate-600">Keluhan:</span> {chiefComplaint}</p>
-                <p><span className="font-medium text-slate-600">TD:</span> {systolic}/{diastolic} mmHg</p>
-                <p><span className="font-medium text-slate-600">HR:</span> {heartRate} bpm</p>
-                <p><span className="font-medium text-slate-600">BB/TB:</span> {weight} kg / {height} cm</p>
+                <p><span className="font-medium text-text-secondary">Pasien:</span> {selectedEmployee?.fullName}</p>
+                <p><span className="font-medium text-text-secondary">Lokasi:</span> {selectedLocation?.name}</p>
+                <p><span className="font-medium text-text-secondary">Keluhan:</span> {chiefComplaint}</p>
+                <p><span className="font-medium text-text-secondary">TD:</span> {systolic}/{diastolic} mmHg</p>
+                <p><span className="font-medium text-text-secondary">HR:</span> {heartRate} bpm</p>
+                <p><span className="font-medium text-text-secondary">BB/TB:</span> {weight} kg / {height} cm</p>
               </div>
             </div>
             {submitError && (
@@ -354,7 +354,7 @@ export default function VisitNewPage() {
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+        <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
           <Button variant="ghost" onClick={() => setCurrentStep((s) => Math.max(1, s - 1))} disabled={currentStep === 1}>
             <ChevronLeft className="size-4" />
             Kembali

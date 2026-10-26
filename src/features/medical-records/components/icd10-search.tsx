@@ -96,12 +96,12 @@ export function Icd10Search({
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="block text-sm font-medium text-text-secondary">
         {label}
       </label>
       <div className="relative">
         <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden="true"
         />
         <Input
@@ -133,10 +133,10 @@ export function Icd10Search({
           id={listId}
           role="listbox"
           aria-label="Saran diagnosis ICD-10"
-          className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm"
+          className="max-h-56 overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-sm"
         >
           {matches.length === 0 ? (
-            <li className="px-3 py-2 text-sm text-slate-500" role="presentation">
+            <li className="px-3 py-2 text-sm text-muted-foreground" role="presentation">
               Tidak ada diagnosis yang cocok.
             </li>
           ) : (
@@ -148,7 +148,7 @@ export function Icd10Search({
                 aria-selected={index === activeIndex}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm",
-                  index === activeIndex ? "bg-primary-50 text-primary-700" : "text-slate-700"
+                  index === activeIndex ? "bg-primary-50 text-primary-700" : "text-text-secondary"
                 )}
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseDown={(e) => {
@@ -164,7 +164,7 @@ export function Icd10Search({
           )}
         </ul>
       )}
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Ketik untuk mencari, ↑/↓ untuk memilih, Enter untuk menambahkan.
       </p>
     </div>

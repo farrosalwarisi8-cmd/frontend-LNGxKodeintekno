@@ -290,8 +290,8 @@ export default function WaiverPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Waiver Visitor</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Waiver Visitor</h1>
+        <p className="text-sm text-muted-foreground">
           Kelola waiver untuk visitor tanpa MCU — tersimpan di backend sesuai site scope Anda
         </p>
       </div>
@@ -304,7 +304,7 @@ export default function WaiverPage() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Cari nama visitor / perusahaan..."
             value={search}
@@ -332,8 +332,8 @@ export default function WaiverPage() {
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{counts.PENDING}</p>
-              <p className="text-xs text-slate-500">Pending</p>
+              <p className="text-xl font-semibold text-foreground">{counts.PENDING}</p>
+              <p className="text-xs text-muted-foreground">Pending</p>
             </div>
           </CardContent>
         </Card>
@@ -343,8 +343,8 @@ export default function WaiverPage() {
               <CheckCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{counts.APPROVED}</p>
-              <p className="text-xs text-slate-500">Approved</p>
+              <p className="text-xl font-semibold text-foreground">{counts.APPROVED}</p>
+              <p className="text-xs text-muted-foreground">Approved</p>
             </div>
           </CardContent>
         </Card>
@@ -354,8 +354,8 @@ export default function WaiverPage() {
               <XCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{counts.REJECTED}</p>
-              <p className="text-xs text-slate-500">Rejected</p>
+              <p className="text-xl font-semibold text-foreground">{counts.REJECTED}</p>
+              <p className="text-xs text-muted-foreground">Rejected</p>
             </div>
           </CardContent>
         </Card>
@@ -388,20 +388,20 @@ export default function WaiverPage() {
               <Card key={waiver.id} className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-1">
-                    <p className="font-medium text-slate-900">{waiver.visitor_name}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-foreground">{waiver.visitor_name}</p>
+                    <p className="text-xs text-muted-foreground">
                       {waiver.company ?? "-"} · {waiver.site?.name ?? "Tanpa site"} ·{" "}
                       {formatDate(waiver.created_at ?? waiver.valid_until)}
                     </p>
-                    <p className="text-xs text-slate-500">Tujuan: {waiver.purpose}</p>
+                    <p className="text-xs text-muted-foreground">Tujuan: {waiver.purpose}</p>
                     {waiver.deviation && (
-                      <p className="text-xs text-slate-500">Deviasi: {waiver.deviation}</p>
+                      <p className="text-xs text-muted-foreground">Deviasi: {waiver.deviation}</p>
                     )}
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Berlaku s/d {formatDate(waiver.valid_until)}
                     </p>
                     {consent && (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         Consent: {consent.decision ?? "-"}
                         {consent.used_at ? " · sudah dipakai" : ""}
                         {consent.revoked_at ? " · direvoke" : ""}
@@ -450,7 +450,7 @@ export default function WaiverPage() {
                     </Can>
                         {busy && (
                           <span
-                            className="inline-flex items-center gap-1 text-xs text-slate-500"
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground"
                             data-testid="waiver-row-loading"
                           >
                             <Loader2 className="size-3 animate-spin" aria-hidden="true" />
@@ -476,8 +476,8 @@ export default function WaiverPage() {
 
       {isDemoModeEnabled() && (
       <Card className="p-4">
-        <p className="text-sm font-medium text-slate-900">Uji alur publik (verify / approve / reject)</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-sm font-medium text-foreground">Uji alur publik (verify / approve / reject)</p>
+        <p className="text-xs text-muted-foreground">
           Alur yang sama dengan halaman publik visitor. Token hanya berisi data minimal (tanpa data klinis).
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -498,7 +498,7 @@ export default function WaiverPage() {
             </Button>
           </div>
         </div>
-        {publicResult && <p className="mt-2 text-xs text-slate-600">{publicResult}</p>}
+        {publicResult && <p className="mt-2 text-xs text-text-secondary">{publicResult}</p>}
       </Card>
       )}
       {/* Panel uji alur publik (verify / approve / reject).
@@ -512,7 +512,7 @@ export default function WaiverPage() {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-text-secondary">
             Waiver <span className="font-medium">{sendTarget?.visitor_name}</span> belum memiliki
             email host. Masukkan email penerima consent untuk mengirim token verifikasi.
           </p>
@@ -544,12 +544,12 @@ export default function WaiverPage() {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-text-secondary">
             {pendingDecision?.decision === "APPROVED"
               ? "Setujui waiver visitor berikut? Keputusan akan tercatat pada jejak audit backend."
               : "Tolak waiver visitor berikut? Keputusan akan tercatat pada jejak audit backend."}
           </p>
-          <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          <p className="rounded-lg bg-muted p-3 text-sm text-text-secondary">
             Visitor:{" "}
             <span className="font-medium">{pendingDecision?.visitorName ?? "-"}</span>
           </p>

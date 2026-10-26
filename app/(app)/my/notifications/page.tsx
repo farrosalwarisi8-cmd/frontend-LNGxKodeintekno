@@ -93,8 +93,8 @@ export default function NotificationsPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Notifikasi Saya</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Notifikasi Saya</h1>
+          <p className="text-sm text-muted-foreground">
             Riwayat notifikasi dan status pengiriman (email/WhatsApp)
           </p>
         </div>
@@ -139,10 +139,10 @@ export default function NotificationsPage() {
                       <StatusIcon className="size-5" />
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">
+                      <p className="font-medium text-foreground">
                         {n.template?.subject_template ?? "Notifikasi"}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(n.created_at ?? "")}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -183,9 +183,9 @@ export default function NotificationsPage() {
                   <div className="mt-4 space-y-3">
                     {/* Message body */}
                     {n.template?.body_template && (
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-xs font-medium text-slate-700">Pesan:</p>
-                        <p className="mt-1 text-xs text-slate-600">
+                      <div className="rounded-xl bg-muted p-3">
+                        <p className="text-xs font-medium text-text-secondary">Pesan:</p>
+                        <p className="mt-1 text-xs text-text-secondary">
                           {n.template.body_template}
                         </p>
                       </div>
@@ -193,8 +193,8 @@ export default function NotificationsPage() {
 
                     {/* Delivery attempts */}
                     {deliveries.length > 0 && (
-                      <div className="rounded-xl border border-slate-200 p-3">
-                        <p className="text-xs font-medium text-slate-700">
+                      <div className="rounded-xl border border-border p-3">
+                        <p className="text-xs font-medium text-text-secondary">
                           Riwayat Pengiriman ({deliveries.length} attempt):
                         </p>
                         <div className="mt-2 space-y-2">
@@ -203,11 +203,11 @@ export default function NotificationsPage() {
                             return (
                               <div
                                 key={i}
-                                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs"
+                                className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-xs"
                               >
                                 <div className="flex items-center gap-2">
-                                  <ChannelIcon className="size-3.5 text-slate-500" />
-                                  <span className="font-medium text-slate-700">
+                                  <ChannelIcon className="size-3.5 text-muted-foreground" />
+                                  <span className="font-medium text-text-secondary">
                                     {d.channel ?? "unknown"}
                                   </span>
                                 </div>
@@ -218,7 +218,7 @@ export default function NotificationsPage() {
                                     {d.status}
                                   </Badge>
                                   {d.sent_at && (
-                                    <span className="text-slate-500">
+                                    <span className="text-muted-foreground">
                                       {formatDate(d.sent_at)}
                                     </span>
                                   )}
@@ -232,7 +232,7 @@ export default function NotificationsPage() {
 
                     {/* Related entity */}
                     {n.related_type && (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         Related: {n.related_type} #{n.related_id?.slice(0, 8)}
                       </p>
                     )}

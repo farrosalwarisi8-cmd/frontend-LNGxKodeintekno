@@ -20,8 +20,8 @@ import { UserRound, Building2, Phone, FileText, ShieldCheck, KeyRound } from "lu
 function PageTitle() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Profil Saya</h1>
-      <p className="text-sm text-slate-500">Informasi data diri dan employment</p>
+      <h1 className="text-2xl font-semibold text-foreground">Profil Saya</h1>
+      <p className="text-sm text-muted-foreground">Informasi data diri dan employment</p>
     </div>
   );
 }
@@ -141,18 +141,18 @@ export default function MyProfilePage() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <ShieldCheck className="size-4 text-slate-500" />
+          <ShieldCheck className="size-4 text-muted-foreground" />
           Keamanan Akun
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-slate-600">Two-Factor Authentication (TOTP):</span>
+          <span className="text-sm text-text-secondary">Two-Factor Authentication (TOTP):</span>
           <Badge variant={mfaStatus === "enabled" ? "success" : mfaStatus === "disabled" ? "default" : "warning"}>
             {mfaStatus === "enabled" ? "Aktif" : mfaStatus === "disabled" ? "Nonaktif" : "Belum dikonfigurasi"}
           </Badge>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted-foreground">
           Role tertentu (mis. SYSTEM_ADMIN, DOCTOR_OH) wajib MFA menurut kebijakan
           keamanan backend. Daftarkan akun ke Google/Microsoft Authenticator melalui
           alur di bawah.
@@ -173,17 +173,17 @@ export default function MyProfilePage() {
         )}
 
         {mfaSetup && (
-          <div className="space-y-3 rounded-xl border border-slate-200 p-3">
-            <p className="text-xs text-slate-500">
+          <div className="space-y-3 rounded-xl border border-border p-3">
+            <p className="text-xs text-muted-foreground">
               Akun: <span className="font-medium">{mfaSetup.account}</span>
             </p>
             <div>
-              <p className="text-xs font-medium text-slate-600">Secret key (base32)</p>
-              <code className="mt-1 block rounded-lg bg-slate-100 px-2 py-1.5 text-sm font-semibold tracking-wider break-all">
+              <p className="text-xs font-medium text-text-secondary">Secret key (base32)</p>
+              <code className="mt-1 block rounded-lg bg-muted px-2 py-1.5 text-sm font-semibold tracking-wider break-all">
                 {mfaSetup.secret}
               </code>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Atau buka URI otpauth:{" "}
               <a
                 href={mfaSetup.otpauthUri}
@@ -227,7 +227,7 @@ export default function MyProfilePage() {
                 </Button>
               </div>
             </form>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Environment demo/non-production mengizinkan kode OTP demo <strong>123456</strong>.
             </p>
           </div>
@@ -250,8 +250,8 @@ export default function MyProfilePage() {
       <div className="flex items-center gap-4">
         <Avatar name={user.name} size="lg" />
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">{user.name}</h2>
-          <p className="text-sm text-slate-500">@{user.username}</p>
+          <h2 className="text-xl font-semibold text-foreground">{user.name}</h2>
+          <p className="text-sm text-muted-foreground">@{user.username}</p>
           <div className="mt-1 flex items-center gap-2">
             <Badge variant="default">{ROLES[user.role]?.label ?? user.title}</Badge>
           </div>
@@ -317,8 +317,8 @@ export default function MyProfilePage() {
         <div className="flex items-center gap-4">
           <Avatar name={employee.fullName} size="lg" />
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">{employee.fullName}</h2>
-            <p className="text-sm text-slate-500">{employee.employeeId} · {employee.mrn}</p>
+            <h2 className="text-xl font-semibold text-foreground">{employee.fullName}</h2>
+            <p className="text-sm text-muted-foreground">{employee.employeeId} · {employee.mrn}</p>
             <div className="mt-1 flex items-center gap-2">
               <Badge variant="success">{employee.status}</Badge>
               <Badge variant="default">{employee.gender}</Badge>
@@ -331,30 +331,30 @@ export default function MyProfilePage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Building2 className="size-4 text-slate-500" />
+              <Building2 className="size-4 text-muted-foreground" />
               Employment
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="text-slate-500">Perusahaan:</span> {company?.name}</p>
-            <p><span className="text-slate-500">Departemen:</span> {dept?.name}</p>
-            <p><span className="text-slate-500">Jabatan:</span> {employee.jobTitle}</p>
-            <p><span className="text-slate-500">Lokasi:</span> {loc?.name}</p>
-            <p><span className="text-slate-500">Tanggal Bergabung:</span> {formatDate(employee.startDate)}</p>
+            <p><span className="text-muted-foreground">Perusahaan:</span> {company?.name}</p>
+            <p><span className="text-muted-foreground">Departemen:</span> {dept?.name}</p>
+            <p><span className="text-muted-foreground">Jabatan:</span> {employee.jobTitle}</p>
+            <p><span className="text-muted-foreground">Lokasi:</span> {loc?.name}</p>
+            <p><span className="text-muted-foreground">Tanggal Bergabung:</span> {formatDate(employee.startDate)}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Phone className="size-4 text-slate-500" />
+              <Phone className="size-4 text-muted-foreground" />
               Kontak
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <p><span className="text-slate-500">Email:</span> {employee.email}</p>
-            <p><span className="text-slate-500">Telepon:</span> {employee.phone}</p>
-            <p><span className="text-slate-500">Tanggal Lahir:</span> {formatDate(employee.dateOfBirth)}</p>
+            <p><span className="text-muted-foreground">Email:</span> {employee.email}</p>
+            <p><span className="text-muted-foreground">Telepon:</span> {employee.phone}</p>
+            <p><span className="text-muted-foreground">Tanggal Lahir:</span> {formatDate(employee.dateOfBirth)}</p>
           </CardContent>
         </Card>
       </div>
@@ -362,20 +362,20 @@ export default function MyProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="size-4 text-slate-500" />
+            <FileText className="size-4 text-muted-foreground" />
             Dokumen
           </CardTitle>
         </CardHeader>
         <CardContent>
           {employee.documents.length === 0 ? (
-            <p className="text-sm text-slate-500">Belum ada dokumen.</p>
+            <p className="text-sm text-muted-foreground">Belum ada dokumen.</p>
           ) : (
             <div className="space-y-2">
               {employee.documents.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
+                <div key={doc.id} className="flex items-center justify-between rounded-xl border border-border p-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{doc.name}</p>
-                    <p className="text-xs text-slate-500">{doc.type} · {formatDate(doc.uploadedAt)}</p>
+                    <p className="text-sm font-medium text-foreground">{doc.name}</p>
+                    <p className="text-xs text-muted-foreground">{doc.type} · {formatDate(doc.uploadedAt)}</p>
                   </div>
                   <Badge variant="success">Verified</Badge>
                 </div>

@@ -9,7 +9,6 @@ import { syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { MCU_STATUS, MCU_TYPES } from "@/lib/constants";
 import { McuReminderBadge } from "@/features/mcu/components/mcu-reminder";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -19,6 +18,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { Search, Plus, Activity, ChevronRight } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 
 export default function MCUPage() {
   const mcus = useStore((s) => s.mcus);
@@ -51,8 +51,8 @@ export default function MCUPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Medical Check-Up</h1>
-          <p className="text-sm text-slate-500">Kelola MCU pekerja dan kalkulasi klinis</p>
+          <h1 className="text-2xl font-semibold text-foreground">Medical Check-Up</h1>
+          <p className="text-sm text-muted-foreground">Kelola MCU pekerja dan kalkulasi klinis</p>
         </div>
         <Can action="mcu.create">
           <Link href="/mcu/new">
@@ -67,7 +67,7 @@ export default function MCUPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               label="Cari MCU"
               placeholder="Cari nomor MCU, nama pekerja..."
@@ -95,7 +95,7 @@ export default function MCUPage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} MCU ditemukan</p>
+      <p className="text-sm text-muted-foreground">{filtered.length} MCU ditemukan</p>
 
       {error && <ErrorState title="Gagal memuat data MCU" message={error} onRetry={refetch} />}
 
@@ -115,48 +115,46 @@ export default function MCUPage() {
         />
       ) : !loading && !error ? (
         <>
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">MCU</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Pekerja</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Tipe</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Tanggal</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Keputusan</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">MCU</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Pekerja</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Tipe</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Tanggal</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Keputusan</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {filtered.map((mcu) => {
                   const emp = employees.find((e) => e.id === mcu.employeeId);
                   const statusMeta = MCU_STATUS[mcu.status];
                   return (
-                    <tr key={mcu.id} className="transition-colors hover:bg-slate-50">
+                    <tr key={mcu.id} className="transition-colors hover:bg-muted">
                       <td className="px-4 py-3">
-                        <div className="font-mono text-sm font-medium text-slate-900">{mcu.mcuNumber}</div>
+                        <div className="font-mono text-sm font-medium text-foreground">{mcu.mcuNumber}</div>
                         <McuReminderBadge validUntil={mcu.validUntil} className="mt-1" />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar name={emp?.fullName ?? "?"} size="sm" />
                           <div>
-                            <div className="text-sm font-medium text-slate-900">{emp?.fullName}</div>
-                            <div className="text-xs text-slate-500">{emp?.employeeId}</div>
+                            <div className="text-sm font-medium text-foreground">{emp?.fullName}</div>
+                            <div className="text-xs text-muted-foreground">{emp?.employeeId}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{mcu.type}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{formatDate(mcu.examDate)}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{mcu.type}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(mcu.examDate)}</td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className={statusMeta?.color}>
-                          {statusMeta?.label}
-                        </Badge>
+                        <StatusBadge meta={statusMeta} />
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{mcu.decision ?? "—"}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{mcu.decision ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <ChevronRight className="size-4 text-slate-500" />
+                        <ChevronRight className="size-4 text-muted-foreground" />
                       </td>
                     </tr>
                   );
@@ -174,21 +172,19 @@ export default function MCUPage() {
                   <div className="flex items-center gap-3">
                     <Avatar name={emp?.fullName ?? "?"} />
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-slate-900">{emp?.fullName}</div>
-                      <div className="text-xs text-slate-500">
+                      <div className="font-medium text-foreground">{emp?.fullName}</div>
+                      <div className="text-xs text-muted-foreground">
                         {mcu.mcuNumber} · {mcu.type}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <Badge variant="outline" className={statusMeta?.color}>
-                          {statusMeta?.label}
-                        </Badge>
+                        <StatusBadge meta={statusMeta} />
                         <McuReminderBadge validUntil={mcu.validUntil} />
                         {mcu.decision && (
-                          <span className="text-xs text-slate-500">{mcu.decision}</span>
+                          <span className="text-xs text-muted-foreground">{mcu.decision}</span>
                         )}
                       </div>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-slate-500" />
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </div>
                 </Card>
               );

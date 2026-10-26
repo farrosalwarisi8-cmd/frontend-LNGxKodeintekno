@@ -136,13 +136,13 @@ export default function LoginPageContent() {
     const mfaUser =
       users.find((u) => u.id === mfaUserId) ?? users.find((u) => u.username === username);
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-muted p-6">
         <div className="mb-8 flex flex-col items-center gap-2">
           <div className="flex size-12 items-center justify-center rounded-xl bg-primary-600">
-            <KeyRound className="size-6 text-white" />
+            <KeyRound className="size-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">Verifikasi MFA</h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {mfaSetupRequired
               ? "Akun Anda wajib mengaktifkan Two-Factor Authentication (TOTP)."
               : "Masukkan kode 6 digit dari aplikasi authenticator Anda"}
@@ -158,7 +158,7 @@ export default function LoginPageContent() {
           </CardHeader>
           <CardContent className="space-y-4">
             {mfaSetupRequired && (
-              <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+              <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-600">
                 Kebijakan keamanan mewajibkan MFA untuk peran Anda. Pada environment
                 demo/non-production, backend mengizinkan kode OTP demo <strong>123456</strong>{" "}
                 untuk menyelesaikan login. Pada production, daftarkan akun ke aplikasi
@@ -203,13 +203,13 @@ export default function LoginPageContent() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-muted p-6">
       <div className="mb-8 flex flex-col items-center gap-2">
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary-600">
-          <Activity className="size-6 text-white" />
+          <Activity className="size-6 text-primary-foreground" />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Kodein Klinik</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Occupational Health &amp; Clinic Management
         </p>
         <Badge variant="outline" data-testid="environment-label">
@@ -270,11 +270,11 @@ export default function LoginPageContent() {
                     key={acc.username}
                     onClick={() => doLogin(acc.username, DEMO_PASSWORD)}
                     disabled={isLocked || isSubmitting}
-                    className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
+                    className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-sm transition-colors hover:bg-muted disabled:opacity-50"
                   >
                     <div className="flex flex-col">
                       <span className="font-medium">{acc.label}</span>
-                      <span className="text-xs text-slate-500">@{acc.username}</span>
+                      <span className="text-xs text-muted-foreground">@{acc.username}</span>
                     </div>
                     <Badge variant="outline" className={roleMeta.color}>
                       {roleMeta.label}
@@ -287,7 +287,7 @@ export default function LoginPageContent() {
         )}
       </div>
 
-      <p className="mt-6 text-xs text-slate-500">
+      <p className="mt-6 text-xs text-muted-foreground">
         Seluruh data pada demo ini bersifat fiktif dan tidak menggunakan data pasien sebenarnya.
       </p>
     </main>

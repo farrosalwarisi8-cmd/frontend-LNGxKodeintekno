@@ -214,8 +214,8 @@ export default function DispensePage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Dispensing Obat</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Dispensing Obat</h1>
+        <p className="text-sm text-muted-foreground">
           FEFO dispensing dari resep aktif backend (GET /pharmacy/prescriptions/pending)
         </p>
       </div>
@@ -224,8 +224,8 @@ export default function DispensePage() {
       {ledgerEntries.length > 0 && (
         <Card className="p-4">
           <div className="mb-3 flex items-center gap-2">
-            <ScrollText className="size-4 text-slate-500" />
-            <h2 className="text-sm font-semibold text-slate-900">
+            <ScrollText className="size-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">
               Stock Ledger — Dispensing
             </h2>
           </div>
@@ -233,25 +233,25 @@ export default function DispensePage() {
             {ledgerEntries.map((entry, i) => (
               <div
                 key={`${entry.recordedAt}-${i}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-sm"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-foreground">
                     {entry.genericName}{" "}
-                    <span className="text-xs font-normal text-slate-500">
+                    <span className="text-xs font-normal text-muted-foreground">
                       ({entry.medicationCode}) · {entry.siteName}
                     </span>
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {formatDate(entry.recordedAt)} · movement: {entry.movement}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-slate-500">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {entry.before}
                   </span>
-                  <span className="text-slate-500">→</span>
-                  <span className="font-mono text-xs font-semibold text-slate-900">
+                  <span className="text-muted-foreground">→</span>
+                  <span className="font-mono text-xs font-semibold text-foreground">
                     {entry.after}
                   </span>
                   <Badge variant="danger">
@@ -267,7 +267,7 @@ export default function DispensePage() {
 
       <Card className="p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Cari resep / pasien..."
             value={search}
@@ -277,7 +277,7 @@ export default function DispensePage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} resep menunggu dispensing</p>
+      <p className="text-sm text-muted-foreground">{filtered.length} resep menunggu dispensing</p>
 
       {error && <ErrorState title="Gagal memuat resep dari backend" message={error} onRetry={refetch} />}
 
@@ -291,7 +291,7 @@ export default function DispensePage() {
       {!loading && !error && filtered.length === 0 ? (
         <Card className="p-8 text-center">
           <CheckCircle className="mx-auto mb-3 size-8 text-success-600" />
-          <p className="text-sm text-slate-500">Tidak ada resep yang menunggu dispensing.</p>
+          <p className="text-sm text-muted-foreground">Tidak ada resep yang menunggu dispensing.</p>
         </Card>
       ) : !loading && !error ? (
         <div className="space-y-3">
@@ -303,12 +303,12 @@ export default function DispensePage() {
                     <Pill className="size-5" />
                   </div>
                   <div>
-                    <p className="font-medium text-slate-900">{rx.patientName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-foreground">{rx.patientName}</p>
+                    <p className="text-xs text-muted-foreground">
                       {rx.visitNumber} · {rx.mrn || "—"} ·{" "}
                       {rx.prescribedAt ? formatDate(rx.prescribedAt) : ""}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {rx.items.length} item obat
                     </p>
                   </div>
@@ -385,13 +385,13 @@ export default function DispensePage() {
             {selectedRx?.items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"
+                className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900">
+                  <p className="text-sm font-medium text-foreground">
                     {item.medication?.generic_name ?? item.medication_id}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {item.medication?.strength ?? ""} {item.dosage ?? ""}
                   </p>
                   {(() => {
@@ -430,7 +430,7 @@ export default function DispensePage() {
             ))}
           </div>
 
-          <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+          <div className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
             Batch dipilih otomatis oleh engine FEFO backend (tanggal kadaluarsa terdekat).
           </div>
 

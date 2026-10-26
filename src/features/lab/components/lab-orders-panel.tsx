@@ -77,7 +77,7 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="relative flex-1">
             <Search
-              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
+              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
@@ -140,7 +140,7 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500" role="status">
+      <p className="text-sm text-muted-foreground" role="status">
         {total} order ditemukan
         {state.offline ? " · Anda offline — data terakhir yang tampil" : ""}
       </p>
@@ -175,20 +175,20 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
 
       {!state.loading && !state.error && total > 0 && (
         <>
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">
             <table className="w-full">
               <caption className="sr-only">Daftar order laboratorium</caption>
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Order</th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Waktu order</th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Jenis tes</th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Konteks</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Order</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Waktu order</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Jenis tes</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Konteks</th>
                   <th scope="col" className="px-4 py-3"><span className="sr-only">Detail</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {pageItems.map((order) => {
                   const status = labOrderStatusInfo(order.status);
                   const testNames = (order.order_items ?? [])
@@ -198,25 +198,25 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
                     verifiedItemIds.has(i.id)
                   ).length;
                   return (
-                    <tr key={order.id} className="transition-colors hover:bg-slate-50">
-                      <td className="px-4 py-3 font-mono text-sm font-medium text-slate-900">
+                    <tr key={order.id} className="transition-colors hover:bg-muted">
+                      <td className="px-4 py-3 font-mono text-sm font-medium text-foreground">
                         {order.id}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm text-text-secondary">
                         {formatDateTime(order.ordered_at)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm text-text-secondary">
                         <div className="max-w-56 truncate" title={testNames}>
                           {testNames || "—"}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-muted-foreground">
                           {(order.order_items ?? []).map((i) => labItemStatusInfo(i.status).label).join(" · ")}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <LabStatusBadge info={status} />
                         {doneCount > 0 && (
-                          <div className="mt-1 text-xs text-slate-500">
+                          <div className="mt-1 text-xs text-muted-foreground">
                             {doneCount}/{order.order_items?.length} hasil terverifikasi
                           </div>
                         )}
@@ -254,13 +254,13 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
                 <Card key={order.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate font-mono text-sm font-medium text-slate-900">
+                      <div className="truncate font-mono text-sm font-medium text-foreground">
                         {order.id}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-muted-foreground">
                         {formatDateTime(order.ordered_at)}
                       </div>
-                      <div className="mt-1 truncate text-sm text-slate-600">{testNames || "—"}</div>
+                      <div className="mt-1 truncate text-sm text-text-secondary">{testNames || "—"}</div>
                       <div className="mt-2">
                         <LabStatusBadge info={labOrderStatusInfo(order.status)} />
                       </div>
@@ -274,7 +274,7 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
                       <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
                     </Link>
                   </div>
-                  <div className="mt-3 border-t border-slate-100 pt-2 text-sm">
+                  <div className="mt-3 border-t border-border pt-2 text-sm">
                     <ContextLinks
                       role={user?.role ?? null}
                       encounterId={order.encounter_id}
@@ -295,7 +295,7 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
             >
               Sebelumnya
             </Button>
-            <span className="text-sm text-slate-600" role="status">
+            <span className="text-sm text-text-secondary" role="status">
               Halaman {page} dari {totalPages}
             </span>
             <Button
@@ -311,7 +311,7 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
       )}
 
       {!state.loading && !state.error && total > 0 && (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Inbox className="size-4" aria-hidden="true" />
           <span>
             Sumber: GET /diagnostic/lab-orders (tanpa parameter query — filter diterapkan di
