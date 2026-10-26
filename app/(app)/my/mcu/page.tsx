@@ -13,12 +13,13 @@ import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import { Activity, HeartPulse, Calendar } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 
 function PageTitle() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">MCU Saya</h1>
-      <p className="text-sm text-slate-500">Riwayat Medical Check-Up</p>
+      <h1 className="text-2xl font-semibold text-foreground">MCU Saya</h1>
+      <p className="text-sm text-muted-foreground">Riwayat Medical Check-Up</p>
     </div>
   );
 }
@@ -95,7 +96,7 @@ export default function MyMCUPage() {
                   <Badge variant={whs.status === "Fit to Work" ? "success" : whs.status === "Fit with Restriction" ? "warning" : "danger"}>
                     {whs.status}
                   </Badge>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     Berlaku s.d. {formatDate(whs.validUntil)}
                   </span>
                 </div>
@@ -103,7 +104,7 @@ export default function MyMCUPage() {
                   <p className="text-sm text-warning-600">Restriction: {whs.restriction}</p>
                 )}
                 {whs.recommendation && (
-                  <p className="text-sm text-slate-600">Rekomendasi: {whs.recommendation}</p>
+                  <p className="text-sm text-text-secondary">Rekomendasi: {whs.recommendation}</p>
                 )}
               </div>
             ))}
@@ -126,20 +127,18 @@ export default function MyMCUPage() {
               <Card key={mcu.id} className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-medium text-slate-900">{mcu.mcuNumber}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="font-medium text-foreground">{mcu.mcuNumber}</p>
+                    <p className="text-xs text-muted-foreground">
                       {mcu.type} · {formatDate(mcu.examDate)} · {mcu.facility}
                     </p>
                     <div className="mt-1 flex items-center gap-2">
-                      <Badge variant="outline" className={statusMeta?.color}>
-                        {statusMeta?.label}
-                      </Badge>
+                      <StatusBadge meta={statusMeta} />
                       {mcu.decision && (
-                        <span className="text-xs text-slate-500">{mcu.decision}</span>
+                        <span className="text-xs text-muted-foreground">{mcu.decision}</span>
                       )}
                     </div>
                   </div>
-                  <div className="text-right text-xs text-slate-500">
+                  <div className="text-right text-xs text-muted-foreground">
                     {mcu.validFrom && (
                       <p>Berlaku: {formatDate(mcu.validFrom)} — {formatDate(mcu.validUntil)}</p>
                     )}

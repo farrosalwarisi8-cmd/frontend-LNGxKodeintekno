@@ -332,8 +332,8 @@ export default function MasterDataPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Master Data</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Master Data</h1>
+        <p className="text-sm text-muted-foreground">
           Perusahaan, departemen, dan lokasi bersumber dari API backend sesuai permission Anda
         </p>
       </div>
@@ -383,13 +383,13 @@ export default function MasterDataPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors sm:px-4 ${
                 activeTab === tab.id
-                  ? "bg-primary-600 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-50"
+                  ? "bg-primary-600 text-primary-foreground"
+                  : "bg-card text-text-secondary hover:bg-muted"
               }`}
             >
               <Icon className="size-4" />
               {tab.label}
-              <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === tab.id ? "bg-primary-700 text-white" : "bg-slate-100 text-slate-600"}`}>
+              <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === tab.id ? "bg-primary-700 text-primary-foreground" : "bg-muted text-text-secondary"}`}>
                 {tab.count}
               </span>
             </button>
@@ -405,10 +405,10 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {diagnoses.map((d) => (
-                <div key={d.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
+                <div key={d.id} className="flex items-center justify-between rounded-xl border border-border p-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{d.code} — {d.description}</p>
-                    <p className="text-xs text-slate-500">{d.category}</p>
+                    <p className="text-sm font-medium text-foreground">{d.code} — {d.description}</p>
+                    <p className="text-xs text-muted-foreground">{d.category}</p>
                   </div>
                   <Badge variant="info">{d.category || "ICD-10"}</Badge>
                 </div>
@@ -426,10 +426,10 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {medicines.map((m) => (
-                <div key={m.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
+                <div key={m.id} className="flex items-center justify-between rounded-xl border border-border p-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{m.name}</p>
-                    <p className="text-xs text-slate-500">{m.code} · {m.category} · Min: {m.minStock}</p>
+                    <p className="text-sm font-medium text-foreground">{m.name}</p>
+                    <p className="text-xs text-muted-foreground">{m.code} · {m.category} · Min: {m.minStock}</p>
                   </div>
                   <Badge variant="success">{m.unit}</Badge>
                 </div>
@@ -466,12 +466,12 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {organizations.map((c) => (
-                <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+                <div key={c.id} className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                   data-testid="master-data-row"
                   data-row-code={c.code}>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{c.name}</p>
-                    <p className="text-xs text-slate-500">{c.code}</p>
+                    <p className="text-sm font-medium text-foreground">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.code}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {renderStatus(c.status === "ACTIVE")}
@@ -500,12 +500,12 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {departments.map((d) => (
-                <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+                <div key={d.id} className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                   data-testid="master-data-row"
                   data-row-code={d.code}>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{d.name}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-medium text-foreground">{d.name}</p>
+                    <p className="text-xs text-muted-foreground">
                       {d.code} · {d.organization?.name ?? "-"}
                     </p>
                   </div>
@@ -536,12 +536,12 @@ export default function MasterDataPage() {
           <CardContent>
             <div className="space-y-2">
               {sites.map((l) => (
-                <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+                <div key={l.id} className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                   data-testid="master-data-row"
                   data-row-code={l.code}>
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{l.name}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-medium text-foreground">{l.name}</p>
+                    <p className="text-xs text-muted-foreground">
                       {l.code} · {l.org_unit?.organization?.name ?? "-"}
                     </p>
                   </div>

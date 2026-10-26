@@ -161,10 +161,10 @@ export default function SignaturesPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             Tanda Tangan Elektronik
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Tracking semua signature request PSrE/PTTE
           </p>
         </div>
@@ -201,8 +201,8 @@ export default function SignaturesPage() {
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{pendingCount}</p>
-              <p className="text-xs text-slate-500">Pending / Processing</p>
+              <p className="text-xl font-semibold text-foreground">{pendingCount}</p>
+              <p className="text-xs text-muted-foreground">Pending / Processing</p>
             </div>
           </CardContent>
         </Card>
@@ -212,8 +212,8 @@ export default function SignaturesPage() {
               <CheckCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{signedCount}</p>
-              <p className="text-xs text-slate-500">Signed</p>
+              <p className="text-xl font-semibold text-foreground">{signedCount}</p>
+              <p className="text-xs text-muted-foreground">Signed</p>
             </div>
           </CardContent>
         </Card>
@@ -223,8 +223,8 @@ export default function SignaturesPage() {
               <XCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{failedCount}</p>
-              <p className="text-xs text-slate-500">Failed / Expired</p>
+              <p className="text-xl font-semibold text-foreground">{failedCount}</p>
+              <p className="text-xs text-muted-foreground">Failed / Expired</p>
             </div>
           </CardContent>
         </Card>
@@ -233,7 +233,7 @@ export default function SignaturesPage() {
       {/* Search & Filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Cari ID dokumen / provider..."
             value={search}
@@ -303,12 +303,12 @@ export default function SignaturesPage() {
                       })()}
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">
+                      <p className="font-medium text-foreground">
                         {SIGNATURE_TYPE_LABEL[sig.signature_type ?? ""] ??
                           sig.signature_type ??
                           "Tanda Tangan"}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         ID: {sig.id.slice(0, 8)} · Dok: {sig.document_id?.slice(0, 8) ?? "—"}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -324,7 +324,7 @@ export default function SignaturesPage() {
                           </span>
                         )}
                         {sig.retry_count && sig.retry_count > 0 && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-muted-foreground">
                             Retry: {sig.retry_count}x
                           </span>
                         )}
@@ -360,36 +360,36 @@ export default function SignaturesPage() {
                 {/* Expanded detail */}
                 {isExpanded && (
                   <div className="mt-4 space-y-3">
-                    <div className="rounded-xl bg-slate-50 p-3">
-                      <p className="text-xs font-medium text-slate-700">Detail Signature:</p>
+                    <div className="rounded-xl bg-muted p-3">
+                      <p className="text-xs font-medium text-text-secondary">Detail Signature:</p>
                       <div className="mt-1 space-y-1">
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Signature ID:</span>{" "}
                           <span className="font-mono">{sig.id}</span>
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Document ID:</span>{" "}
                           <span className="font-mono">{sig.document_id ?? "—"}</span>
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Certificate Serial:</span>{" "}
                           <span className="font-mono">{sig.certificate_serial ?? "—"}</span>
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Signed Hash:</span>{" "}
                           <span className="font-mono">
                             {sig.signed_hash ? `${sig.signed_hash.slice(0, 16)}…` : "—"}
                           </span>
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Requested:</span>{" "}
                           {formatDate(sig.requested_at ?? sig.created_at ?? "")}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Expires:</span>{" "}
                           {sig.expires_at ? formatDate(sig.expires_at) : "—"}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-medium">Updated:</span>{" "}
                           {formatDate(sig.updated_at ?? "")}
                         </p>

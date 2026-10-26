@@ -116,8 +116,8 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <div className="flex items-center gap-4">
             <Avatar name={person.fullName} size="lg" />
             <div>
-              <h1 className="text-xl font-semibold text-slate-900">{person.fullName}</h1>
-              <p className="text-sm text-slate-500">
+              <h1 className="text-xl font-semibold text-foreground">{person.fullName}</h1>
+              <p className="text-sm text-muted-foreground">
                 {person.mrn} · {person.employeeNo} · {person.siteName}
               </p>
               <div className="mt-1 flex items-center gap-2">
@@ -150,7 +150,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
         )}
       </Card>
 
-      <div className="border-b border-slate-200">
+      <div className="border-b border-border">
         <nav className="flex gap-1 overflow-x-auto" aria-label="Tabs">
           {tabs.map((tab) => (
             <button
@@ -159,7 +159,7 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
               className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? "border-primary-600 text-primary-600"
-                  : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-text-secondary"
               }`}
             >
               {tab.label}
@@ -173,38 +173,38 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="size-4 text-slate-500" />
+                <Building2 className="size-4 text-muted-foreground" />
                 Employment
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p><span className="text-slate-500">Organisasi:</span> {person.organizationName}</p>
-              <p><span className="text-slate-500">Unit:</span> {person.orgUnitName}</p>
-              <p><span className="text-slate-500">Site:</span> {person.siteName}</p>
-              <p><span className="text-slate-500">Job Task:</span> {person.jobTaskName ?? "—"}</p>
-              <p><span className="text-slate-500">Join Date:</span> {formatDate(person.joinDate)}</p>
+              <p><span className="text-muted-foreground">Organisasi:</span> {person.organizationName}</p>
+              <p><span className="text-muted-foreground">Unit:</span> {person.orgUnitName}</p>
+              <p><span className="text-muted-foreground">Site:</span> {person.siteName}</p>
+              <p><span className="text-muted-foreground">Job Task:</span> {person.jobTaskName ?? "—"}</p>
+              <p><span className="text-muted-foreground">Join Date:</span> {formatDate(person.joinDate)}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Phone className="size-4 text-slate-500" />
+                <Phone className="size-4 text-muted-foreground" />
                 Kontak
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p><span className="text-slate-500">Email:</span> {maskEmail(person.email)}</p>
-              <p><span className="text-slate-500">Telepon:</span> {maskPhone(person.phone)}</p>
-              <p><span className="text-slate-500">Kontak Darurat:</span> {person.emergencyContact.name}</p>
-              <p><span className="text-slate-500">Hubungan:</span> {person.emergencyContact.relationship}</p>
+              <p><span className="text-muted-foreground">Email:</span> {maskEmail(person.email)}</p>
+              <p><span className="text-muted-foreground">Telepon:</span> {maskPhone(person.phone)}</p>
+              <p><span className="text-muted-foreground">Kontak Darurat:</span> {person.emergencyContact.name}</p>
+              <p><span className="text-muted-foreground">Hubungan:</span> {person.emergencyContact.relationship}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldCheck className="size-4 text-slate-500" />
+                <ShieldCheck className="size-4 text-muted-foreground" />
                 Consent Status
               </CardTitle>
             </CardHeader>
@@ -215,21 +215,21 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
                     <Badge variant={consentDispatch.status === "FAILED" ? "danger" : "warning"}>
                       {consentDispatch.status === "FAILED" ? "Pengiriman gagal" : "Terkirim · menunggu keputusan"}
                     </Badge>
-                    <span className="text-sm text-slate-500">status pengiriman: {consentDispatch.status}</span>
+                    <span className="text-sm text-muted-foreground">status pengiriman: {consentDispatch.status}</span>
                   </div>
                   {consentDispatch.at && (
-                    <p className="text-xs text-slate-500">Dikirim: {formatDateTime(consentDispatch.at)}</p>
+                    <p className="text-xs text-muted-foreground">Dikirim: {formatDateTime(consentDispatch.at)}</p>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   {consentLoaded
                     ? "Belum ada permintaan consent yang tercatat di backend."
                     : "Memuat status consent..."}
                 </p>
               )}
               {/* Kejujuran data: keputusan consent tidak diekspos API. */}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Keputusan consent (pending/granted/expired) belum tersedia dari API — endpoint baca consent per
                 pekerja belum ada.
               </p>
@@ -239,12 +239,12 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="size-4 text-slate-500" />
+                <FileText className="size-4 text-muted-foreground" />
                 Dokumen
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-600">{person.documents.length} dokumen terunggah</p>
+              <p className="text-sm text-text-secondary">{person.documents.length} dokumen terunggah</p>
             </CardContent>
           </Card>
         </div>
@@ -258,38 +258,38 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           <CardContent>
             <dl className="grid gap-4 sm:grid-cols-2">
               <div>
-                <dt className="text-sm font-medium text-slate-500">Nama Lengkap</dt>
-                <dd className="mt-1 text-sm text-slate-900">{person.fullName}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">Nama Lengkap</dt>
+                <dd className="mt-1 text-sm text-foreground">{person.fullName}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">MRN</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-900">{person.mrn}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">MRN</dt>
+                <dd className="mt-1 font-mono text-sm text-foreground">{person.mrn}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Employee ID</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-900">{person.employeeNo}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">Employee ID</dt>
+                <dd className="mt-1 font-mono text-sm text-foreground">{person.employeeNo}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Identifier</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-900">
+                <dt className="text-sm font-medium text-muted-foreground">Identifier</dt>
+                <dd className="mt-1 font-mono text-sm text-foreground">
                   {maskIdentifier(person.identifierValue, person.identifierType)}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Tanggal Lahir</dt>
-                <dd className="mt-1 text-sm text-slate-900">{formatDate(person.birthDate)}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">Tanggal Lahir</dt>
+                <dd className="mt-1 text-sm text-foreground">{formatDate(person.birthDate)}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Jenis Kelamin</dt>
-                <dd className="mt-1 text-sm text-slate-900">{person.sex === "MALE" ? "Laki-laki" : "Perempuan"}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">Jenis Kelamin</dt>
+                <dd className="mt-1 text-sm text-foreground">{person.sex === "MALE" ? "Laki-laki" : "Perempuan"}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Status Employment</dt>
+                <dt className="text-sm font-medium text-muted-foreground">Status Employment</dt>
                 <dd className="mt-1"><EmploymentStatusBadge status={person.employmentStatus} /></dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Join Date</dt>
-                <dd className="mt-1 text-sm text-slate-900">{formatDate(person.joinDate)}</dd>
+                <dt className="text-sm font-medium text-muted-foreground">Join Date</dt>
+                <dd className="mt-1 text-sm text-foreground">{formatDate(person.joinDate)}</dd>
               </div>
             </dl>
           </CardContent>
@@ -307,36 +307,36 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
                 <CardContent>
                   <dl className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <dt className="text-sm font-medium text-slate-500">Tipe</dt>
-                      <dd className="mt-1 text-sm text-slate-900">{person.consent.type}</dd>
+                      <dt className="text-sm font-medium text-muted-foreground">Tipe</dt>
+                      <dd className="mt-1 text-sm text-foreground">{person.consent.type}</dd>
                     </div>
                     <div>
-                      <dt className="text-sm font-medium text-slate-500">Versi</dt>
-                      <dd className="mt-1 text-sm text-slate-900">{person.consent.version}</dd>
+                      <dt className="text-sm font-medium text-muted-foreground">Versi</dt>
+                      <dd className="mt-1 text-sm text-foreground">{person.consent.version}</dd>
                     </div>
                     <div>
-                      <dt className="text-sm font-medium text-slate-500">Status</dt>
+                      <dt className="text-sm font-medium text-muted-foreground">Status</dt>
                       <dd className="mt-1"><ConsentStatusBadge status={person.consent.status} /></dd>
                     </div>
                     <div>
-                      <dt className="text-sm font-medium text-slate-500">Dibuat</dt>
-                      <dd className="mt-1 text-sm text-slate-900">{formatDateTime(person.consent.createdAt)}</dd>
+                      <dt className="text-sm font-medium text-muted-foreground">Dibuat</dt>
+                      <dd className="mt-1 text-sm text-foreground">{formatDateTime(person.consent.createdAt)}</dd>
                     </div>
                     {person.consent.sentAt && (
                       <div>
-                        <dt className="text-sm font-medium text-slate-500">Dikirim</dt>
-                        <dd className="mt-1 text-sm text-slate-900">{formatDateTime(person.consent.sentAt)}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Dikirim</dt>
+                        <dd className="mt-1 text-sm text-foreground">{formatDateTime(person.consent.sentAt)}</dd>
                       </div>
                     )}
                     {person.consent.decidedAt && (
                       <div>
-                        <dt className="text-sm font-medium text-slate-500">Diputuskan</dt>
-                        <dd className="mt-1 text-sm text-slate-900">{formatDateTime(person.consent.decidedAt)}</dd>
+                        <dt className="text-sm font-medium text-muted-foreground">Diputuskan</dt>
+                        <dd className="mt-1 text-sm text-foreground">{formatDateTime(person.consent.decidedAt)}</dd>
                       </div>
                     )}
                     <div>
-                      <dt className="text-sm font-medium text-slate-500">Kedaluwarsa</dt>
-                      <dd className="mt-1 text-sm text-slate-900">{formatDateTime(person.consent.expiresAt)}</dd>
+                      <dt className="text-sm font-medium text-muted-foreground">Kedaluwarsa</dt>
+                      <dd className="mt-1 text-sm text-foreground">{formatDateTime(person.consent.expiresAt)}</dd>
                     </div>
                   </dl>
                 </CardContent>
@@ -353,13 +353,13 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
             </>
           ) : (
             <Card className="p-8 text-center">
-              <ShieldCheck className="mx-auto mb-3 size-8 text-slate-300" />
-              <p className="text-sm text-slate-700">
+              <ShieldCheck className="mx-auto mb-3 size-8 text-muted-foreground" />
+              <p className="text-sm text-text-secondary">
                 {consentDispatch
                   ? `Permintaan consent sudah dikirim (status pengiriman backend: ${consentDispatch.status}).`
                   : "Belum ada permintaan consent yang tercatat di backend."}
               </p>
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Rincian keputusan consent belum dapat ditampilkan: API hanya menyediakan endpoint kirim
                 (POST /consents/send) dan verifikasi publik, tanpa endpoint baca per pekerja.
               </p>
@@ -388,15 +388,15 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           </CardHeader>
           <CardContent>
             {person.documents.length === 0 ? (
-              <p className="text-sm text-slate-500">Belum ada dokumen.</p>
+              <p className="text-sm text-muted-foreground">Belum ada dokumen.</p>
             ) : (
               <div className="space-y-2">
                 {person.documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-                    <FileText className="size-5 shrink-0 text-slate-500" />
+                  <div key={doc.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                    <FileText className="size-5 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-700">{doc.name}</p>
-                      <p className="text-xs text-slate-500">{doc.type} · {(doc.size / 1024).toFixed(1)} KB</p>
+                      <p className="truncate text-sm font-medium text-text-secondary">{doc.name}</p>
+                      <p className="text-xs text-muted-foreground">{doc.type} · {(doc.size / 1024).toFixed(1)} KB</p>
                     </div>
                     <Badge variant={doc.tamperCheck === "PASSED" ? "success" : "warning"}>
                       {doc.tamperCheck}
@@ -416,19 +416,19 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+              <div className="flex items-center gap-3 rounded-xl border border-border p-3">
                 <CheckCircle2 className="size-5 text-success-600" />
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Pekerja didaftarkan</p>
-                  <p className="text-xs text-slate-500">{formatDateTime(person.createdAt)}</p>
+                  <p className="text-sm font-medium text-foreground">Pekerja didaftarkan</p>
+                  <p className="text-xs text-muted-foreground">{formatDateTime(person.createdAt)}</p>
                 </div>
               </div>
               {person.consent && (
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <div className="flex items-center gap-3 rounded-xl border border-border p-3">
                   <ShieldCheck className="size-5 text-primary-600" />
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Consent dibuat</p>
-                    <p className="text-xs text-slate-500">{formatDateTime(person.consent.createdAt)}</p>
+                    <p className="text-sm font-medium text-foreground">Consent dibuat</p>
+                    <p className="text-xs text-muted-foreground">{formatDateTime(person.consent.createdAt)}</p>
                   </div>
                 </div>
               )}

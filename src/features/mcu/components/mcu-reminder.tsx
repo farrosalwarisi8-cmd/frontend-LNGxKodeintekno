@@ -94,8 +94,8 @@ export function McuReminderTimeline({ validUntil, now, className }: McuReminderT
                 entry.current
                   ? "border-primary-300 bg-primary-50 text-primary-700"
                   : entry.reached
-                    ? "border-slate-200 bg-slate-50 text-slate-600"
-                    : "border-dashed border-slate-200 bg-white text-slate-400"
+                    ? "border-border bg-muted text-text-secondary"
+                    : "border-dashed border-border bg-card text-muted-foreground"
               )}
               title={entry.description}
               data-testid={`reminder-stage-${entry.stage}`}

@@ -51,7 +51,7 @@ export default function VerifyPage() {
   const verified = result?.isValid === true;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-muted p-6">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -139,7 +139,7 @@ export default function VerifyPage() {
               <div className="flex items-center justify-center pt-2">
                 <Badge
                   variant="outline"
-                  className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                  className="bg-success-100 text-success-600 dark:bg-success-600 dark:text-success-foreground"
                 >
                   {result.status}
                 </Badge>

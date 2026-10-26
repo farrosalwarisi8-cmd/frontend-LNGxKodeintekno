@@ -233,8 +233,8 @@ export default function LabRadiologyPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Lab & Radiologi</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Lab & Radiologi</h1>
+        <p className="text-sm text-muted-foreground">
           Kelola order dan hasil pemeriksaan laboratorium serta radiologi
         </p>
       </div>
@@ -250,7 +250,7 @@ export default function LabRadiologyPage() {
         <TabsContent value="lab" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Cari order atau tes..."
                 value={search}
@@ -285,14 +285,14 @@ export default function LabRadiologyPage() {
                   <Card key={order.id} className="p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="space-y-1">
-                        <p className="font-medium text-slate-900">
+                        <p className="font-medium text-foreground">
                           Order #{order.id.slice(0, 8)}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           {formatDate(order.ordered_at)} · {order.status}
                         </p>
                         {order.order_items?.map((item) => (
-                          <div key={item.id} className="flex items-center gap-2 text-xs text-slate-600">
+                          <div key={item.id} className="flex items-center gap-2 text-xs text-text-secondary">
                             <FileText className="size-3.5" />
                             <span>{item.test_type?.name ?? item.lab_test_type_id}</span>
                             <Badge variant={STATUS_VARIANT[item.status] ?? "default"}>
@@ -302,11 +302,11 @@ export default function LabRadiologyPage() {
                         ))}
                         {result && (
                           <div className="mt-2 space-y-1">
-                            <p className="text-xs font-medium text-slate-700">Hasil:</p>
+                            <p className="text-xs font-medium text-text-secondary">Hasil:</p>
                             {result.values?.map((v) => (
                               <p
                                 key={v.id}
-                                className={`text-xs ${v.abnormal_flag ? "font-medium text-danger-600" : "text-slate-600"}`}
+                                className={`text-xs ${v.abnormal_flag ? "font-medium text-danger-600" : "text-text-secondary"}`}
                               >
                                 {v.parameter_name}: {v.numeric_value ?? v.text_value}{" "}
                                 {v.unit ?? ""}
@@ -368,7 +368,7 @@ export default function LabRadiologyPage() {
         <TabsContent value="rad" className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Cari order radiologi..."
                 value={search}
@@ -407,18 +407,18 @@ export default function LabRadiologyPage() {
                   <Card key={order.id} className="p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="space-y-1">
-                        <p className="font-medium text-slate-900">
+                        <p className="font-medium text-foreground">
                           Order #{order.id.slice(0, 8)}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           {formatDate(order.ordered_at)} · {order.modality} · {order.body_part}
                         </p>
                         {result && (
                           <div className="mt-2 space-y-1">
-                            <p className="text-xs text-slate-600">
+                            <p className="text-xs text-text-secondary">
                               <span className="font-medium">Findings:</span> {result.findings}
                             </p>
-                            <p className="text-xs text-slate-600">
+                            <p className="text-xs text-text-secondary">
                               <span className="font-medium">Impression:</span> {result.impression}
                             </p>
                             {result.verified_at && (
@@ -466,7 +466,7 @@ export default function LabRadiologyPage() {
       >
         <div className="space-y-4">
           {selectedLabOrder?.order_items?.map((item) => (
-            <p key={item.id} className="text-sm text-slate-600">
+            <p key={item.id} className="text-sm text-text-secondary">
               Tes: <span className="font-medium">{item.test_type?.name}</span>
             </p>
           ))}
@@ -546,15 +546,15 @@ export default function LabRadiologyPage() {
       >
         <div className="space-y-4">
           {selectedRadOrder && (
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-text-secondary">
               {selectedRadOrder.modality} · {selectedRadOrder.body_part}
             </p>
           )}
           <div>
-            <label htmlFor="rad-findings" className="mb-1 block text-sm font-medium text-slate-700">Findings</label>
+            <label htmlFor="rad-findings" className="mb-1 block text-sm font-medium text-text-secondary">Findings</label>
             <textarea
               id="rad-findings"
-              className="w-full rounded-lg border border-slate-200 p-2 text-sm"
+              className="w-full rounded-lg border border-input p-2 text-sm"
               rows={3}
               value={radFindings}
               onChange={(e) => setRadFindings(e.target.value)}
@@ -562,10 +562,10 @@ export default function LabRadiologyPage() {
             />
           </div>
           <div>
-            <label htmlFor="rad-impression" className="mb-1 block text-sm font-medium text-slate-700">Impression</label>
+            <label htmlFor="rad-impression" className="mb-1 block text-sm font-medium text-text-secondary">Impression</label>
             <textarea
               id="rad-impression"
-              className="w-full rounded-lg border border-slate-200 p-2 text-sm"
+              className="w-full rounded-lg border border-input p-2 text-sm"
               rows={2}
               value={radImpression}
               onChange={(e) => setRadImpression(e.target.value)}
@@ -593,7 +593,7 @@ export default function LabRadiologyPage() {
           {selectedResult && (
             <div className="space-y-1">
               {selectedResult.values?.map((v) => (
-                <p key={v.id} className="text-sm text-slate-600">
+                <p key={v.id} className="text-sm text-text-secondary">
                   {v.parameter_name}: {v.numeric_value ?? v.text_value} {v.unit ?? ""}
                   {v.abnormal_flag && " ⚠️"}
                 </p>

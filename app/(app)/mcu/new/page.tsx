@@ -228,8 +228,8 @@ export default function MCUNewPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Buat MCU Baru</h1>
-        <p className="text-sm text-slate-500">Lengkapi data MCU dalam 5 langkah</p>
+        <h1 className="text-2xl font-semibold text-foreground">Buat MCU Baru</h1>
+        <p className="text-sm text-muted-foreground">Lengkapi data MCU dalam 5 langkah</p>
       </div>
 
       <div className="mb-6 flex items-center justify-between">
@@ -243,20 +243,20 @@ export default function MCUNewPage() {
                 <div
                   className={`flex size-10 items-center justify-center rounded-full border-2 transition-colors ${
                     isCompleted
-                      ? "border-primary-600 bg-primary-600 text-white"
+                      ? "border-primary-600 bg-primary-600 text-primary-foreground"
                       : isActive
-                        ? "border-primary-600 bg-white text-primary-600"
-                        : "border-slate-200 bg-white text-slate-500"
+                        ? "border-primary-600 bg-card text-primary-600"
+                        : "border-border bg-card text-muted-foreground"
                   }`}
                 >
                   {isCompleted ? <Check className="size-4" /> : <Icon className="size-4" />}
                 </div>
-                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-slate-500"}`}>
+                <span className={`mt-1 text-xs font-medium ${isActive ? "text-primary-600" : "text-muted-foreground"}`}>
                   {s.label}
                 </span>
               </div>
               {index < STEPS.length - 1 && (
-                <div className={`mx-2 h-0.5 flex-1 ${currentStep > s.id ? "bg-primary-600" : "bg-slate-200"}`} />
+                <div className={`mx-2 h-0.5 flex-1 ${currentStep > s.id ? "bg-primary-600" : "bg-border"}`} />
               )}
             </div>
           );
@@ -266,7 +266,7 @@ export default function MCUNewPage() {
       <Card className="p-6">
         {currentStep === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Pilih Pekerja</h2>
+            <h2 className="text-lg font-semibold text-foreground">Pilih Pekerja</h2>
             <Select
               label="Pekerja"
               value={employeeId}
@@ -283,14 +283,14 @@ export default function MCUNewPage() {
               </div>
             )}
             {selectedEmployee && (
-              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-muted p-4">
                 <Avatar name={selectedEmployee.fullName} />
                 <div>
-                  <p className="font-medium text-slate-900">{selectedEmployee.fullName}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-medium text-foreground">{selectedEmployee.fullName}</p>
+                  <p className="text-xs text-muted-foreground">
                     {selectedEmployee.employeeId} · {selectedEmployee.mrn}
                   </p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {selectedEmployee.jobTitle} · {selectedEmployee.status}
                   </p>
                 </div>
@@ -301,7 +301,7 @@ export default function MCUNewPage() {
 
         {currentStep === 2 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Tipe MCU</h2>
+            <h2 className="text-lg font-semibold text-foreground">Tipe MCU</h2>
             <Select
               label="Tipe MCU"
               value={mcuType}
@@ -326,8 +326,8 @@ export default function MCUNewPage() {
 
         {currentStep === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Vital Sign</h2>
-            <p className="text-sm text-slate-500">
+            <h2 className="text-lg font-semibold text-foreground">Vital Sign</h2>
+            <p className="text-sm text-muted-foreground">
               Nilai di luar rentang wajar ditandai sebelum disimpan.
             </p>
             <div className="grid grid-cols-2 gap-4">
@@ -409,12 +409,12 @@ export default function MCUNewPage() {
 
         {currentStep === 4 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Kalkulasi Klinis</h2>
+            <h2 className="text-lg font-semibold text-foreground">Kalkulasi Klinis</h2>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">BMI (Body Mass Index)</h3>
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-secondary">BMI (Body Mass Index)</h3>
               <div className="flex items-center gap-4">
-                <div className="text-2xl font-semibold text-slate-900">
+                <div className="text-2xl font-semibold text-foreground">
                   {bmi.value > 0 ? bmi.value.toFixed(1) : "—"}
                 </div>
                 <Badge variant={bmi.category === "Normal" ? "success" : bmi.category === "Underweight" ? "info" : bmi.category === "Overweight" ? "warning" : "danger"}>
@@ -423,10 +423,10 @@ export default function MCUNewPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">Tekanan Darah</h3>
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-secondary">Tekanan Darah</h3>
               <div className="flex items-center gap-4">
-                <div className="text-2xl font-semibold text-slate-900">
+                <div className="text-2xl font-semibold text-foreground">
                   {systolic && diastolic ? `${systolic}/${diastolic}` : "—"}
                 </div>
                 <Badge variant={bp.category === "Normal" ? "success" : bp.category === "Elevated" ? "warning" : "danger"}>
@@ -455,37 +455,37 @@ export default function MCUNewPage() {
             </div>
 
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={smoker} onChange={(e) => setSmoker(e.target.checked)} className="size-4 rounded border-slate-300" />
+              <label className="flex items-center gap-2 text-sm text-text-secondary">
+                <input type="checkbox" checked={smoker} onChange={(e) => setSmoker(e.target.checked)} className="size-4 rounded border-input" />
                 Perokok
               </label>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={diabetic} onChange={(e) => setDiabetic(e.target.checked)} className="size-4 rounded border-slate-300" />
+              <label className="flex items-center gap-2 text-sm text-text-secondary">
+                <input type="checkbox" checked={diabetic} onChange={(e) => setDiabetic(e.target.checked)} className="size-4 rounded border-input" />
                 Diabetes
               </label>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">Skor Risiko Kardiovaskular</h3>
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-secondary">Skor Risiko Kardiovaskular</h3>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Framingham Risk Score</span>
-                  <span className="font-semibold text-slate-900">{framingham > 0 ? `${framingham}%` : "—"}</span>
+                  <span className="text-sm text-text-secondary">Framingham Risk Score</span>
+                  <span className="font-semibold text-foreground">{framingham > 0 ? `${framingham}%` : "—"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">ASCVD Risk Score</span>
-                  <span className="font-semibold text-slate-900">{ascvd > 0 ? `${ascvd}%` : "—"}</span>
+                  <span className="text-sm text-text-secondary">ASCVD Risk Score</span>
+                  <span className="font-semibold text-foreground">{ascvd > 0 ? `${ascvd}%` : "—"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Audiometri Kanan</span>
+                  <span className="text-sm text-text-secondary">Audiometri Kanan</span>
                   <Badge variant={audioRight.category === "Normal" ? "success" : "warning"}>{audioRight.category}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Audiometri Kiri</span>
+                  <span className="text-sm text-text-secondary">Audiometri Kiri</span>
                   <Badge variant={audioLeft.category === "Normal" ? "success" : "warning"}>{audioLeft.category}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Spirometri (FEV1/FVC)</span>
+                  <span className="text-sm text-text-secondary">Spirometri (FEV1/FVC)</span>
                   <Badge variant={spirometry.category === "Normal" ? "success" : "warning"}>
                     {fev1Percent > 0 ? `${fev1Percent}% — ${spirometry.category}` : "—"}
                   </Badge>
@@ -497,18 +497,18 @@ export default function MCUNewPage() {
 
         {currentStep === 5 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Review & Submit</h2>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="mb-3 text-sm font-medium text-slate-700">Ringkasan</h3>
+            <h2 className="text-lg font-semibold text-foreground">Review & Submit</h2>
+            <div className="rounded-xl border border-border bg-muted p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-secondary">Ringkasan</h3>
               <div className="space-y-2 text-sm">
-                <p><span className="font-medium text-slate-600">Pekerja:</span> {selectedEmployee?.fullName}</p>
-                <p><span className="font-medium text-slate-600">Tipe MCU:</span> {mcuType}</p>
-                <p><span className="font-medium text-slate-600">Tanggal:</span> {formatDate(examDate)}</p>
-                <p><span className="font-medium text-slate-600">Fasilitas:</span> {facility}</p>
-                <p><span className="font-medium text-slate-600">TD:</span> {systolic}/{diastolic} mmHg ({bp.category})</p>
-                <p><span className="font-medium text-slate-600">BMI:</span> {bmi.value > 0 ? `${bmi.value.toFixed(1)} (${bmi.category})` : "—"}</p>
-                <p><span className="font-medium text-slate-600">Framingham:</span> {framingham > 0 ? `${framingham}%` : "—"}</p>
-                <p><span className="font-medium text-slate-600">ASCVD:</span> {ascvd > 0 ? `${ascvd}%` : "—"}</p>
+                <p><span className="font-medium text-text-secondary">Pekerja:</span> {selectedEmployee?.fullName}</p>
+                <p><span className="font-medium text-text-secondary">Tipe MCU:</span> {mcuType}</p>
+                <p><span className="font-medium text-text-secondary">Tanggal:</span> {formatDate(examDate)}</p>
+                <p><span className="font-medium text-text-secondary">Fasilitas:</span> {facility}</p>
+                <p><span className="font-medium text-text-secondary">TD:</span> {systolic}/{diastolic} mmHg ({bp.category})</p>
+                <p><span className="font-medium text-text-secondary">BMI:</span> {bmi.value > 0 ? `${bmi.value.toFixed(1)} (${bmi.category})` : "—"}</p>
+                <p><span className="font-medium text-text-secondary">Framingham:</span> {framingham > 0 ? `${framingham}%` : "—"}</p>
+                <p><span className="font-medium text-text-secondary">ASCVD:</span> {ascvd > 0 ? `${ascvd}%` : "—"}</p>
               </div>
             </div>
             {error && (
@@ -517,7 +517,7 @@ export default function MCUNewPage() {
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+        <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
           <Button variant="ghost" onClick={() => setCurrentStep((s) => Math.max(1, s - 1))} disabled={currentStep === 1}>
             <ChevronLeft className="size-4" />
             Kembali

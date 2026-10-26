@@ -59,13 +59,13 @@ export function PublicConsent({ token }: { token: string }) {
 
   if (phase === "done") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-muted p-4">
         <Card className="w-full max-w-md p-8 text-center">
           <CircleCheck className="mx-auto mb-4 size-16 text-success-600" />
-          <h1 className="text-xl font-semibold text-slate-900">
+          <h1 className="text-xl font-semibold text-foreground">
             {decision === "REJECTED" ? "Penolakan berhasil dicatat" : "Persetujuan berhasil dicatat"}
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             Terima kasih. Keputusan Anda sudah tersimpan dan tidak dapat diubah melalui tautan ini.
           </p>
         </Card>
@@ -76,22 +76,22 @@ export function PublicConsent({ token }: { token: string }) {
   if (phase === "used" || phase === "invalid") {
     const used = phase === "used";
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-muted p-4">
         <Card className="w-full max-w-md p-8 text-center" role="status" aria-live="polite">
           {used ? (
             <CircleCheck className="mx-auto mb-4 size-12 text-success-600" />
           ) : (
             <XCircle className="mx-auto mb-4 size-12 text-danger-600" />
           )}
-          <h1 className="text-lg font-semibold text-slate-900">
+          <h1 className="text-lg font-semibold text-foreground">
             {used ? "Tautan sudah digunakan" : "Tautan tidak valid atau kedaluwarsa"}
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             {used
               ? "Consent ini sudah pernah diputus sebelumnya. Untuk mengubah keputusan, minta admin mengirim tautan baru."
               : "Tautan consent tidak dapat digunakan. Silakan minta tautan baru dari admin klinik."}
           </p>
-          {errorMessage && <p className="mt-3 text-xs text-slate-500">{errorMessage}</p>}
+          {errorMessage && <p className="mt-3 text-xs text-muted-foreground">{errorMessage}</p>}
         </Card>
       </div>
     );
@@ -99,11 +99,11 @@ export function PublicConsent({ token }: { token: string }) {
 
   if (phase === "error") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-muted p-4">
         <Card className="w-full max-w-md p-6 text-center" role="alert">
           <AlertTriangle className="mx-auto mb-4 size-12 text-danger-600" />
-          <h1 className="text-lg font-semibold text-slate-900">Gagal memproses permintaan</h1>
-          <p className="mt-2 text-sm text-slate-500">{errorMessage || "Terjadi kesalahan pada server."}</p>
+          <h1 className="text-lg font-semibold text-foreground">Gagal memproses permintaan</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{errorMessage || "Terjadi kesalahan pada server."}</p>
           <Button variant="outline" size="sm" className="mt-4" onClick={() => setPhase("ready")}>
             Coba lagi
           </Button>
@@ -113,14 +113,14 @@ export function PublicConsent({ token }: { token: string }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-lg overflow-hidden">
-        <div className="border-b border-slate-100 bg-slate-50/50 p-6 text-center">
+        <div className="border-b border-border bg-muted/50 p-6 text-center">
           <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary-100">
             <ShieldCheck className="size-6 text-primary-600" />
           </div>
-          <h1 className="text-lg font-semibold text-slate-900">PT Layar Nusantara Gas</h1>
-          <p className="text-sm text-slate-500">Persetujuan Pemrosesan Data Rekam Medis</p>
+          <h1 className="text-lg font-semibold text-foreground">PT Layar Nusantara Gas</h1>
+          <p className="text-sm text-muted-foreground">Persetujuan Pemrosesan Data Rekam Medis</p>
         </div>
 
         <div className="p-6">
@@ -142,8 +142,8 @@ export function PublicConsent({ token }: { token: string }) {
             </span>
           </div>
 
-          <div className="mb-6 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <pre className="whitespace-pre-wrap font-sans text-sm text-slate-700">{CONSENT_TEXT}</pre>
+          <div className="mb-6 max-h-64 overflow-y-auto rounded-xl border border-border bg-muted p-4">
+            <pre className="whitespace-pre-wrap font-sans text-sm text-text-secondary">{CONSENT_TEXT}</pre>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">

@@ -104,8 +104,8 @@ export default function QueuePage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Antrean Klinik</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Antrean Klinik</h1>
+          <p className="text-sm text-muted-foreground">
             Kelola antrean pasien real-time dari backend
           </p>
         </div>
@@ -140,7 +140,7 @@ export default function QueuePage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search
-              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500"
+              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
@@ -176,8 +176,8 @@ export default function QueuePage() {
               <ListOrdered className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{waiting.length}</p>
-              <p className="text-xs text-slate-500">Menunggu</p>
+              <p className="text-xl font-semibold text-foreground">{waiting.length}</p>
+              <p className="text-xs text-muted-foreground">Menunggu</p>
             </div>
           </CardContent>
         </Card>
@@ -187,8 +187,8 @@ export default function QueuePage() {
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{inService.length}</p>
-              <p className="text-xs text-slate-500">Dalam Pelayanan</p>
+              <p className="text-xl font-semibold text-foreground">{inService.length}</p>
+              <p className="text-xs text-muted-foreground">Dalam Pelayanan</p>
             </div>
           </CardContent>
         </Card>
@@ -198,8 +198,8 @@ export default function QueuePage() {
               <CheckCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{completed.length}</p>
-              <p className="text-xs text-slate-500">Selesai</p>
+              <p className="text-xl font-semibold text-foreground">{completed.length}</p>
+              <p className="text-xs text-muted-foreground">Selesai</p>
             </div>
           </CardContent>
         </Card>
@@ -246,11 +246,11 @@ export default function QueuePage() {
                     <div className="flex items-center gap-3">
                       <Avatar name={patientName} />
                       <div>
-                        <p className="font-medium text-slate-900">{patientName}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="font-medium text-foreground">{patientName}</p>
+                        <p className="text-xs text-muted-foreground">
                           MRN: {mrn} · {ticket.appointment?.visit_type ?? "—"}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           {ticket.appointment?.scheduled_at
                             ? formatDate(ticket.appointment.scheduled_at)
                             : ""}

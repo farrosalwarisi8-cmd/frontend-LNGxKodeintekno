@@ -137,8 +137,8 @@ export default function EmergencyPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Emergency Mode</h1>
-          <p className="text-sm text-slate-500">Mode darurat offline dengan upgrade queue</p>
+          <h1 className="text-2xl font-semibold text-foreground">Emergency Mode</h1>
+          <p className="text-sm text-muted-foreground">Mode darurat offline dengan upgrade queue</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant={isOnline ? "outline" : "danger"} onClick={toggleOnline}>
@@ -175,8 +175,8 @@ export default function EmergencyPage() {
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{pendingCount}</p>
-              <p className="text-xs text-slate-500">Pending Sync</p>
+              <p className="text-xl font-semibold text-foreground">{pendingCount}</p>
+              <p className="text-xs text-muted-foreground">Pending Sync</p>
             </div>
           </CardContent>
         </Card>
@@ -186,8 +186,8 @@ export default function EmergencyPage() {
               <CheckCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{queue.filter((q) => q.synced).length}</p>
-              <p className="text-xs text-slate-500">Synced</p>
+              <p className="text-xl font-semibold text-foreground">{queue.filter((q) => q.synced).length}</p>
+              <p className="text-xs text-muted-foreground">Synced</p>
             </div>
           </CardContent>
         </Card>
@@ -197,8 +197,8 @@ export default function EmergencyPage() {
               <ShieldAlert className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-slate-900">{queue.length}</p>
-              <p className="text-xs text-slate-500">Total Records</p>
+              <p className="text-xl font-semibold text-foreground">{queue.length}</p>
+              <p className="text-xs text-muted-foreground">Total Records</p>
             </div>
           </CardContent>
         </Card>
@@ -228,10 +228,10 @@ export default function EmergencyPage() {
         <CardContent>
           <div className="space-y-2">
             {queue.map((record) => (
-              <div key={record.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-3">
+              <div key={record.id} className="flex items-center justify-between rounded-xl border border-border p-3">
                 <div>
-                  <p className="text-sm font-medium text-slate-900">{record.description}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm font-medium text-foreground">{record.description}</p>
+                  <p className="text-xs text-muted-foreground">
                     {record.type} · {formatDate(record.createdAt)}
                   </p>
                 </div>

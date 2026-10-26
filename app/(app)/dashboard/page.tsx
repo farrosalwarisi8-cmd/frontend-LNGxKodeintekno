@@ -14,7 +14,6 @@ import {
 } from "@/lib/remote-sync";
 import { ROLES, MCU_STATUS, VISIT_STATUS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Button } from "@/shared/components/design-system/button";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
@@ -33,6 +32,7 @@ import {
   openVisits,
 } from "@/features/dashboard/dashboard-metrics";
 import { pharmacyService } from "@/lib/services/pharmacy.service";
+import { StatusBadge } from "@/components/status-badge";
 
 const TONE_CLASS: Record<string, string> = {
   primary: "bg-primary-100 text-primary-700",
@@ -40,7 +40,9 @@ const TONE_CLASS: Record<string, string> = {
   warning: "bg-warning-100 text-warning-600",
   danger: "bg-danger-100 text-danger-600",
   info: "bg-info-100 text-info-600",
-  purple: "bg-purple-100 text-purple-600",
+  // "purple" adalah sisa nada lama tanpa arti semantik; netral agar tidak
+  // menambah warna baru di luar peta biru/hijau/merah.
+  purple: "bg-muted text-text-secondary",
 };
 
 /**
@@ -146,10 +148,10 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             Halo, {user.name.split(" ")[0]}
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             {roleMeta?.label ?? user.role} — {profile.focus}
           </p>
         </div>
@@ -172,7 +174,7 @@ export default function DashboardPage() {
 
       {/* Tindakan cepat — pintasan tugas yang paling sering dipakai peran ini. */}
       <section aria-labelledby="quick-actions-heading" className="space-y-3">
-        <h2 id="quick-actions-heading" className="text-sm font-semibold text-slate-700">
+        <h2 id="quick-actions-heading" className="text-sm font-semibold text-text-secondary">
           Tindakan cepat
         </h2>
         <div
@@ -187,16 +189,16 @@ export default function DashboardPage() {
               <Link
                 key={task.href}
                 href={task.href}
-                className="flex min-h-16 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/30"
+                className="flex min-h-16 items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary-200 hover:bg-primary-50/30"
               >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-slate-900">{task.label}</span>
-                  <span className="block text-xs text-slate-500">{task.description}</span>
+                  <span className="block font-medium text-foreground">{task.label}</span>
+                  <span className="block text-xs text-muted-foreground">{task.description}</span>
                 </span>
-                <ArrowRight className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               </Link>
             );
           })}
@@ -237,8 +239,8 @@ export default function DashboardPage() {
                       <Icon className="size-6" aria-hidden="true" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-2xl font-semibold text-slate-900">{tile.value}</p>
-                      <p className="text-xs text-slate-500">{tile.label}</p>
+                      <p className="text-2xl font-semibold text-foreground">{tile.value}</p>
+                      <p className="text-xs text-muted-foreground">{tile.label}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -260,7 +262,7 @@ export default function DashboardPage() {
 
       {profile.compact ? (
         <section aria-labelledby="my-links-heading" className="space-y-3">
-          <h2 id="my-links-heading" className="text-sm font-semibold text-slate-700">
+          <h2 id="my-links-heading" className="text-sm font-semibold text-text-secondary">
             Ruang saya
           </h2>
           <div className="grid gap-3">
@@ -270,16 +272,16 @@ export default function DashboardPage() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex min-h-16 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4"
+                  className="flex min-h-16 items-center gap-3 rounded-2xl border border-border bg-card p-4"
                 >
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-medium text-slate-900">{link.label}</span>
-                    <span className="block text-xs text-slate-500">{link.description}</span>
+                    <span className="block font-medium text-foreground">{link.label}</span>
+                    <span className="block text-xs text-muted-foreground">{link.description}</span>
                   </span>
-                  <ArrowRight className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
+                  <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 </Link>
               );
             })}
@@ -293,7 +295,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {recentMCU.length === 0 ? (
-                <p className="text-sm text-slate-500">Belum ada data MCU.</p>
+                <p className="text-sm text-muted-foreground">Belum ada data MCU.</p>
               ) : (
                 <div className="space-y-3">
                   {recentMCU.map((mcu) => {
@@ -302,20 +304,18 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={mcu.id}
-                        className="flex items-center justify-between rounded-xl border border-slate-100 p-3"
+                        className="flex items-center justify-between rounded-xl border border-border p-3"
                       >
                         <div className="flex items-center gap-3">
                           <Avatar name={emp?.fullName ?? "?"} size="sm" />
                           <div>
-                            <p className="text-sm font-medium text-slate-900">
+                            <p className="text-sm font-medium text-foreground">
                               {emp?.fullName ?? "Unknown"}
                             </p>
-                            <p className="text-xs text-slate-500">{mcu.mcuNumber}</p>
+                            <p className="text-xs text-muted-foreground">{mcu.mcuNumber}</p>
                           </div>
                         </div>
-                        <Badge variant="outline" className={statusMeta?.color}>
-                          {statusMeta?.label ?? mcu.status}
-                        </Badge>
+                        <StatusBadge meta={statusMeta} fallback={mcu.status} />
                       </div>
                     );
                   })}
@@ -330,7 +330,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {recentVisits.length === 0 ? (
-                <p className="text-sm text-slate-500">Tidak ada kunjungan berjalan.</p>
+                <p className="text-sm text-muted-foreground">Tidak ada kunjungan berjalan.</p>
               ) : (
                 <div className="space-y-3">
                   {recentVisits.map((visit) => {
@@ -339,17 +339,15 @@ export default function DashboardPage() {
                     return (
                       <div
                         key={visit.id}
-                        className="flex items-center justify-between rounded-xl border border-slate-100 p-3"
+                        className="flex items-center justify-between rounded-xl border border-border p-3"
                       >
                         <div>
-                          <p className="text-sm font-medium text-slate-900">
+                          <p className="text-sm font-medium text-foreground">
                             {emp?.fullName ?? visit.visitNumber}
                           </p>
-                          <p className="text-xs text-slate-500">{visit.chiefComplaint || visit.visitNumber}</p>
+                          <p className="text-xs text-muted-foreground">{visit.chiefComplaint || visit.visitNumber}</p>
                         </div>
-                        <Badge variant="outline" className={statusMeta?.color}>
-                          {statusMeta?.label ?? visit.status}
-                        </Badge>
+                        <StatusBadge meta={statusMeta} fallback={visit.status} />
                       </div>
                     );
                   })}

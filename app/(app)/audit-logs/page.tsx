@@ -60,14 +60,14 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Audit Log</h1>
-        <p className="text-sm text-slate-500">Immutable audit trail — semua aktivitas tercatat</p>
+        <h1 className="text-2xl font-semibold text-foreground">Audit Log</h1>
+        <p className="text-sm text-muted-foreground">Immutable audit trail — semua aktivitas tercatat</p>
       </div>
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               label="Cari action, user, object..."
               placeholder="Cari action, user, object..."
@@ -87,14 +87,14 @@ export default function AuditLogsPage() {
       </Card>
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">{filtered.length} log entries</p>
+        <p className="text-sm text-muted-foreground">{filtered.length} log entries</p>
         <Button size="sm" variant="outline" onClick={handleVerifyChain} loading={verifying} aria-label="Verifikasi rantai hash SHA-256">
           Verifikasi Rantai Hash
         </Button>
       </div>
 
       {chainResult && (
-        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">{chainResult}</div>
+        <div className="rounded-xl bg-muted p-3 text-sm text-text-secondary">{chainResult}</div>
       )}
 
       {error && <ErrorState title="Gagal memuat audit log" message={error} onRetry={refetch} />}
@@ -122,28 +122,28 @@ export default function AuditLogsPage() {
                 <div
                   key={log.id}
                   style={style}
-                  className="flex items-center justify-between rounded-xl border border-slate-100 p-3"
+                  className="flex items-center justify-between rounded-xl border border-border p-3"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-slate-100">
-                      <ShieldCheck className="size-4 text-slate-500" />
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                      <ShieldCheck className="size-4 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{log.action}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-sm font-medium text-foreground">{log.action}</p>
+                      <p className="text-xs text-muted-foreground">
                         {log.userName} · {log.objectType} · {log.objectId}
                       </p>
                       {log.before && (
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           {log.before} → {log.after}
                         </p>
                       )}
                       {log.reason && (
-                        <p className="text-xs text-slate-400">Alasan: {log.reason}</p>
+                        <p className="text-xs text-muted-foreground">Alasan: {log.reason}</p>
                       )}
                     </div>
                   </div>
-                  <span className="text-xs text-slate-400">{formatDateTime(log.at)}</span>
+                  <span className="text-xs text-muted-foreground">{formatDateTime(log.at)}</span>
                 </div>
               )}
               style={{ maxHeight: "55vh", minHeight: 300 }}

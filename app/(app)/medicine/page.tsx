@@ -66,8 +66,8 @@ export default function MedicinePage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Farmasi</h1>
-          <p className="text-sm text-slate-500">Stok obat dan batch management</p>
+          <h1 className="text-2xl font-semibold text-foreground">Farmasi</h1>
+          <p className="text-sm text-muted-foreground">Stok obat dan batch management</p>
         </div>
         <Can action="pharmacy.receive-stock">
           <Button onClick={() => setShowReceiveModal(true)}>
@@ -80,7 +80,7 @@ export default function MedicinePage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari obat..."
               value={search}
@@ -97,7 +97,7 @@ export default function MedicinePage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{filtered.length} obat ditemukan</p>
+      <p className="text-sm text-muted-foreground">{filtered.length} obat ditemukan</p>
 
       {error && <ErrorState title="Gagal memuat inventaris" message={error} onRetry={refetch} />}
 
@@ -113,36 +113,36 @@ export default function MedicinePage() {
         <EmptyState icon={Pill} title="Tidak ada obat ditemukan" description="Coba ubah kata kunci pencarian." />
       ) : !loading && !error ? (
         <>
-          <div className="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white lg:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Obat</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Kode</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Kategori</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Total Stok</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Batch</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500">Status</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Obat</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Kode</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategori</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Stok</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Batch</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border">
                 {filtered.map((med) => {
                   const totalStock = getTotalStock(med.id);
                   const batches = getStockForMedicine(med.id);
                   const isLow = totalStock < med.minStock;
                   return (
-                    <tr key={med.id} className="transition-colors hover:bg-slate-50">
+                    <tr key={med.id} className="transition-colors hover:bg-muted">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">{med.name}</div>
-                        <div className="text-xs text-slate-500">{med.unit}</div>
+                        <div className="font-medium text-foreground">{med.name}</div>
+                        <div className="text-xs text-muted-foreground">{med.unit}</div>
                       </td>
-                      <td className="px-4 py-3 font-mono text-sm text-slate-600">{med.code}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{med.category}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900" data-testid="medicine-stock">
+                      <td className="px-4 py-3 font-mono text-sm text-text-secondary">{med.code}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{med.category}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-foreground" data-testid="medicine-stock">
                         {totalStock}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">{batches.length} batch</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{batches.length} batch</td>
                       <td className="px-4 py-3">
                         {isLow ? (
                           <Badge variant="danger">
@@ -154,7 +154,7 @@ export default function MedicinePage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <ChevronRight className="size-4 text-slate-500" />
+                        <ChevronRight className="size-4 text-muted-foreground" />
                       </td>
                     </tr>
                   );
@@ -171,16 +171,16 @@ export default function MedicinePage() {
                 <Card key={med.id} className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-medium text-slate-900">{med.name}</div>
-                      <div className="text-xs text-slate-500">{med.code} · {med.category}</div>
+                      <div className="font-medium text-foreground">{med.name}</div>
+                      <div className="text-xs text-muted-foreground">{med.code} · {med.category}</div>
                       <div className="mt-1 flex items-center gap-2">
                         <Badge variant={isLow ? "danger" : "success"}>
                           {isLow ? "Stok Rendah" : "Aman"}
                         </Badge>
-                        <span className="text-xs text-slate-500">Total: {totalStock} {med.unit}</span>
+                        <span className="text-xs text-muted-foreground">Total: {totalStock} {med.unit}</span>
                       </div>
                     </div>
-                    <ChevronRight className="size-4 text-slate-500" />
+                    <ChevronRight className="size-4 text-muted-foreground" />
                   </div>
                 </Card>
               );

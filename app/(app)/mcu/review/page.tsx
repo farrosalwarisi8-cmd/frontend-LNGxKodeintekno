@@ -14,7 +14,6 @@ import { mcuService } from "@/lib/services/mcu.service";
 import type { HealthStatus } from "@/lib/types";
 import { MCU_STATUS, HEALTH_STATUS_OPTIONS } from "@/lib/constants";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -24,6 +23,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { formatDate } from "@/lib/format";
 import { toastSuccess, toastError } from "@/lib/use-toast";
 import { Search, CheckCircle, XCircle, FileText } from "lucide-react";
+import { StatusBadge } from "@/components/status-badge";
 
 export default function MCUReviewPage() {
   const mcus = useStore((s) => s.mcus);
@@ -153,14 +153,14 @@ export default function MCUReviewPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Review MCU</h1>
-        <p className="text-sm text-slate-500">Review dan tetapkan status kesehatan kerja</p>
+        <h1 className="text-2xl font-semibold text-foreground">Review MCU</h1>
+        <p className="text-sm text-muted-foreground">Review dan tetapkan status kesehatan kerja</p>
       </div>
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Cari nomor MCU, nama pekerja..."
               value={search}
@@ -177,20 +177,20 @@ export default function MCUReviewPage() {
         </div>
       </Card>
 
-      <p className="text-sm text-slate-500">{pendingMCUs.length} MCU menunggu review</p>
+      <p className="text-sm text-muted-foreground">{pendingMCUs.length} MCU menunggu review</p>
 
       {error && <ErrorState title="Gagal memuat data MCU" message={error} onRetry={refetch} />}
 
       {loading && !error && (
         <Card className="p-8 text-center">
-          <p className="text-sm text-slate-500">Memuat data MCU dari backend...</p>
+          <p className="text-sm text-muted-foreground">Memuat data MCU dari backend...</p>
         </Card>
       )}
 
       {!loading && !error && pendingMCUs.length === 0 ? (
         <Card className="p-8 text-center">
           <CheckCircle className="mx-auto mb-3 size-8 text-success-600" />
-          <p className="text-sm text-slate-500">Tidak ada MCU yang menunggu review.</p>
+          <p className="text-sm text-muted-foreground">Tidak ada MCU yang menunggu review.</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -203,16 +203,14 @@ export default function MCUReviewPage() {
                   <div className="flex items-center gap-3">
                     <Avatar name={emp?.fullName ?? "?"} />
                     <div>
-                      <p className="font-medium text-slate-900">{emp?.fullName}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="font-medium text-foreground">{emp?.fullName}</p>
+                      <p className="text-xs text-muted-foreground">
                         {mcu.mcuNumber} · {mcu.type} · {formatDate(mcu.examDate)}
                       </p>
                       <div className="mt-1 flex items-center gap-2">
-                        <Badge variant="outline" className={statusMeta?.color}>
-                          {statusMeta?.label}
-                        </Badge>
+                        <StatusBadge meta={statusMeta} />
                         {mcu.result && (
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-muted-foreground">
                             TD: {mcu.result.bloodPressure} · HR: {mcu.result.heartRate}
                           </span>
                         )}

@@ -146,8 +146,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Laporan & Analitik</h1>
-          <p className="text-sm text-slate-500">Dashboard reporting per role</p>
+          <h1 className="text-2xl font-semibold text-foreground">Laporan & Analitik</h1>
+          <p className="text-sm text-muted-foreground">Dashboard reporting per role</p>
         </div>
         <Can action="reports.export">
           <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting || loading}>
@@ -158,7 +158,7 @@ export default function ReportsPage() {
       </div>
 
       {exportMsg && (
-        <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-700">{exportMsg}</div>
+        <div className="rounded-xl bg-muted p-3 text-sm text-text-secondary">{exportMsg}</div>
       )}
 
       {partialNotice && (
@@ -176,8 +176,8 @@ export default function ReportsPage() {
               <Users className="size-6" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-slate-900">{totalEmployees}</p>
-              <p className="text-xs text-slate-500">Total Pekerja</p>
+              <p className="text-2xl font-semibold text-foreground">{totalEmployees}</p>
+              <p className="text-xs text-muted-foreground">Total Pekerja</p>
             </div>
           </CardContent>
         </Card>
@@ -188,8 +188,8 @@ export default function ReportsPage() {
                 <Activity className="size-6" />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-slate-900">{approvedMCU}</p>
-                <p className="text-xs text-slate-500">MCU Approved</p>
+                <p className="text-2xl font-semibold text-foreground">{approvedMCU}</p>
+                <p className="text-xs text-muted-foreground">MCU Approved</p>
               </div>
             </CardContent>
           </Card>
@@ -201,8 +201,8 @@ export default function ReportsPage() {
                 <BarChart3 className="size-6" />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-slate-900">{totalVisits}</p>
-                <p className="text-xs text-slate-500">Total Kunjungan</p>
+                <p className="text-2xl font-semibold text-foreground">{totalVisits}</p>
+                <p className="text-xs text-muted-foreground">Total Kunjungan</p>
               </div>
             </CardContent>
           </Card>
@@ -214,8 +214,8 @@ export default function ReportsPage() {
                 <Pill className="size-6" />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-slate-900">{dispensings.length}</p>
-                <p className="text-xs text-slate-500">Dispensing</p>
+                <p className="text-2xl font-semibold text-foreground">{dispensings.length}</p>
+                <p className="text-xs text-muted-foreground">Dispensing</p>
               </div>
             </CardContent>
           </Card>
@@ -233,39 +233,39 @@ export default function ReportsPage() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Fit to Work</span>
+                <span className="text-sm text-text-secondary">Fit to Work</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-slate-100">
+                  <div className="h-2 w-32 rounded-full bg-muted">
                     <div className="h-2 rounded-full bg-success-500" style={{ width: `${workHealthStatus.length > 0 ? (fitToWork / workHealthStatus.length) * 100 : 0}%` }} />
                   </div>
-                  <span className="text-sm font-medium text-slate-900">{fitToWork}</span>
+                  <span className="text-sm font-medium text-foreground">{fitToWork}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Fit with Restriction</span>
+                <span className="text-sm text-text-secondary">Fit with Restriction</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-slate-100">
+                  <div className="h-2 w-32 rounded-full bg-muted">
                     <div className="h-2 rounded-full bg-warning-500" style={{ width: `${workHealthStatus.length > 0 ? (fitWithRestriction / workHealthStatus.length) * 100 : 0}%` }} />
                   </div>
-                  <span className="text-sm font-medium text-slate-900">{fitWithRestriction}</span>
+                  <span className="text-sm font-medium text-foreground">{fitWithRestriction}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Temporarily Unfit</span>
+                <span className="text-sm text-text-secondary">Temporarily Unfit</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-orange-500" style={{ width: `${workHealthStatus.length > 0 ? (temporarilyUnfit / workHealthStatus.length) * 100 : 0}%` }} />
+                  <div className="h-2 w-32 rounded-full bg-muted">
+                    <div className="h-2 rounded-full bg-warning" style={{ width: `${workHealthStatus.length > 0 ? (temporarilyUnfit / workHealthStatus.length) * 100 : 0}%` }} />
                   </div>
-                  <span className="text-sm font-medium text-slate-900">{temporarilyUnfit}</span>
+                  <span className="text-sm font-medium text-foreground">{temporarilyUnfit}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Unfit</span>
+                <span className="text-sm text-text-secondary">Unfit</span>
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-slate-100">
+                  <div className="h-2 w-32 rounded-full bg-muted">
                     <div className="h-2 rounded-full bg-danger-500" style={{ width: `${workHealthStatus.length > 0 ? (unfit / workHealthStatus.length) * 100 : 0}%` }} />
                   </div>
-                  <span className="text-sm font-medium text-slate-900">{unfit}</span>
+                  <span className="text-sm font-medium text-foreground">{unfit}</span>
                 </div>
               </div>
             </div>
@@ -291,7 +291,7 @@ export default function ReportsPage() {
                 <div className="space-y-2">
                   {topRows.map((d) => (
                     <div key={d.key} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="min-w-0 truncate text-slate-600" title={d.label}>
+                      <span className="min-w-0 truncate text-text-secondary" title={d.label}>
                         {d.label}
                       </span>
                       <Badge variant="info">{d.count}</Badge>
@@ -312,9 +312,9 @@ export default function ReportsPage() {
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {mcuByType.map((item) => (
-                <div key={item.type} className="rounded-xl border border-slate-200 p-4 text-center">
-                  <p className="text-2xl font-semibold text-slate-900">{item.count}</p>
-                  <p className="text-xs text-slate-500">{item.type}</p>
+                <div key={item.type} className="rounded-xl border border-border p-4 text-center">
+                  <p className="text-2xl font-semibold text-foreground">{item.count}</p>
+                  <p className="text-xs text-muted-foreground">{item.type}</p>
                 </div>
               ))}
             </div>
