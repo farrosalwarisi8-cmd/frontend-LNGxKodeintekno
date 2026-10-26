@@ -3,67 +3,367 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================================
+   TOKEN DESAIN — EMR PT Layar Nusantara Gas
+   Satu sumber kebenaran untuk SELURUH warna UI (Tugas 1 rebrand LNG).
+
+   Identitas diambil dari logo api PT LNG: merah #F50405, biru #0A7DF2,
+   hijau #087C24. Nilai mentah logo TIDAK dipakai langsung untuk teks karena
+   tidak lolos kontras, sehingga dipakai varian yang digelapkan:
+     biru  -> primary   #0B63C8   (aksi, navigasi, fokus)
+     hijau -> success   #087C24   (selesai / Fit)
+     merah -> danger    #D1060A   (bahaya / Unfit / error)
+
+   Struktur:
+     :root   nilai mode terang  (via variabel --c-*)
+     .dark   nilai mode gelap   (token sama, nilai berbeda)
+     @theme inline  memetakan --c-* ke nama token Tailwind yang DIPAKAI kode
+   Dua lapis ini wajib: @theme inline membuat utilitas merujuk var(--c-...),
+   sehingga penggantian nilai pada .dark ikut berlaku tanpa rebuild.
+
+   Pengecualian aturan "tanpa warna mentah": berkas ini SENDIRI.
+   ============================================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* ---------- Netral (permukaan didominasi putih & abu kebiruan) ---------- */
+  --c-background: #f5f8fc;
+  --c-surface: #ffffff;
+  --c-surface-raised: #ffffff;
+  --c-muted: #eff3f8;
+  --c-border: #d6dee6;
+  --c-foreground: #0f1e2b;
+  --c-text-secondary: #35485c;
+  --c-muted-foreground: #55677a;
+  --c-ring: #0b63c8;
+
+  /*
+   * Batas kontrol (input/select/textarea/checkbox): berbeda dari `border`
+   * dekoratif karena WCAG 1.4.11 mensyaratkan batas komponen UI mencapai
+   * 3:1 terhadap warna di sekitarnya agar batas kontrol terlihat jelas.
+   */
+  --c-input: #7f8d9d;
+
+  /* Alias lama (nama lama tetap, nilai diselaraskan) */
+  --c-surface-page: var(--c-background);
+  --c-surface-card: var(--c-surface);
+  --c-surface-elevated: var(--c-surface-raised);
+  --c-border-default: var(--c-border);
+  --c-text-primary: var(--c-foreground);
+  --c-text-muted: var(--c-muted-foreground);
+
+  /* ---------- Primer (biru logo, digelapkan) ---------- */
+  --c-primary-50: #eaf3fd;
+  --c-primary-100: #dcebfd;
+  --c-primary-200: #b9d5fa;
+  --c-primary-300: #8db9f5;
+  --c-primary-400: #4f91ea;
+  --c-primary-500: #1a72d6;
+  --c-primary-600: #0b63c8;
+  --c-primary-700: #0a52a5;
+  --c-primary-800: #08427f;
+  --c-primary-900: #062f5a;
+
+  --c-primary: #0b63c8;
+  --c-primary-hover: #0a52a5;
+  --c-primary-soft: #eaf3fd;
+  --c-primary-foreground: #ffffff;
+  --c-accent-foreground: #0a52a5;
+
+  /* ---------- Success (hijau logo, apa adanya) ---------- */
+  --c-success-50: #edf8f1;
+  --c-success-100: #e2f4e7;
+  --c-success-200: #c3e9cd;
+  --c-success-300: #74bc8b;
+  --c-success-400: #3aa466;
+  --c-success-500: #0a8e2b;
+  --c-success-600: #087c24;
+  --c-success-700: #06631c;
+  --c-success-800: #054a16;
+  --c-success-900: #04310f;
+
+  --c-success: #087c24;
+  --c-success-soft: #e7f4ea;
+  --c-success-foreground: #ffffff;
+
+  /* ---------- Danger (merah logo, digelapkan) ---------- */
+  --c-danger-50: #fdf6f6;
+  --c-danger-100: #fdecec;
+  --c-danger-200: #f8d5d5;
+  --c-danger-300: #ed8284;
+  --c-danger-400: #e4494d;
+  --c-danger-500: #d9161b;
+  --c-danger-600: #d1060a;
+  --c-danger-700: #ad0508;
+  --c-danger-800: #8a0406;
+  --c-danger-900: #670305;
+
+  --c-danger: #d1060a;
+  --c-danger-soft: #fdecec;
+  --c-danger-foreground: #ffffff;
+
+  /* ---------- Warning ----------
+     `warning` (garis/ikon) digelapkan dari #E3B04B menjadi #b07a1e agar
+     lolos kontras non-teks 3:1 di atas putih dan di atas warning-soft.
+     Nilai asli #E3B04B tetap tersedia sebagai --c-warning-400 untuk
+     keperluan dekoratif murni. */
+  --c-warning-50: #fdf3dc;
+  --c-warning-100: #fbe9c8;
+  --c-warning-200: #f6d89f;
+  --c-warning-300: #efc274;
+  --c-warning-400: #e3b04b;
+  --c-warning-500: #c79230;
+  --c-warning-600: #8a5a0b;
+  --c-warning-700: #6e4708;
+  --c-warning-800: #573806;
+  --c-warning-900: #402904;
+
+  --c-warning: #b07a1e;
+  --c-warning-text: #8a5a0b;
+  --c-warning-soft: #fdf3dc;
+  --c-warning-foreground: #2b1a02;
+
+  /* ---------- Info (biru logo #0A7DF2 — dekoratif & status informatif) ---------- */
+  --c-info-50: #f4f9ff;
+  --c-info-100: #e3f0fe;
+  --c-info-200: #c4dffc;
+  --c-info-300: #95c7f9;
+  --c-info-400: #4fa6f6;
+  --c-info-500: #0a7df2;
+  --c-info-600: #0a52a5;
+  --c-info-700: #08407f;
+  --c-info-800: #06305f;
+  --c-info-900: #052242;
+
+  --c-info: #0a52a5;
+  --c-info-soft: #e3f0fe;
+  --c-info-foreground: #ffffff;
+
+  /* ---------- Sidebar (biru laut tua turunan biru logo) ---------- */
+  --c-sidebar: #0b2a4a;
+  --c-sidebar-foreground: #e6eef6;
+  --c-sidebar-muted: #9fb3c8;
+  --c-sidebar-border: #1c4066;
+  --c-sidebar-active: #123f6e;
+  /* Penanda item aktif: batang biru yang lolos 3:1 di atas sidebar & aktif */
+  --c-sidebar-marker: #4f91ea;
+
+  /* ---------- Grafik (hanya untuk konfigurasi chart) ---------- */
+  --c-chart-1: #0b63c8;
+  --c-chart-2: #087c24;
+  --c-chart-3: #0a7df2;
+  --c-chart-4: #d1060a;
+  --c-chart-5: #55677a;
+}
+
+/* ============================ MODE GELAP ============================
+   Token yang sama, nilai berbeda. Semua pasangan teks diverifikasi oleh
+   scripts/check-contrast.mjs (light DAN dark). */
+.dark {
+  color-scheme: dark;
+
+  --c-background: #0b1622;
+  --c-surface: #12202f;
+  --c-surface-raised: #17283a;
+  --c-muted: #1b2c40;
+  --c-border: #25384c;
+  --c-foreground: #e6eef6;
+  --c-text-secondary: #c7d5e4;
+  --c-muted-foreground: #9fb3c8;
+  --c-ring: #4da3ff;
+  --c-input: #6b819b;
+
+  /* Netral: nada isi gelap, teks terang */
+  --c-primary-50: #0f2740;
+  --c-primary-100: #14324f;
+  --c-success-50: #07210f;
+  --c-success-100: #0f2a18;
+  --c-danger-50: #3a1414;
+  --c-danger-100: #331618;
+  --c-warning-50: #33260e;
+  --c-warning-100: #2c210c;
+  --c-info-50: #0f2740;
+  --c-info-100: #14324f;
+
+  /* Isi (dipasangkan dengan *-foreground gelap, bukan putih) */
+  --c-primary-600: #4da3ff;
+  --c-primary-700: #7cbfff;
+  --c-success-600: #3fbf6a;
+  --c-success-700: #2fa85a;
+  --c-danger-600: #ff6b6b;
+  --c-danger-700: #ff8f8f;
+  --c-warning-600: #e7b25a;
+  --c-warning-700: #d09a3f;
+  --c-info-600: #63acf7;
+  --c-info-700: #4f9bea;
+
+  /* Semantik */
+  --c-primary: #4da3ff;
+  --c-primary-hover: #2e86f0;
+  --c-primary-soft: #14324f;
+  --c-primary-foreground: #06121f;
+  --c-accent-foreground: #7cbfff;
+
+  --c-success: #3fbf6a;
+  --c-success-soft: #0f2a18;
+  --c-success-foreground: #04210d;
+
+  --c-danger: #ff6b6b;
+  --c-danger-soft: #331618;
+  --c-danger-foreground: #2a0000;
+
+  --c-warning: #e7b25a;
+  --c-warning-text: #e7b25a;
+  --c-warning-soft: #33260e;
+  --c-warning-foreground: #2a1c02;
+
+  --c-info: #63acf7;
+  --c-info-soft: #14324f;
+  --c-info-foreground: #06121f;
+
+  --c-sidebar: #08203a;
+  --c-sidebar-foreground: #e6eef6;
+  --c-sidebar-muted: #9fb3c8;
+  --c-sidebar-border: #173455;
+  --c-sidebar-active: #123f6e;
+  --c-sidebar-marker: #63acf7;
+
+  --c-chart-1: #4da3ff;
+  --c-chart-2: #3fbf6a;
+  --c-chart-3: #63acf7;
+  --c-chart-4: #ff6b6b;
+  --c-chart-5: #9fb3c8;
+}
+
 @theme inline {
-  /* ============================================================
-     TOKEN DESAIN — satu sumber untuk seluruh UI (app/globals.css)
-     ============================================================ */
+  /* ---------- Netral & permukaan ---------- */
+  --color-background: var(--c-background);
+  --color-foreground: var(--c-foreground);
+  --color-card: var(--c-surface);
+  --color-card-foreground: var(--c-foreground);
+  --color-popover: var(--c-surface-raised);
+  --color-popover-foreground: var(--c-foreground);
+  --color-muted: var(--c-muted);
+  --color-muted-foreground: var(--c-muted-foreground);
+  --color-secondary: var(--c-muted);
+  --color-secondary-foreground: var(--c-text-secondary);
+  --color-accent: var(--c-primary-soft);
+  --color-accent-foreground: var(--c-accent-foreground);
+  --color-border: var(--c-border);
+  --color-input: var(--c-input);
+  --color-ring: var(--c-ring);
 
-  /* ---------- Warna ---------- */
-  --color-primary-50: #f0fdfa;
-  --color-primary-100: #ccfbf1;
-  --color-primary-200: #99f6e4;
-  --color-primary-300: #5eead4;
-  --color-primary-400: #2dd4bf;
-  --color-primary-500: #14b8a6;
-  --color-primary-600: #0f766e;
-  --color-primary-700: #115e59;
-  --color-primary-800: #134e4a;
-  --color-primary-900: #042f2e;
+  /* Alias lama agar kode yang sudah ada tetap menghasilkan utilitas */
+  --color-surface-page: var(--c-background);
+  --color-surface-card: var(--c-surface);
+  --color-surface-elevated: var(--c-surface-raised);
+  --color-border-default: var(--c-border);
+  --color-text-primary: var(--c-foreground);
+  --color-text-secondary: var(--c-text-secondary);
+  --color-text-muted: var(--c-muted-foreground);
 
-  --color-navy-900: #0f172a;
-  --color-slate-700: #334155;
-  --color-slate-600: #475569;
-  --color-slate-500: #64748b;
-  --color-slate-400: #94a3b8;
-  --color-slate-300: #cbd5e1;
-  --color-slate-200: #e2e8f0;
-  --color-slate-100: #f1f5f9;
-  --color-slate-50: #f8fafc;
+  /* ---------- Semantik merek ---------- */
+  --color-primary: var(--c-primary);
+  --color-primary-hover: var(--c-primary-hover);
+  --color-primary-soft: var(--c-primary-soft);
+  --color-primary-foreground: var(--c-primary-foreground);
+  --color-destructive: var(--c-danger);
+  --color-destructive-foreground: var(--c-danger-foreground);
 
-  --color-success-600: #15803d;
-  --color-success-500: #22c55e;
-  --color-success-100: #dcfce7;
-  --color-success-50: #f0fdf4;
+  --color-success: var(--c-success);
+  --color-success-soft: var(--c-success-soft);
+  --color-success-foreground: var(--c-success-foreground);
 
-  --color-warning-600: #b45309;
-  --color-warning-500: #f59e0b;
-  --color-warning-100: #fef3c7;
-  --color-warning-50: #fffbeb;
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-danger-foreground: var(--c-danger-foreground);
 
-  --color-danger-600: #b91c1c;
-  --color-danger-500: #ef4444;
-  --color-danger-100: #fee2e2;
-  --color-danger-50: #fef2f2;
+  --color-warning: var(--c-warning);
+  --color-warning-text: var(--c-warning-text);
+  --color-warning-soft: var(--c-warning-soft);
+  --color-warning-foreground: var(--c-warning-foreground);
 
-  --color-info-600: #0369a1;
-  --color-info-500: #0ea5e9;
-  --color-info-100: #e0f2fe;
-  --color-info-50: #f0f9ff;
+  --color-info: var(--c-info);
+  --color-info-soft: var(--c-info-soft);
+  --color-info-foreground: var(--c-info-foreground);
 
-  --color-purple-600: #7c3aed;
-  --color-purple-100: #ede9fe;
-  --color-purple-50: #f5f3ff;
+  /* ---------- Sidebar ---------- */
+  --color-sidebar: var(--c-sidebar);
+  --color-sidebar-foreground: var(--c-sidebar-foreground);
+  --color-sidebar-muted: var(--c-sidebar-muted);
+  --color-sidebar-border: var(--c-sidebar-border);
+  --color-sidebar-active: var(--c-sidebar-active);
+  --color-sidebar-marker: var(--c-sidebar-marker);
 
-  /* Semantik & permukaan */
-  --color-surface-page: #f8fafc;
-  --color-surface-card: #ffffff;
-  --color-surface-elevated: #ffffff;
-  --color-border-default: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748b;
+  /* ---------- Chart (hanya untuk konfigurasi grafik) ---------- */
+  --color-chart-1: var(--c-chart-1);
+  --color-chart-2: var(--c-chart-2);
+  --color-chart-3: var(--c-chart-3);
+  --color-chart-4: var(--c-chart-4);
+  --color-chart-5: var(--c-chart-5);
 
-  /* ---------- Spasi ---------- */
+  /* ---------- Skala primary ---------- */
+  --color-primary-50: var(--c-primary-50);
+  --color-primary-100: var(--c-primary-100);
+  --color-primary-200: var(--c-primary-200);
+  --color-primary-300: var(--c-primary-300);
+  --color-primary-400: var(--c-primary-400);
+  --color-primary-500: var(--c-primary-500);
+  --color-primary-600: var(--c-primary-600);
+  --color-primary-700: var(--c-primary-700);
+  --color-primary-800: var(--c-primary-800);
+  --color-primary-900: var(--c-primary-900);
+
+  /* ---------- Skala success ---------- */
+  --color-success-50: var(--c-success-50);
+  --color-success-100: var(--c-success-100);
+  --color-success-200: var(--c-success-200);
+  --color-success-300: var(--c-success-300);
+  --color-success-400: var(--c-success-400);
+  --color-success-500: var(--c-success-500);
+  --color-success-600: var(--c-success-600);
+  --color-success-700: var(--c-success-700);
+  --color-success-800: var(--c-success-800);
+  --color-success-900: var(--c-success-900);
+
+  /* ---------- Skala danger ---------- */
+  --color-danger-50: var(--c-danger-50);
+  --color-danger-100: var(--c-danger-100);
+  --color-danger-200: var(--c-danger-200);
+  --color-danger-300: var(--c-danger-300);
+  --color-danger-400: var(--c-danger-400);
+  --color-danger-500: var(--c-danger-500);
+  --color-danger-600: var(--c-danger-600);
+  --color-danger-700: var(--c-danger-700);
+  --color-danger-800: var(--c-danger-800);
+  --color-danger-900: var(--c-danger-900);
+
+  /* ---------- Skala warning ---------- */
+  --color-warning-50: var(--c-warning-50);
+  --color-warning-100: var(--c-warning-100);
+  --color-warning-200: var(--c-warning-200);
+  --color-warning-300: var(--c-warning-300);
+  --color-warning-400: var(--c-warning-400);
+  --color-warning-500: var(--c-warning-500);
+  --color-warning-600: var(--c-warning-600);
+  --color-warning-700: var(--c-warning-700);
+  --color-warning-800: var(--c-warning-800);
+  --color-warning-900: var(--c-warning-900);
+
+  /* ---------- Skala info ---------- */
+  --color-info-50: var(--c-info-50);
+  --color-info-100: var(--c-info-100);
+  --color-info-200: var(--c-info-200);
+  --color-info-300: var(--c-info-300);
+  --color-info-400: var(--c-info-400);
+  --color-info-500: var(--c-info-500);
+  --color-info-600: var(--c-info-600);
+  --color-info-700: var(--c-info-700);
+  --color-info-800: var(--c-info-800);
+  --color-info-900: var(--c-info-900);
+
+  /* ---------- Spasi (grid 4/8px) ---------- */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -75,8 +375,13 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* ---------- Tipografi ---------- */
-  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  /* ---------- Tipografi ----------
+     Tidak ada berkas font di repo, sehingga tetap memakai system font stack
+     (aman offline). `--font-sans` TIDAK lagi merujuk `--font-inter` yang tidak
+     pernah didefinisikan — sebelumnya itu membuat seluruh deklarasi font-family
+     invalid dan teks jatuh ke font serif bawaan browser. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", monospace;
   --text-xs: 0.75rem;
@@ -85,41 +390,28 @@
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
   --leading-none: 1;
   --leading-tight: 1.25;
   --leading-snug: 1.375;
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
 
-  /* ---------- Radius ---------- */
-  --radius-sm: 0.375rem;
+  /* ---------- Radius (8–12px untuk komponen; 4px untuk chip) ---------- */
+  --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 0.875rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.25rem;
-}
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
 
-@theme {
-  --color-background: var(--color-surface-page);
-  --color-foreground: var(--color-text-primary);
-  --color-card: var(--color-surface-card);
-  --color-card-foreground: var(--color-text-primary);
-  --color-popover: var(--color-surface-elevated);
-  --color-popover-foreground: var(--color-text-primary);
-  --color-primary: var(--color-primary-600);
-  --color-primary-foreground: #ffffff;
-  --color-secondary: var(--color-slate-100);
-  --color-secondary-foreground: var(--color-slate-700);
-  --color-muted: var(--color-slate-100);
-  --color-muted-foreground: var(--color-text-muted);
-  --color-accent: var(--color-primary-50);
-  --color-accent-foreground: var(--color-primary-700);
-  --color-destructive: var(--color-danger-600);
-  --color-destructive-foreground: #ffffff;
-  --color-border: var(--color-border-default);
-  --color-input: var(--color-border-default);
-  --color-ring: var(--color-primary-500);
+  /* ---------- Bayangan lembut ---------- */
+  --shadow-sm: 0 1px 2px 0 rgb(15 30 43 / 0.05);
+  --shadow-md: 0 4px 10px -2px rgb(15 30 43 / 0.08);
+  --shadow-lg: 0 10px 24px -6px rgb(15 30 43 / 0.12);
+  --shadow-xl: 0 18px 40px -12px rgb(15 30 43 / 0.18);
+  --shadow-2xl: 0 24px 48px -12px rgb(15 30 43 / 0.24);
 }
 
 @layer base {
@@ -139,7 +431,16 @@
 
 @layer utilities {
   .focus-ring {
-    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500;
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary;
+  }
+
+  /*
+   * Angka tabel & nilai klinis: rata dan tidak bergetar saat data berubah.
+   * Dipakai pada kolom angka (usia, tekanan darah, nilai lab, total).
+   */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
   }
 
   /*
@@ -149,7 +450,7 @@
    */
   .scrollbar-subtle {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-slate-300) transparent;
+    scrollbar-color: var(--c-border) transparent;
   }
   .scrollbar-subtle::-webkit-scrollbar {
     width: 8px;
@@ -159,13 +460,28 @@
     background: transparent;
   }
   .scrollbar-subtle::-webkit-scrollbar-thumb {
-    background-color: var(--color-slate-300);
+    background-color: var(--c-border);
     border: 2px solid transparent;
     border-radius: 9999px;
     background-clip: content-box;
   }
   .scrollbar-subtle::-webkit-scrollbar-thumb:hover {
-    background-color: var(--color-slate-400);
+    background-color: var(--c-muted-foreground);
     background-clip: content-box;
   }
 }
+
+/*
+ * Hormati preferensi gerak pengguna: transisi & animasi dimatikan bila
+ * sistem meminta reduced motion (Tugas 8 — di sini agar nilainya satu).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

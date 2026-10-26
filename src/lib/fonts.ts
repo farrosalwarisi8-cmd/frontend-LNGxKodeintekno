@@ -1,18 +1,18 @@
 /**
- * Font tipografi aplikasi: Inter (fallback ke system font stack).
+ * Font tipografi aplikasi — system font stack.
  *
- * Catatan: next/font/google memerlukan akses internet saat build untuk
- * mendownload font. Jika build environment tidak bisa mengakses internet,
- * gunakan font system stack sebagai fallback.
+ * Repo ini tidak menyimpan berkas font (woff2/ttf), dan next/font/google
+ * membutuhkan akses internet saat build, sehingga aplikasi memakai system
+ * font stack agar tetap berfungsi offline. Hierarki tipografi (ukuran,
+ * bobot, jarak) diatur lewat token `--text-*` / `--leading-*` di
+ * `app/globals.css`.
  *
- * - `variable: "--font-inter"`: diekspos sebagai CSS variable dan dipakai
- *   `--font-sans` di `app/globals.css`.
+ * `inter.className` = `font-sans`, dan `--font-sans` didefinisikan langsung
+ * di `app/globals.css`. Catatan perbaikan: variabel `--font-inter` TIDAK
+ * didefinisikan di mana pun — dulu `--font-sans` merujuknya tanpa fallback,
+ * sehingga seluruh deklarasi `font-family` menjadi invalid pada computed
+ * value dan teks jatuh ke font serif bawaan browser.
  */
 export const inter = {
   className: "font-sans",
-  variable: "--font-inter",
-  style: {
-    fontFamily:
-      "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-  },
 };
