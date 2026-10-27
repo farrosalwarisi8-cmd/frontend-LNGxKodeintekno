@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { inter } from "@/lib/fonts";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,16 +15,6 @@ export const metadata: Metadata = {
   description:
     "Electronic Medical Record (EMR) okupasi PT Layar Nusantara Gas: registrasi pekerja & MRN, " +
     "consent digital, MCU & Fitness to Work, kunjungan klinik, farmasi, dan sertifikat kesehatan kerja.",
-  // Warna merek LNG (biru sidebar) untuk bilah browser / splash PWA.
-  // `<meta name="theme-color">` wajib nilai warna literal (bukan utilitas
-  // Tailwind) — pengecualian sah dari guard no-raw-colors, sama seperti aset
-  // logo biner: nilainya disalin dari --c-sidebar di app/globals.css.
-  /* eslint-disable rebrand/no-raw-colors -- meta theme-color wajib hex literal */
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#0b2a4a" },
-    { media: "(prefers-color-scheme: dark)", color: "#08203a" },
-  ],
-  /* eslint-enable rebrand/no-raw-colors */
   manifest: "/manifest.webmanifest",
   icons: {
     // Lambang LNG (public/brand/lng-flame.png) — favicon lama app/favicon.ico
@@ -37,6 +27,19 @@ export const metadata: Metadata = {
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
+
+// Warna merek LNG (biru sidebar) untuk bilah browser / splash PWA.
+// Next 16 mewajibkan themeColor di `viewport`, bukan `metadata`.
+// Nilai hex literal = pengecualian sah guard no-raw-colors (meta wajib
+// literal, disalin dari --c-sidebar di app/globals.css).
+/* eslint-disable rebrand/no-raw-colors -- viewport theme-color wajib hex literal */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0b2a4a" },
+    { media: "(prefers-color-scheme: dark)", color: "#08203a" },
+  ],
+};
+/* eslint-enable rebrand/no-raw-colors */
 
 export default function RootLayout({
   children,

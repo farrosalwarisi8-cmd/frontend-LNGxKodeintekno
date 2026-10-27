@@ -7,8 +7,8 @@ import { can, type Permission } from "@/lib/rbac";
 import { useDemoMode } from "@/lib/demo-role";
 import type { Role } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { ShieldAlert } from "lucide-react";
-import Link from "next/link";
 
 export interface RoutePermissionRule {
   pattern: RegExp;
@@ -157,20 +157,23 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
   if (access === "denied") {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center p-6">
-        <div className="rounded-2xl border border-border bg-card p-8 text-center">
-          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <ShieldAlert className="size-6" />
+        <div className="mx-auto w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center">
+          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-danger-soft">
+            <ShieldAlert className="size-6 text-danger" aria-hidden="true" />
           </div>
           <h2 className="text-lg font-semibold text-foreground">Akses Ditolak</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Anda tidak punya izin untuk membuka halaman ini.
           </p>
-          <Link
-            href="/dashboard"
-            className="mt-4 inline-flex items-center justify-center rounded-xl border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
-          >
-            Kembali ke Dashboard
-          </Link>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Hubungi administrator bila Anda merasa seharusnya memiliki akses.
+          </p>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button variant="outline" onClick={() => router.back()}>
+              Kembali
+            </Button>
+            <Button onClick={() => router.push("/dashboard")}>Kembali ke Dashboard</Button>
+          </div>
         </div>
       </div>
     );
