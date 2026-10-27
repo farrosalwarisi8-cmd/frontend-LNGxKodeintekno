@@ -33,7 +33,7 @@ export interface LogoProps {
    * sudah terbaca di sebelah lambang; isi hanya bila lambang tampil sendirian.
    */
   alt?: string;
-  /** Bungkus lambang chip terang (`bg-surface`) untuk latar gelap. */
+  /** Bungkus lambang chip terang (`bg-surface-elevated`) untuk latar gelap. */
   onDark?: boolean;
   /** True bila lambang tampil di atas fold (hindari layout shift). */
   priority?: boolean;
@@ -53,7 +53,11 @@ export function Logo({
     <span
       className={cn(
         "inline-flex shrink-0 items-center justify-center",
-        onDark && "rounded-2xl bg-surface p-1.5",
+        // Chip permukaan di atas latar gelap (sidebar/header gelap): putih
+        // di light, permukaan terangkat di dark. Keduanya terpisah dari
+        // `--c-sidebar` (14,5 light; cukup untuk pemisah non-teks di dark)
+        // dan menjaga proporsi lambang tanpa mewarnai ulang.
+        onDark && "rounded-2xl bg-surface-elevated p-1.5",
         className
       )}
     >
