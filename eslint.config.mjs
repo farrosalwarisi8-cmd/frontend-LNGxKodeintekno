@@ -37,6 +37,10 @@ const eslintConfig = defineConfig([
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // KODEINxLNG-Backend adalah proyek terpisah (masuk .gitignore, punya
+    // eslint.config sendiri) dan dist/ hasil build-nya — di luar cakupan
+    // lint frontend ini.
+    "KODEINxLNG-Backend/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
