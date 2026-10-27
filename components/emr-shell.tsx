@@ -28,6 +28,7 @@ import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive 
 import { Breadcrumb } from "@/components/breadcrumb";
 import { EnvironmentBanner } from "@/components/environment-banner";
 import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { RouteTitle } from "@/components/route-title";
 import { ScopeSelector } from "@/components/scope-selector";
 import { toastError, toastSuccess } from "@/lib/use-toast";
@@ -277,6 +278,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                     );
                   })}
                 </nav>
+                {/* Pengalih tema di menu mobile (topbar desktop punya sendiri). */}
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Tema tampilan</p>
+                  <ThemeToggle />
+                </div>
               </div>
             </div>
           )}
@@ -285,6 +291,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-border bg-card px-6 lg:flex">
             <Breadcrumb />
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               {!isOnline && (
                 <div
                   role="status"

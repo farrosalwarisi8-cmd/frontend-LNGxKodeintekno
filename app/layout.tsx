@@ -4,6 +4,7 @@ import { inter } from "@/lib/fonts";
 import { Toaster } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { VitalsReporter } from "@/components/vitals-reporter";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   applicationName: "Kodein Klinik",
@@ -41,13 +42,16 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="id"
-      className={`${inter.className} h-full antialiased`}
-      data-scroll-behavior="smooth"
-    >
+      <html
+        lang="id"
+        className={`${inter.className} h-full antialiased`}
+        data-scroll-behavior="smooth"
+        suppressHydrationWarning
+      >
       <body className="min-h-full bg-surface-page font-sans text-text-primary">
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <ThemeProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </ThemeProvider>
         <Toaster />
         <VitalsReporter />
       </body>
