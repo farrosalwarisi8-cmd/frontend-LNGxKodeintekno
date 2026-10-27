@@ -1,0 +1,36 @@
+{
+  "name": "Kodein Klinik — EMR PT Layar Nusantara Gas",
+  "short_name": "Kodein Klinik",
+  "description": "Electronic Medical Record (EMR) okupasi: registrasi pekerja, MCU & Fitness to Work, kunjungan klinik, farmasi, dan sertifikat kesehatan kerja.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "lang": "id",
+  "background_color": "#0b2a4a",
+  "theme_color": "#0b2a4a",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

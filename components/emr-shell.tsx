@@ -18,6 +18,7 @@ import {
   User,
 } from "lucide-react";
 import { ICON_MAP } from "@/shared/components/icon-map";
+import { Logo } from "@/components/logo";
 import { useDemoMode } from "@/lib/demo-role";
 import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
@@ -135,12 +136,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 overflow-hidden">
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-card lg:flex" aria-label="Navigasi utama">
           <div className="flex h-14 items-center gap-2.5 border-b border-border px-5">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-primary-600">
-              <Activity className="size-4 text-primary-foreground" aria-hidden="true" />
-            </div>
+            {/* Lambang LNG + nama sistem (sidebar selalu lebar, tidak diciutkan). */}
+            <Logo size="md" />
             <div>
               <p className="text-sm font-semibold text-foreground">Kodein Klinik</p>
-              <p className="text-[10px] text-muted-foreground">EMR Okupasi</p>
+              <p className="text-[10px] text-muted-foreground">PT Layar Nusantara Gas</p>
             </div>
           </div>
 
@@ -201,16 +201,14 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="border-t border-border px-4 py-3">
-            <p className="text-[10px] text-muted-foreground">Kodein Klinik · EMR Okupasi</p>
+            <p className="text-[10px] text-muted-foreground">Kodein Klinik · PT Layar Nusantara Gas</p>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-primary-600">
-                <Activity className="size-3.5 text-primary-foreground" aria-hidden="true" />
-              </div>
+              <Logo size="sm" />
               <span className="text-sm font-semibold text-foreground">Kodein Klinik</span>
             </div>
             <div className="flex items-center gap-2">
