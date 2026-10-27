@@ -126,9 +126,9 @@ const COLOR_UTILS = [
   "outline",
 ] as const;
 
-/** Ekstrak kandidat `util-token` dari teks (tanpa varian prefix & opacity). */
-function extractCandidates(src: string): string[] {
-  const found: string[] = [];
+/** Ekstrak kandidat `util-token` beserta nomor baris (tanpa varian prefix & opacity). */
+function extractCandidates(src: string): Array<{ cls: string; line: number }> {
+  const found: Array<{ cls: string; line: number }> = [];
   const re = new RegExp(
     `(?<![\\w-])(?:[a-z][\\w-]*:)*(${COLOR_UTILS.join("|")})-([a-z][\\w-]*?)(?=\\/[0-9]|(?![\\w/-]))`,
     "g"
@@ -140,9 +140,25 @@ function extractCandidates(src: string): string[] {
     // Kupas modifier opacity Tailwind (`bg-muted/50` -> `muted`).
     const slash = token.indexOf("/");
     if (slash >= 0) token = token.slice(0, slash);
-    found.push(`${util}-${token}`);
+    const line = src.slice(0, m.index).split("\n").length - 1;
+    found.push({ cls: `${util}-${token}`, line });
   }
   return found;
+}
+
+/**
+ * Baris yang dikecualikan guard warna — selaras dengan semantik ESLint:
+ * baris berisi `eslint-disable-line rebrand/no-raw-colors` dan baris tepat
+ * setelah `eslint-disable-next-line rebrand/no-raw-colors`.
+ */
+function disabledLines(src: string): Set<number> {
+  const lines = src.split("\n");
+  const out = new Set<number>();
+  lines.forEach((line, i) => {
+    if (line.includes("eslint-disable-line rebrand/no-raw-colors")) out.add(i);
+    if (line.includes("eslint-disable-next-line rebrand/no-raw-colors")) out.add(i + 1);
+  });
+  return out;
 }
 
 describe("token warna terdefinisi (pencegah bg-surface)", () => {
@@ -161,11 +177,13 @@ describe("token warna terdefinisi (pencegah bg-surface)", () => {
     const offenders: string[] = [];
     for (const file of runtimeFiles) {
       const src = fs.readFileSync(file, "utf8");
-      for (const cls of extractCandidates(src)) {
+      const off = disabledLines(src);
+      for (const { cls, line } of extractCandidates(src)) {
+        if (off.has(line)) continue;
         if (NON_COLOR.has(cls)) continue;
         const token = cls.slice(cls.indexOf("-") + 1);
         if (COLOR_KEYWORDS.has(token)) continue;
-        if (!tokens.has(token)) offenders.push(`${rel(file)}: ${cls}`);
+        if (!tokens.has(token)) offenders.push(`${rel(file)}:${line + 1}: ${cls}`);
       }
     }
     expect(offenders, "kelas merujuk token yang tidak ada di app/globals.css").toEqual([]);
