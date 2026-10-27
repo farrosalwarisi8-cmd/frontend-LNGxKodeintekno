@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 import path from "path";
 import fs from "fs";
 
-function resolveAlias(source: string, importer: string | undefined): string | null {
+function resolveAlias(source: string): string | null {
   if (!source.startsWith("@/")) return null;
   const p = source.slice(2);
   const candidates = [
@@ -42,8 +42,8 @@ export default defineConfig({
     {
       name: "resolve-at-alias",
       enforce: "pre",
-      resolveId(source, importer) {
-        return resolveAlias(source, importer);
+      resolveId(source) {
+        return resolveAlias(source);
       },
     },
   ],

@@ -249,7 +249,6 @@ await withContext({ width: 1280, height: 800 }, async (ctx) => {
   const t0 = Date.now();
   const res = await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
   const loadMs = Date.now() - t0;
-  const nextHeader = res?.headers()?.["x-nextjs-cache"] !== undefined || true;
   record("A1", "Preflight", "Frontend production build melayani /login", res?.status() === 200 ? "PASS" : "FAIL",
     `status=${res?.status()} loadMs=${loadMs}`, { url: page.url(), viewport: "1280x800", durationMs: loadMs });
 
@@ -1415,7 +1414,7 @@ say("O. TTE/PSrE + QR");
 await withContext({ width: 1280, height: 800 }, async (ctx) => {
   const page = await makePage(ctx, "O-tte");
   await login(page, "admin");
-  const token = await getToken(page);
+  await getToken(page);
 
   const pk = await apiCall("/public/verify/token-tidak-valid-" + STAMP);
   record("O1", "TTE/QR", "QR/public verification menangani token invalid tanpa membocorkan data klinis",

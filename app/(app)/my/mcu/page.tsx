@@ -12,7 +12,7 @@ import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
-import { Activity, HeartPulse, Calendar } from "lucide-react";
+import { Activity, HeartPulse } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 
 function PageTitle() {

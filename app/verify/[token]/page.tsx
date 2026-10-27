@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { BadgeCheck, ShieldX, QrCode, Loader2, FileText, User, Calendar, Award } from "lucide-react";
+import { BadgeCheck, ShieldX, QrCode, Loader2, Award } from "lucide-react";
 import { documentService, type PublicVerifyResult } from "@/lib/services/document.service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

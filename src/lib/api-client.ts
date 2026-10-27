@@ -195,7 +195,10 @@ async function requestFull<T>(
   if (res.status === 401 && !path.startsWith("/auth/")) {
     clearToken();
     if (typeof window !== "undefined") {
-      window.location.href = "/login";
+      // URL absolut: aturan Next melarang tujuan relatif via location.href, dan
+      // reload penuh memang diperlukan agar state klien ikut terhapus saat sesi
+      // berakhir.
+      window.location.href = new URL("/login", window.location.origin).href;
     }
     throw new ApiError(401, mapApiError(401).message);
   }

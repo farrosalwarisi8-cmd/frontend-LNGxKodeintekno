@@ -158,7 +158,7 @@ describe("api-client (kontrak response backend)", () => {
     };
     expect(err.status).toBe(401);
     expect(getToken()).toBeNull();
-    expect((globalThis as { location: { href: string } }).location.href).toBe("/login");
+    expect((globalThis as { location: { href: string } }).location.href).toBe("http://localhost/login");
   });
 
   it("path yang diminta service selalu diawali prefix /api/v1", async () => {

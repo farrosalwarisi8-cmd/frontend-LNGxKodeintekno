@@ -2,8 +2,7 @@
 
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useStore } from "@/lib/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
@@ -11,12 +10,10 @@ import { Select } from "@/shared/components/design-system/select";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
-import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
 import {
   documentService,
   type SignatureRequest,
-  type SignatureStatus,
 } from "@/lib/services/document.service";
 import {
   PenLine,

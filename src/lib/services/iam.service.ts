@@ -87,14 +87,19 @@ export const iamService = {
    * akun ditolak lebih awal dengan pesan eksplisit — bukan request ke route
    * yang tidak ada dan bukan pula fake success.
    */
-  async createUser(_input: CreateUserInput): Promise<BackendUserRow> {
+  async createUser(input: CreateUserInput): Promise<BackendUserRow> {
+    // Input memang tidak dipakai — operasi selalu ditolak sebelum menyentuhnya.
+    void input;
     throw new IamOperationUnsupportedError(
       "createUser",
       "backend belum mengekspos POST /iam/users (hanya GET /iam/users)."
     );
   },
 
-  async updateUser(_id: string, _input: UpdateUserInput): Promise<BackendUserRow> {
+  async updateUser(id: string, input: UpdateUserInput): Promise<BackendUserRow> {
+    // Id & input memang tidak dipakai — operasi selalu ditolak sebelum menyentuhnya.
+    void id;
+    void input;
     throw new IamOperationUnsupportedError(
       "updateUser",
       "backend belum mengekspos PATCH /iam/users/:id (hanya GET /iam/users dan POST /iam/users/:id/unlock)."

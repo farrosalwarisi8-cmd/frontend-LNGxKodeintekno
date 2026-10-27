@@ -1,4 +1,3 @@
-import fs from "node:fs";
 const spec = await fetch("http://localhost:3000/docs-json").then((r) => r.json());
 const routes = [];
 for (const [p, ops] of Object.entries(spec.paths ?? {})) {

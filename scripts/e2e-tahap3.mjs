@@ -344,7 +344,6 @@ async function main() {
     if (rx && rx.items?.[0] && rxSiteId) {
       const medId = rx.items[0].medication_id;
       const qty = Number(rx.items[0].quantity ?? 9);
-      const invRow = (invBefore.body?.data ?? []).find((i) => i.medicationCode === 'MED-PCM-500');
       const fefo = await req('POST', '/pharmacy/dispensing/recommend-batches', {
         token: tokens.PHARMACIST,
         body: { medicationId: medId, siteId: rxSiteId, requiredQuantity: qty },

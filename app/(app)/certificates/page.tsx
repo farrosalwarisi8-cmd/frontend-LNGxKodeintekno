@@ -8,13 +8,13 @@ import { useStore } from "@/lib/store";
 import { syncCertificates, syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { documentService } from "@/lib/services/document.service";
 import { CERT_STATUS } from "@/lib/constants";
-import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Card } from "@/shared/components/design-system/card";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
-import { Search, BadgeCheck, Plus, QrCode, ChevronRight, ShieldCheck, ExternalLink } from "lucide-react";
+import { Search, BadgeCheck, Plus, QrCode, ShieldCheck, ExternalLink } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 
 export default function CertificatesPage() {
@@ -32,7 +32,7 @@ export default function CertificatesPage() {
 
   // Fase 6 — QR verification modal
   const [showQrModal, setShowQrModal] = useState(false);
-  const [qrToken, setQrToken] = useState("");
+  const [, setQrToken] = useState("");
   const [qrVerifying, setQrVerifying] = useState(false);
   const [qrResult, setQrResult] = useState<{
     isValid: boolean;

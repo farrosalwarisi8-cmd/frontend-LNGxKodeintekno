@@ -25,7 +25,11 @@ export function installBrowserStubs() {
   (globalThis as Record<string, unknown>).localStorage = localStorageStub;
   (globalThis as Record<string, unknown>).window = globalThis;
   if (!(globalThis as Record<string, unknown>).location) {
-    (globalThis as Record<string, unknown>).location = { href: "" };
+    // `origin` dibutuhkan perancang absolut new URL(..., location.origin).
+    (globalThis as Record<string, unknown>).location = {
+      href: "",
+      origin: "http://localhost",
+    };
   }
 }
 

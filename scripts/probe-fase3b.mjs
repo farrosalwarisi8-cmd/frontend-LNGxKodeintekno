@@ -23,7 +23,7 @@ async function main() {
   const apoteker = await login('apoteker');
   const perawat = await login('perawat');
   const drKlinik = await login('dr.klinik');
-  const drHendra = await login('dr.hendra');
+  await login('dr.hendra');
   const manajemen = await login('manajemen');
 
   // --- Ambil ID site dari /iam/users (admin) ---
@@ -46,10 +46,8 @@ async function main() {
   console.log('HO siteId:', hoSiteId);
 
   // --- 1. Cross-site: apoteker (HO) minta FEFO untuk site PLANT ---
-  const medPcm = 'MED-PCM-500';
   // cari medicationId asli dari inventory admin
   const invAdm = await req('GET', '/pharmacy/inventory', { token: admin });
-  const pcmRow = (invAdm.body?.data ?? []).find(i => i.medicationCode === 'MED-PCM-500');
   console.log('inventory admin PCM rows:', (invAdm.body?.data ?? []).filter(i => i.medicationCode === 'MED-PCM-500').map(i => ({ site: i.siteName, stock: i.currentStock })));
 
   // medicationId: dari pending prescription items (admin)

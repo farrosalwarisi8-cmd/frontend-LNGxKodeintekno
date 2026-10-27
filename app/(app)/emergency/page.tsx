@@ -10,9 +10,7 @@ import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Modal } from "@/shared/components/design-system/modal";
-import { Avatar } from "@/shared/components/design-system/avatar";
 import { formatDate } from "@/lib/format";
-import { useStore } from "@/lib/store";
 import { WifiOff, Wifi, AlertTriangle, CheckCircle, Clock, RefreshCw, ShieldAlert } from "lucide-react";
 
 interface EmergencyRecord {
@@ -56,7 +54,6 @@ function deviceFingerprint(): string {
 }
 
 export default function EmergencyPage() {
-  const employees = useStore((s) => s.employees);
   const [isOnline, setIsOnline] = useState(true);
   const [queue, setQueue] = useState<EmergencyRecord[]>(INITIAL_QUEUE);
   const [showModal, setShowModal] = useState(false);

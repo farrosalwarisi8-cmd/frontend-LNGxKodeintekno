@@ -3,20 +3,18 @@
 import { Can } from "@/components/can";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { syncInventory, useSyncedModules } from "@/lib/remote-sync";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Modal } from "@/shared/components/design-system/modal";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
-import { formatDate } from "@/lib/format";
-import { Search, Plus, Pill, AlertTriangle, Package, ChevronRight } from "lucide-react";
+import { Search, Plus, Pill, AlertTriangle, ChevronRight } from "lucide-react";
 
 export default function MedicinePage() {
   const medicines = useStore((s) => s.medicines);

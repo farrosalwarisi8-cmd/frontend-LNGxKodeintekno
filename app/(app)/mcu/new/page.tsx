@@ -11,7 +11,7 @@ import {
 } from "@/lib/remote-sync";
 import { mcuService } from "@/lib/services/mcu.service";
 import { MCU_TYPES } from "@/lib/constants";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
+import { Card } from "@/shared/components/design-system/card";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
@@ -26,18 +26,12 @@ import {
 import { formatDate } from "@/lib/format";
 import {
   UserRound,
-  Building2,
-  Phone,
   FileText,
   ChevronLeft,
   ChevronRight,
   Check,
   Activity,
   Heart,
-  Ruler,
-  Weight,
-  Eye,
-  Ear,
   Stethoscope,
 } from "lucide-react";
 

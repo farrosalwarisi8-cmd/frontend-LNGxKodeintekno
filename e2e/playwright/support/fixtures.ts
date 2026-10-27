@@ -25,7 +25,7 @@ export const test = base.extend<E2EFixtures>({
     await use(backend);
   },
 
-  loginAs: async ({ page, backend }, use) => {
+  loginAs: async ({ page }, use) => {
     await use(async (username: string) => {
       await login(page, username);
     });

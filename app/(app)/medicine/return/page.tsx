@@ -2,7 +2,7 @@
 
 import { Can } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";

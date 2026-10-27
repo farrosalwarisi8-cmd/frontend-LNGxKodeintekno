@@ -75,7 +75,6 @@ async function visit(page, state, pathname) {
 }
 const called = (state, pathname) =>
   state.api.filter((r) => r.path === pathname || r.path.startsWith(`${pathname}?`));
-const DENIED = /Akses terbatas/i;
 const FULL_ERROR = /Gagal memuat|Terjadi kesalahan saat memuat/i;
 
 async function openSession(context, user) {
@@ -107,7 +106,7 @@ async function main() {
   // ======================================================================
   {
     const { page, state } = await openSession(context, "admin");
-    const body = await visit(page, state, "/dashboard");
+    await visit(page, state, "/dashboard");
     await shoot(page, "admin-dashboard-scope");
 
     const sel = page.getByLabel("Pilih scope site");

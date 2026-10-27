@@ -4,7 +4,7 @@ import { useStore, useCurrentUser } from "@/lib/store";
 import { syncCertificates, syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { findMyEmployee } from "@/lib/services/auth.service";
 import { CERT_STATUS } from "@/lib/constants";
-import { Card, CardContent } from "@/shared/components/design-system/card";
+import { Card } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { EmptyState } from "@/shared/components/design-system/empty-state";

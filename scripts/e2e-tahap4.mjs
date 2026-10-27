@@ -60,8 +60,8 @@ async function main() {
   const hrPic = await login('hr.pic'); // HR_ADMIN, ORG
   const drKlinik = await login('dr.klinik'); // SITE-PLANT-01
   const nurse = await login('perawat');
-  const apoteker = await login('apoteker');
-  const manajemen = await login('manajemen');
+  await login('apoteker');
+  await login('manajemen');
 
   // ---------------------------------------------------------------- WAIVER
   console.log('-- Waiver end-to-end --');

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { installBrowserStubs } from "./helpers";
 
 /**
@@ -87,14 +87,6 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
     documentService = (await import("@/lib/services/document.service")).documentService;
     daService = (await import("@/lib/services/da.service")).daService;
     referenceService = await import("@/lib/services/reference.service");
-  });
-
-  afterAll(() => {
-    try {
-      apiClient; // noop
-    } catch {
-      /* ignore */
-    }
   });
 
   it("Modul 1 — login admin dan menerima JWT + role", async () => {
