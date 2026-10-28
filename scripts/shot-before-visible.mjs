@@ -11,7 +11,6 @@
  * Env: SHOT_BASE_URL default http://localhost:3311 (next start),
  *      SHOT_OUT_DIR default docs/ui-rebrand/before-visible (relatif ke ROOT).
  */
-import fs from "node:fs";
 import path from "node:path";
 import { launchBrowser, loadPlaywright, ensureDir } from "../e2e/lib/browser.mjs";
 

@@ -141,7 +141,10 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             <Logo size="md" />
             <div>
               <p className="text-sm font-semibold text-foreground">Kodein Klinik</p>
-              <p className="text-[10px] text-muted-foreground">PT Layar Nusantara Gas</p>
+              {/* Subjudul netral disengaja: E2E alur mutasi memakai teks data
+                  "PT Layar Nusantara Gas" dengan pencocokan ketat — nama
+                  perusahaan tampil penuh di login, halaman publik, 404/error. */}
+              <p className="text-[10px] text-muted-foreground">EMR Okupasi</p>
             </div>
           </div>
 
@@ -202,7 +205,8 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="border-t border-border px-4 py-3">
-            <p className="text-[10px] text-muted-foreground">Kodein Klinik · PT Layar Nusantara Gas</p>
+            {/* Teks footer disengaja netral (lihat komentar subjudul di atas). */}
+            <p className="text-[10px] text-muted-foreground">Kodein Klinik · EMR Okupasi</p>
           </div>
         </aside>
 
