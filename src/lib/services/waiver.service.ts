@@ -60,7 +60,22 @@ export interface CreateWaiverInput {
   purpose: string;
   validUntil: string;
   visitAt?: string;
+  /** Opsional: tautkan ke pasien MPI yang sudah terdaftar. */
+  patientId?: string;
   siteCode?: string;
+  deviation?: string;
+  medication?: string;
+  exposureRisk?: string;
+  healthDeclaration?: string;
+}
+
+/** Field yang boleh diubah backend pada PATCH /waivers/:id. */
+export interface UpdateWaiverInput {
+  visitorName?: string;
+  company?: string;
+  purpose?: string;
+  validUntil?: string;
+  visitAt?: string;
   deviation?: string;
   medication?: string;
   exposureRisk?: string;
@@ -116,7 +131,7 @@ export const waiverService = {
     return apiClient.post<BackendWaiver>("/waivers", input);
   },
 
-  async update(id: string, input: Partial<CreateWaiverInput>): Promise<BackendWaiver> {
+  async update(id: string, input: UpdateWaiverInput): Promise<BackendWaiver> {
     return apiClient.patch<BackendWaiver>(`/waivers/${id}`, input);
   },
 

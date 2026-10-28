@@ -5,12 +5,14 @@ import { apiClient } from "@/lib/api-client";
  * Endpoint backend (Domain 4):
  *   POST /api/v1/mcu/cycles
  *   GET  /api/v1/mcu/cycles?page=&limit=&ftwStatus=
+ *   GET  /api/v1/mcu/cycles/:id
+ *   PUT  /api/v1/mcu/cycles/:id/status
+ *   POST /api/v1/mcu/cycles/:id/exam-results
  *   POST /api/v1/mcu/cycles/:id/calculate
  *   POST /api/v1/mcu/cycles/:id/ftw-assessment
+ *   GET  /api/v1/mcu/restrictions?status=
  *   POST /api/v1/mcu/restrictions/:id/acknowledge
  *   POST /api/v1/mcu/restrictions/:id/close
- *   POST /api/v1/mcu/cycles/bulk-import
- *   GET  /api/v1/mcu/cycles/bulk-import/:jobId/status
  */
 
 /** Enum sesuai skema backend (prisma/schema.prisma). */
@@ -79,6 +81,14 @@ export interface BackendRestrictionAcknowledgement {
   acknowledged_at?: string;
 }
 
+export interface BackendExamResult {
+  examTypeCode: string;
+  rawValue: string;
+  normalizedValue?: string;
+  interpretation?: string;
+  abnormalFlag?: boolean;
+}
+
 export interface McuListParams {
   page?: number;
   limit?: number;
@@ -107,6 +117,28 @@ export const mcuService = {
       mcuType,
       examinationDate,
     });
+  },
+
+  async get(cycleId: string): Promise<BackendMcuCycle> {
+    return apiClient.get<BackendMcuCycle>(`/mcu/cycles/${cycleId}`);
+  },
+
+  async updateStatus(cycleId: string, status: string): Promise<BackendMcuCycle> {
+    return apiClient.put<BackendMcuCycle>(`/mcu/cycles/${cycleId}/status`, { status });
+  },
+
+  async addExamResults(
+    cycleId: string,
+    results: BackendExamResult[]
+  ): Promise<BackendMcuCycle> {
+    return apiClient.post<BackendMcuCycle>(`/mcu/cycles/${cycleId}/exam-results`, {
+      results,
+    });
+  },
+
+  async listRestrictions(status?: string): Promise<BackendFtwRestriction[]> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    return apiClient.get<BackendFtwRestriction[]>(`/mcu/restrictions${qs}`);
   },
 
   async calculate(cycleId: string, parameters: Record<string, unknown>): Promise<unknown> {

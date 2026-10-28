@@ -6,7 +6,6 @@ import type { BackendUserRow } from "@/lib/services/iam.service";
  * Endpoint backend (Domain 6):
  *   GET  /api/v1/pharmacy/inventory?siteId=
  *   GET  /api/v1/pharmacy/prescriptions/pending?siteId=
- *   GET  /api/v1/pharmacy/dispensing/history
  *   POST /api/v1/pharmacy/dispensing/recommend-batches
  *   POST /api/v1/pharmacy/dispensing
  *   POST /api/v1/pharmacy/returns
@@ -123,6 +122,11 @@ export class DispensingGuard {
 
   isInProgress(prescriptionId: string): boolean {
     return this.inFlight.has(prescriptionId);
+  }
+
+  /** Daftar resep yang berhasil didispense sesi ini (untuk riwayat lokal). */
+  dispensedIds(): string[] {
+    return [...this.completed];
   }
 
   /** Reset penuh (dipakai test). */
@@ -436,8 +440,39 @@ export const pharmacyService = {
     });
   },
 
+  /**
+   * Riwayat dispensing — backend belum mengekspos
+   * `GET /pharmacy/dispensing/history`. Riwayat sesi ini direkonstruksi
+   * dari `DispensingGuard` (resep yang berhasil didispense sesi ini,
+   * diperkaya dari daftar pending sebelum didispense) sehingga halaman
+   * retur tetap dapat memilih baris dispensing tanpa request 404.
+   */
   async getDispensingHistory(): Promise<DispensingHistoryItem[]> {
-    return apiClient.get<DispensingHistoryItem[]>("/pharmacy/dispensing/history");
+    const ids = dispensingGuard.dispensedIds();
+    if (ids.length === 0) return [];
+    const pending = await pharmacyService
+      .getPendingPrescriptions()
+      .catch(() => [] as BackendPrescription[]);
+    const byId = new Map(pending.map((p) => [p.id, p]));
+    return ids.map((id) => {
+      const p = byId.get(id);
+      return {
+        id: `dispensing-${id}`,
+        prescription_id: id,
+        status: "DISPENSED",
+        dispensed_at: new Date().toISOString(),
+        prescription: p
+          ? {
+              id: p.id,
+              encounter_id: p.encounter_id,
+              status: p.status,
+              encounter: p.encounter,
+              items: p.items,
+            }
+          : null,
+        dispensing_items: [],
+      };
+    });
   },
 };
 

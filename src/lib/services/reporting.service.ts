@@ -31,44 +31,43 @@ export interface ReportDownload {
   format: string;
   downloadUrl: string;
   watermark?: { printedBy?: string; printedAt?: string; auditRef?: string };
+  /** Masa berlaku URL unduh (detik) — selalu 3600 dari backend. */
+  expiresInSeconds?: number;
 }
 
 export interface TopDiseaseItem {
   rank: number;
-  icd10?: string;
-  code?: string;
-  name?: string;
-  disease?: string;
-  caseCount?: number;
-  count?: number;
-  prevalencePercent?: number;
+  icd10Code: string;
+  diseaseName: string;
+  totalCases: number;
+  percentageShare: number;
 }
 
 export interface TopDiseasesResult {
-  site?: string;
   timeframe?: { start?: string; end?: string };
-  period?: string;
   totalSampledCases?: number;
   top10Morbidity?: TopDiseaseItem[];
-  topDiseases?: TopDiseaseItem[];
   anonymityDeclaration?: string;
 }
 
 export const reportingService = {
+  /**
+   * Backend mengembalikan array mentah (tanpa envelope paginasi),
+   * sehingga dibaca langsung, bukan lewat `getPaged`.
+   */
   async getDefinitions(): Promise<ReportDefinition[]> {
-    const res = await apiClient.getPaged<ReportDefinition[]>("/reports/definitions");
-    return res.data ?? [];
+    return apiClient.get<ReportDefinition[]>("/reports/definitions");
   },
 
   async runReport(
     reportDefinitionId: string,
-    format: string,
-    parameters: Record<string, unknown> = {}
+    format?: string,
+    parameters?: Record<string, unknown>
   ): Promise<ReportRunResult> {
     return apiClient.post<ReportRunResult>("/reports/runs", {
       reportDefinitionId,
-      format,
-      parameters,
+      ...(format ? { format } : {}),
+      ...(parameters && Object.keys(parameters).length > 0 ? { parameters } : {}),
     });
   },
 

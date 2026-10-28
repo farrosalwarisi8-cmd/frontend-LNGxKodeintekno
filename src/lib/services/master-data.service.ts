@@ -20,6 +20,8 @@ export interface BackendOrganization {
 export interface BackendDepartment {
   id: string;
   organization_id: string;
+  /** ID department induk (subunit) — null untuk unit tingkat atas. */
+  parent_id?: string | null;
   code: string;
   name: string;
   unit_type?: string;
@@ -95,10 +97,12 @@ export const masterDataService = {
     code: string;
     name: string;
     unitType?: string;
+    /** ID department induk untuk subunit (opsional, didukung backend). */
+    parentId?: string;
   }) {
     return apiClient.post<BackendDepartment>("/master-data/departments", input);
   },
-  async updateDepartment(id: string, input: { name?: string; unitType?: string }) {
+  async updateDepartment(id: string, input: { name?: string; unitType?: string; parentId?: string }) {
     return apiClient.patch<BackendDepartment>(`/master-data/departments/${id}`, input);
   },
   async setDepartmentStatus(id: string, active: boolean) {

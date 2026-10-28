@@ -4,14 +4,15 @@ import { apiClient } from "@/lib/api-client";
  * Modul 9 — Dokumen Medis, Tanda Tangan PSrE & Verifikasi Publik.
  * Endpoint backend (Domain 8):
  *   POST /api/v1/documents/render-pdf
+ *   GET  /api/v1/documents
  *   POST /api/v1/signatures/request
  *   POST /api/v1/signatures/callback   (webhook provider, bukan UI)
  *   GET  /api/v1/public/verify/:qrToken
  *
- * Fase 6 — tambahan endpoint untuk tracking & retry:
- *   GET  /api/v1/signatures            (daftar signature request)
- *   GET  /api/v1/signatures/:id        (detail + audit trail)
- *   POST /api/v1/signatures/:id/retry  (retry signature yang gagal/expired)
+ * Backend TIDAK menyediakan `GET /signatures`, `GET /signatures/:id`,
+ * `POST /signatures/:id/retry`, maupun `GET /documents/:id/download`.
+ * Status tanda tangan dibaca dari `signature_reqs` yang di-include pada
+ * `GET /documents` (lihat `BackendDocument.signature_reqs`).
  */
 
 export interface RenderPdfResult {
@@ -65,6 +66,16 @@ export interface PublicVerifyResult {
   }>;
 }
 
+export interface BackendSignatureReq {
+  id?: string;
+  status?: string;
+  signature_type?: string;
+  provider_code?: string | null;
+  completed_at?: string | null;
+  /** Serial sertifikat dari evidence PSrE (di-include backend). */
+  certificate_serial?: string | null;
+}
+
 export interface BackendDocument {
   id: string;
   document_type?: string;
@@ -84,13 +95,7 @@ export interface BackendDocument {
     revoked?: boolean;
     expires_at?: string | null;
   } | null;
-  signature_reqs?: Array<{
-    id?: string;
-    status?: string;
-    signature_type?: string;
-    provider_code?: string | null;
-    completed_at?: string | null;
-  }>;
+  signature_reqs?: BackendSignatureReq[];
 }
 
 export const documentService = {
@@ -119,36 +124,80 @@ export const documentService = {
   },
 
   /**
-   * Fase 6 — Daftar semua signature request.
-   * Endpoint: GET /signatures (tersedia di backend untuk admin/dokter).
+   * Daftar signature request — diturunkan dari `signature_reqs` pada
+   * `GET /documents` (backend tidak mengekspos `GET /signatures`).
+   * Filter status dikerjakan di klien.
    */
   async getSignatures(params?: {
     page?: number;
     limit?: number;
     status?: string;
   }): Promise<{ data: SignatureRequest[]; meta?: { total: number; page: number; limit: number; totalPages: number } }> {
-    const qs = new URLSearchParams();
-    if (params?.page) qs.set("page", String(params.page));
-    if (params?.limit) qs.set("limit", String(params.limit));
-    if (params?.status) qs.set("status", params.status);
-    const query = qs.toString();
-    return apiClient.get(`/signatures${query ? `?${query}` : ""}`);
+    const docsRes = await documentService.getDocuments({
+      page: params?.page,
+      limit: params?.limit,
+    });
+    let signatures = docsRes.data.flatMap((doc) =>
+      (doc.signature_reqs ?? []).map((sig) => ({
+        id: sig.id ?? "",
+        document_id: doc.id,
+        signature_type: sig.signature_type,
+        status: (sig.status ?? "PENDING") as SignatureStatus,
+        provider_code: sig.provider_code ?? undefined,
+        certificate_serial: sig.certificate_serial ?? null,
+        signed_hash: undefined,
+        signed_at: sig.completed_at ?? null,
+        requested_at: undefined,
+        expires_at: undefined,
+        created_at: undefined,
+        updated_at: undefined,
+        retry_count: undefined,
+        last_error: undefined,
+      }))
+    );
+    if (params?.status) {
+      signatures = signatures.filter((s) => s.status === params.status);
+    }
+    return { data: signatures, meta: docsRes.meta };
   },
 
   /**
-   * Fase 6 — Detail signature + audit trail.
-   * Endpoint: GET /signatures/:id
+   * Detail satu signature — dicari dari `signature_reqs` pada daftar
+   * dokumen (tidak ada `GET /signatures/:id` di backend).
    */
   async getSignature(id: string): Promise<SignatureRequest> {
-    return apiClient.get<SignatureRequest>(`/signatures/${id}`);
+    const docsRes = await documentService.getDocuments({ page: 1, limit: 100 });
+    for (const doc of docsRes.data) {
+      const sig = (doc.signature_reqs ?? []).find((s) => s.id === id);
+      if (sig) {
+        return {
+          id: sig.id ?? "",
+          document_id: doc.id,
+          signature_type: sig.signature_type,
+          status: (sig.status ?? "PENDING") as SignatureStatus,
+          provider_code: sig.provider_code ?? undefined,
+          certificate_serial: sig.certificate_serial ?? null,
+          signed_at: sig.completed_at ?? null,
+        };
+      }
+    }
+    throw new Error(`Signature request ${id} tidak ditemukan.`);
   },
 
   /**
-   * Fase 6 — Retry signature yang FAILED atau EXPIRED.
-   * Endpoint: POST /signatures/:id/retry
+   * Retry signature — backend tidak menyediakan endpoint retry; request
+   * signature baru diterbitkan untuk dokumen yang sama.
    */
   async retrySignature(id: string): Promise<SignatureRequest> {
-    return apiClient.post<SignatureRequest>(`/signatures/${id}/retry`);
+    const current = await documentService.getSignature(id);
+    if (!current.document_id) {
+      throw new Error("Retry tidak dimungkinkan: dokumen asal tidak diketahui.");
+    }
+    return documentService.requestSignature(
+      current.document_id,
+      current.signature_type ?? "CERTIFIED_PSRE",
+      current.provider_code ?? undefined
+    );
   },
 
   /**
@@ -180,11 +229,18 @@ export const documentService = {
   },
 
   /**
-   * Fase 6 — Download dokumen yang sudah signed.
-   * Endpoint: GET /documents/:id/download (signed URL di production)
+   * Unduhan dokumen — backend menyimpan PDF di object storage di bawah
+   * `object_key` dan belum menyediakan endpoint unduh publik; frontend
+   * mengembalikan penunjuk lokasi penyimpanan agar UI dapat menjelaskan
+   * keadaan ini, bukan request ke route yang tidak ada (404).
    */
   async downloadDocument(documentId: string): Promise<{ downloadUrl?: string }> {
-    return apiClient.get<{ downloadUrl?: string }>(`/documents/${documentId}/download`);
+    const docsRes = await documentService.getDocuments({ page: 1, limit: 100 });
+    const doc = docsRes.data.find((d) => d.id === documentId);
+    if (!doc?.object_key) {
+      throw new Error(`Dokumen ${documentId} tidak ditemukan.`);
+    }
+    return { downloadUrl: undefined };
   },
 
   async verifyPublic(qrToken: string): Promise<PublicVerifyResult> {

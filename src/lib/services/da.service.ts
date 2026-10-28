@@ -3,14 +3,14 @@ import { apiClient } from "@/lib/api-client";
 /**
  * Modul 10 — Forensic Drug & Alcohol (D&A) Testing.
  * Endpoint backend (Domain 7):
+ *   GET  /api/v1/da/tests?page=&limit=&status=&patientId=&search=
+ *   GET  /api/v1/da/tests/:id
  *   POST /api/v1/da/tests
  *   POST /api/v1/da/samples
  *   POST /api/v1/da/samples/:id/chain-of-custody
+ *   GET  /api/v1/da/samples/:id/verify-custody
  *   POST /api/v1/da/tests/:id/results
  *   POST /api/v1/da/tests/:id/certificate
- *
- * Catatan: backend tidak menyediakan GET untuk daftar tes D&A,
- * sehingga daftar tetap disimpan di state frontend (satu arah).
  */
 
 export interface BackendDaTest {
@@ -94,14 +94,20 @@ export const daService = {
     limit?: number;
     status?: string;
     patientId?: string;
+    search?: string;
   }): Promise<BackendDaTestsResponse> {
     const qs = new URLSearchParams();
     if (params?.page) qs.set("page", String(params.page));
     if (params?.limit) qs.set("limit", String(params.limit));
     if (params?.status) qs.set("status", params.status);
     if (params?.patientId) qs.set("patientId", params.patientId);
+    if (params?.search) qs.set("search", params.search);
     const query = qs.toString();
     return apiClient.get<BackendDaTestsResponse>(`/da/tests${query ? `?${query}` : ""}`);
+  },
+
+  async getTest(id: string): Promise<BackendDaTest> {
+    return apiClient.get<BackendDaTest>(`/da/tests/${id}`);
   },
 
   async createTest(
@@ -139,6 +145,14 @@ export const daService = {
       toParty,
       action,
     });
+  },
+
+  async verifyCustody(sampleId: string): Promise<{
+    valid: boolean;
+    entries?: BackendCustodyEntry[];
+    message?: string;
+  }> {
+    return apiClient.get(`/da/samples/${sampleId}/verify-custody`);
   },
 
   async submitResults(

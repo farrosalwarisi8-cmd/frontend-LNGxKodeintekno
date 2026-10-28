@@ -82,6 +82,8 @@ export interface BackendUser {
   email?: string;
   roles?: string[];
   isMedicalRole?: boolean;
+  /** Cakupan data efektif: OWN | SITE | ORG | GLOBAL (lihat generateTokens). */
+  dataScope?: string;
 }
 
 export interface SessionUser {
@@ -256,8 +258,21 @@ export const authService = {
     return apiClient.post<MfaDisableResponse>("/auth/mfa/disable", password ? { password } : {});
   },
 
-  async refreshToken(refreshToken: string): Promise<{ accessToken: string }> {
-    return apiClient.post<{ accessToken: string }>("/auth/refresh", { refreshToken });
+  async refreshToken(refreshToken: string): Promise<{
+    accessToken: string;
+    refreshToken?: string;
+    expiresIn?: number;
+    user?: BackendUser;
+  }> {
+    const res = await apiClient.post<{
+      accessToken: string;
+      refreshToken?: string;
+      expiresIn?: number;
+      user?: BackendUser;
+    }>("/auth/refresh", { refreshToken });
+    // Backend memutar refresh token tiap refresh (generateTokens penuh).
+    if (res.refreshToken) setRefreshToken(res.refreshToken);
+    return res;
   },
 
   logout() {
