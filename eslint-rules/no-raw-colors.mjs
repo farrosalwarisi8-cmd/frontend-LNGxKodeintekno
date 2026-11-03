@@ -16,7 +16,7 @@
  *   - konfigurasi chart — bila suatu saat diperlukan, gunakan token chart
  *     (`--color-chart-1..5`) atau eslint-disable-next-line dengan alasan.
  *
- * Lingkup: berkas UI (app, components, lib, src, e2e, scripts, middleware,
+ * Lingkup: berkas UI (app, components, lib, src, e2e, scripts, proxy,
  * konfigurasi root). Berkas di luar UI (mis. KODEINxLNG-Backend) dikecualikan.
  */
 

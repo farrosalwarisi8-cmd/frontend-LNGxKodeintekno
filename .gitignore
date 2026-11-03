@@ -55,3 +55,6 @@ kodein-klinik-demo.rar
 e2e/traces/
 playwright-report/
 test-results/
+# Artefak test di root (log path absolut, tidak untuk version control)
+test-run.log
+test-results.json

@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isPublicPath, normalizePath } from "./lib/public-paths";
 
-export function middleware(request: NextRequest) {
+/**
+ * Proxy (dahulu "middleware"; Next.js 16 mengganti nama konvensinya).
+ * Fungsi tetap sama: cek optimistis keberadaan sesi lalu redirect ke /login.
+ * Otorisasi sebenarnya tetap di route guard + backend.
+ */
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const normalizedPathname = normalizePath(pathname);
