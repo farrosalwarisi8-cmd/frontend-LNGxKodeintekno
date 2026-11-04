@@ -51,6 +51,9 @@ export const ACTION_PERMISSIONS = {
   "users.manage": "manage-users",
   "master-data.edit": "manage-master-data",
   "audit.view": "view-audit-logs",
+  // Pembuatan API client interoperabilitas (POST /admin/api-clients) —
+  // backend membatasi ke SYSTEM_ADMIN, dipetakan ke manage-api-keys.
+  "api-keys.manage": "manage-api-keys",
   "waiver.decide": "manage-hse",
   // D&A forensik: backend membatasi modul da-test ke DOCTOR_OH, LAB_ANALYST,
   // SYSTEM_ADMIN. Permission `manage-da` dipetakan ke ketiga role itu saja
