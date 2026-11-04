@@ -47,6 +47,9 @@ export const ROUTE_PERMISSIONS: readonly RoutePermissionRule[] = [
   { pattern: /^\/tte(?:\/.*)?$/, permission: "view-tte" },
   { pattern: /^\/emergency-detail(?:\/.*)?$/, permission: "monitor-emergency" },
   { pattern: /^\/waiver(?:\/.*)?$/, permission: "manage-hse" },
+  // Sinkronisasi offline (Domain 11): guard = navigasi = review-mcu
+  // (backend resolve-conflicts dibatasi DOCTOR_OH/DOCTOR_CLINIC/SYSTEM_ADMIN).
+  { pattern: /^\/offline-sync(?:\/.*)?$/, permission: "review-mcu" },
   // D&A forensik (modul da-test backend) hanya DOCTOR_OH / LAB_ANALYST /
   // SYSTEM_ADMIN. Sebelumnya route ini memakai `manage-hse` sehingga HSE bisa
   // membuka halaman yang API-nya selalu 403.
