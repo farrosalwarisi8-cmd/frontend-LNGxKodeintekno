@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { Search, Plus, Activity, ChevronRight } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import McuBulkImportPanel from "./bulk-import-panel";
 
 export default function MCUPage() {
   const mcus = useStore((s) => s.mcus);
@@ -192,6 +193,9 @@ export default function MCUPage() {
           </div>
         </>
       ) : null}
+
+      {/* Impor massal siklus MCU — POST /mcu/cycles/bulk-import */}
+      <McuBulkImportPanel />
     </div>
   );
 }

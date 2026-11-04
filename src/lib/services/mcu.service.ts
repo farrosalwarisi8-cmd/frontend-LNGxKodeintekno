@@ -13,6 +13,9 @@ import { apiClient } from "@/lib/api-client";
  *   GET  /api/v1/mcu/restrictions?status=
  *   POST /api/v1/mcu/restrictions/:id/acknowledge
  *   POST /api/v1/mcu/restrictions/:id/close
+ *   POST /api/v1/mcu/cycles/bulk-import
+ *   GET  /api/v1/mcu/cycles/bulk-import/:jobId/status
+ *   POST /api/v1/mcu/cron/check-expirations
  */
 
 /** Enum sesuai skema backend (prisma/schema.prisma). */
@@ -87,6 +90,15 @@ export interface BackendExamResult {
   normalizedValue?: string;
   interpretation?: string;
   abnormalFlag?: boolean;
+}
+
+export interface BulkImportJobStatus {
+  jobId: string;
+  status: string;
+  totalRows?: number;
+  processed?: number;
+  failed?: number;
+  errors?: unknown[];
 }
 
 export interface McuListParams {
@@ -174,5 +186,24 @@ export const mcuService = {
 
   async closeRestriction(restrictionId: string): Promise<unknown> {
     return apiClient.post(`/mcu/restrictions/${restrictionId}/close`);
+  },
+
+  /** Enqueue impor massal siklus MCU (Excel/CSV) — asinkron di backend. */
+  async startBulkImport(): Promise<{ jobId: string; status: string; message?: string }> {
+    return apiClient.post<{ jobId: string; status: string; message?: string }>(
+      "/mcu/cycles/bulk-import"
+    );
+  },
+
+  /** Status job impor massal (poll sampai COMPLETED/FAILED). */
+  async getBulkImportStatus(jobId: string): Promise<BulkImportJobStatus> {
+    return apiClient.get<BulkImportJobStatus>(
+      `/mcu/cycles/bulk-import/${encodeURIComponent(jobId)}/status`
+    );
+  },
+
+  /** Pemeriksaan kedaluwarsa MCU manual (H-30/H-14/H-7/Overdue). */
+  async triggerExpiryCheck(): Promise<unknown> {
+    return apiClient.post("/mcu/cron/check-expirations");
   },
 };
