@@ -41,8 +41,8 @@ export const notificationService = {
     return apiClient.put(`/notifications/${id}/read`);
   },
 
-  async getTemplates(): Promise<unknown[]> {
-    return apiClient.get("/admin/notification-templates");
+  async getTemplates(): Promise<BackendNotificationTemplate[]> {
+    return apiClient.get<BackendNotificationTemplate[]>("/admin/notification-templates");
   },
 
   async createTemplate(body: {
