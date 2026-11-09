@@ -290,6 +290,9 @@ export async function installMockBackend(page: Page, backend: MockBackend): Prom
     if (method === "POST" && path === "/auth/login") {
       const username = (body as { username?: string })?.username ?? "unknown";
       const roles = rolesForUsername(username);
+      if ((body as { password?: string })?.password !== "e2e-password-lokal") {
+        return json(route, 401, errorEnvelope(401, "Kredensial E2E tidak valid."));
+      }
       backend.currentUsername = username;
       return json(
         route,

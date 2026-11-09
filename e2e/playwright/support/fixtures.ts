@@ -19,11 +19,18 @@ export interface E2EFixtures {
 }
 
 export const test = base.extend<E2EFixtures>({
-  backend: async ({ page }, use) => {
-    const backend = createMockBackend();
-    await installMockBackend(page, backend);
-    await use(backend);
-  },
+  // `auto: true` — mock backend TERPASANG untuk SEMUA tes tanpa perlu
+  // didestruktur. Tes yang lupa memasang mock jatuh ke server nyata dan login
+  // gagal 404 (pernah terjadi pada 6 tes permission); fixture otomatis
+  // menghilangkan kelas bug itu.
+  backend: [
+    async ({ page }, use) => {
+      const backend = createMockBackend();
+      await installMockBackend(page, backend);
+      await use(backend);
+    },
+    { auto: true },
+  ],
 
   loginAs: async ({ page }, use) => {
     await use(async (username: string) => {

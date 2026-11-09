@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useStore, useCurrentUser } from "@/lib/store";
+import { can } from "@/lib/rbac";
+import { useDemoMode } from "@/lib/demo-role";
 import {
   syncCertificates,
   syncInventory,
@@ -59,9 +61,12 @@ const TONE_CLASS: Record<string, string> = {
  */
 export default function DashboardPage() {
   const user = useCurrentUser();
-  const role = user?.role ?? null;
+  const { role } = useDemoMode();
   const profile = getRoleDashboard(role);
   const tasks = getRoleTasks(role);
+  const canViewMcu = role ? can(role, "view-mcu") : false;
+  const canViewVisits = role ? can(role, "view-visits") : false;
+  const canViewClinical = role ? can(role, "view-clinical-notes") : false;
 
   const employees = useStore((s) => s.employees);
   const mcus = useStore((s) => s.mcus);
@@ -76,14 +81,12 @@ export default function DashboardPage() {
 
   // Ringkasan semua modul inti dari backend.
   const { loading, error, refetch } = useSyncedModules(async () => {
-    await Promise.all([
-      syncPatients(1, 100),
-      syncMcu(1, 100),
-      syncQueues(),
-      syncInventory(),
-      syncWorkHealthStatus(1, 100),
-      syncCertificates(1, 100),
-    ]);
+    const requests: Promise<unknown>[] = [syncWorkHealthStatus(1, 100)];
+    if (canViewMcu) requests.push(syncPatients(1, 100), syncMcu(1, 100));
+    if (canViewVisits) requests.push(syncQueues());
+    if (role && can(role, "manage-stock")) requests.push(syncInventory());
+    if (role && can(role, "issue-certificate")) requests.push(syncCertificates(1, 100));
+    await Promise.all(requests);
   });
 
   // Jumlah resep menunggu hanya diambil bila profil peran memang menampilkannya
@@ -140,8 +143,8 @@ export default function DashboardPage() {
 
   const roleMeta = ROLES[user.role];
   const unreadCount = notifications.filter((n) => n.userId === user.id && !n.read).length;
-  const recentMCU = mcus.slice(0, 5);
-  const recentVisits = openVisits(visits).slice(0, 5);
+  const recentMCU = canViewMcu ? mcus.slice(0, 5) : [];
+  const recentVisits = canViewVisits ? openVisits(visits).slice(0, 5) : [];
   const workerLinks = getWorkerHomeLinks();
 
   return (
@@ -289,7 +292,8 @@ export default function DashboardPage() {
         </section>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
+          {canViewMcu && (
+            <Card>
             <CardHeader>
               <CardTitle>MCU terbaru</CardTitle>
             </CardHeader>
@@ -322,9 +326,11 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          )}
 
-          <Card>
+          {canViewVisits && (
+            <Card>
             <CardHeader>
               <CardTitle>Kunjungan berjalan</CardTitle>
             </CardHeader>
@@ -345,7 +351,9 @@ export default function DashboardPage() {
                           <p className="text-sm font-medium text-foreground">
                             {emp?.fullName ?? visit.visitNumber}
                           </p>
-                          <p className="text-xs text-muted-foreground">{visit.chiefComplaint || visit.visitNumber}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {canViewClinical ? visit.chiefComplaint || visit.visitNumber : visit.visitNumber}
+                          </p>
                         </div>
                         <StatusBadge meta={statusMeta} fallback={visit.status} />
                       </div>
@@ -354,7 +362,8 @@ export default function DashboardPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+            </Card>
+          )}
         </div>
       )}
     </div>

@@ -41,6 +41,13 @@ const eslintConfig = defineConfig([
     // eslint.config sendiri) dan dist/ hasil build-nya — di luar cakupan
     // lint frontend ini.
     "KODEINxLNG-Backend/**",
+    // Artefak hasil test (sudah masuk .gitignore): report/trace Playwright
+    // berisi bundle pihak ketiga yang bukan kode sumber kita.
+    "test-artifacts/**",
+    "test-results/**",
+    "playwright-report/**",
+    "e2e/traces/**",
+    "coverage/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",

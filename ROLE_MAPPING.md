@@ -49,7 +49,7 @@ Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik 
 | `view-mcu` | — | ✓ | ✓ | ✓ | ✓ | — | — | — | ✓ | ✓ | ✓ |
 | `review-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
 | `approve-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
-| `create-mcu` | — | — | ✓ | ✓ | — | — | — | — | — | — | — |
+| `create-mcu` | — | — | ✓ | ✓ | — | — | — | ✓ | — | — | — |
 | `input-mcu-result` | — | ✓ | ✓ | ✓ | — | ✓ | — | — | — | — | — |
 | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | ✓ | ✓ |
 | `register-patient` | — | — | — | ✓ | — | — | ✓ | — | — | — | — |
@@ -77,10 +77,10 @@ Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik 
 | `import-lab-result` | ✓ | — | — | — | — | ✓ | — | — | — | — | — |
 | `verify-lab-result` | — | — | — | — | — | ✓ | — | — | — | — | — |
 | `write-radiology-report` | — | — | — | — | — | ✓ | — | — | — | — | — |
-| `manage-system-config` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
-| `manage-api-keys` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
-| `view-tte` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
-| `monitor-emergency` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
+| `manage-system-config` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `manage-api-keys` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `view-tte` | ✓ | — | — | — | — | ✓ | — | — | — | — | — |
+| `monitor-emergency` | ✓ | — | — | — | — | ✓ | — | — | — | — | — |
 
 ## 4. Akses Route per Role
 
@@ -107,10 +107,10 @@ Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`)
 | `/waiver` | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
 | `/da` | `manage-da` | ✓ | ✓ | — | — | — | ✓ | — | — | — | — | — |
 | `/emergency` | `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `/system-config` | `manage-system-config` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
-| `/api-keys` | `manage-api-keys` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
-| `/tte` | `view-tte` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
-| `/emergency-detail` | `monitor-emergency` | ✓ | — | — | — | — | ✓ | ✓ | — | — | — | — |
+| `/system-config` | `manage-system-config` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `/api-keys` | `manage-api-keys` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `/tte` | `view-tte` | ✓ | — | — | — | — | ✓ | — | — | — | — | — |
+| `/emergency-detail` | `monitor-emergency` | ✓ | — | — | — | — | ✓ | — | — | — | — | — |
 | `/users` | `manage-users` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `/master-data` | `manage-master-data` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `/audit-logs` | `view-audit-logs` | ✓ | — | — | — | — | — | — | — | — | — | — |

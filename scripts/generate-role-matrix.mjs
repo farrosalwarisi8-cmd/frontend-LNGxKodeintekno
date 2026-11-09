@@ -1,7 +1,7 @@
 /**
  * Generator ROLE_MAPPING.md dari peta permission DI KODE.
  *
- * Jalankan:  node scripts/generate-role-matrix.mjs
+ * Jalankan:  node scripts/generate-role-matrix.mjs [--check]
  *
  * File hasil TIDAK boleh diedit manual. Bila koding berubah, jalankan ulang
  * skrip ini. Test `src/lib/__tests__/role-mapping-doc.test.ts` membandingkan
@@ -295,6 +295,16 @@ export function buildRoleMappingMarkdown(registry = collectRegistry()) {
 
 function main() {
   const markdown = buildRoleMappingMarkdown();
+  if (process.argv.includes("--check")) {
+    const current = fs.existsSync(OUT_FILE) ? fs.readFileSync(OUT_FILE, "utf8") : "";
+    if (current.replace(/\r\n/g, "\n") !== markdown) {
+      console.error("ROLE_MAPPING.md tidak sinkron dengan sumber kode. Jalankan generator tanpa --check.");
+      process.exitCode = 1;
+      return;
+    }
+    console.log("ROLE_MAPPING.md sinkron dengan sumber kode");
+    return;
+  }
   fs.writeFileSync(OUT_FILE, markdown, "utf8");
   console.log(`ROLE_MAPPING.md diperbarui (${OUT_FILE})`);
 }

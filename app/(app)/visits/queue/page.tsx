@@ -1,6 +1,6 @@
 "use client";
 
-import { Can } from "@/components/can";
+import { Can, useCan } from "@/components/can";
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { Card, CardContent } from "@/shared/components/design-system/card";
@@ -33,6 +33,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function QueuePage() {
+  const can = useCan();
+  const isClinicAdmin = can("visits.call-ticket") && !can("visits.view-clinical");
   const [tickets, setTickets] = useState<BackendQueueTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +136,12 @@ export default function QueuePage() {
         <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
           {callError}
         </div>
+      )}
+
+      {isClinicAdmin && (
+        <p className="text-sm text-muted-foreground" role="status">
+          Field klinis dibatasi untuk role Admin Klinik.
+        </p>
       )}
 
       <Card className="p-4">

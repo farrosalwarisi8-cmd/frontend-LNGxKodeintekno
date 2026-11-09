@@ -19,18 +19,32 @@ describe("ROLE_PERMISSIONS", () => {
     expect(perms).toContain("view-reports");
     expect(perms).toContain("view-health-status");
     expect(perms).toContain("manage-hse");
+    expect(perms).toContain("manage-da");
     expect(perms).toContain("view-emergency");
-    // Tidak ada akses data klinis (termasuk read-only).
-    expect(perms).not.toContain("view-mcu");
-    expect(perms).not.toContain("view-visits");
-    expect(perms).not.toContain("view-clinical-notes");
-    expect(perms).not.toContain("view-diagnosis");
-    expect(perms).not.toContain("approve-mcu");
-    expect(perms).not.toContain("issue-certificate");
-    expect(perms).not.toContain("dispense-medicine");
-    expect(perms).not.toContain("manage-stock");
-    expect(perms).not.toContain("input-lab-result");
-    expect(perms).not.toContain("manage-employees");
+    expect(perms).toContain("manage-system-config");
+    expect(perms).toContain("manage-api-keys");
+    expect(perms).toContain("view-tte");
+    expect(perms).toContain("monitor-emergency");
+    // Seluruh permission yang diminta dicabut untuk System Administrator.
+    for (const permission of [
+      "view-mcu",
+      "view-visits",
+      "view-clinical-notes",
+      "view-diagnosis",
+      "edit-visit",
+      "register-patient",
+      "create-mcu",
+      "input-mcu-result",
+      "input-lab-result",
+      "manage-stock",
+      "dispense-medicine",
+      "approve-mcu",
+      "issue-certificate",
+      "manage-employees",
+      "upload-document",
+    ] as const) {
+      expect(perms).not.toContain(permission);
+    }
   });
 
   it("hr (HR/PIC) tidak mengelola user/master data dan tidak melihat MCU penuh", () => {
@@ -42,8 +56,14 @@ describe("ROLE_PERMISSIONS", () => {
     expect(perms).not.toContain("manage-master-data");
     expect(perms).not.toContain("view-mcu");
     expect(perms).not.toContain("view-visits");
-    expect(perms).not.toContain("create-mcu");
+    expect(perms).toContain("create-mcu");
     expect(perms).not.toContain("view-clinical-notes");
+    expect(perms).not.toContain("view-diagnosis");
+    expect(perms).not.toContain("input-mcu-result");
+    expect(perms).not.toContain("input-lab-result");
+    expect(perms).not.toContain("manage-stock");
+    expect(perms).not.toContain("approve-mcu");
+    expect(perms).not.toContain("issue-certificate");
   });
 
   it("lab hanya data penunjang, tanpa akses MCU penuh", () => {
@@ -67,7 +87,11 @@ describe("ROLE_PERMISSIONS", () => {
     expect(perms).not.toContain("dispense-medicine");
     expect(perms).not.toContain("view-clinical-notes");
     expect(perms).not.toContain("view-diagnosis");
+    expect(perms).not.toContain("manage-stock");
+    expect(perms).not.toContain("approve-mcu");
+    expect(perms).not.toContain("issue-certificate");
     expect(perms).not.toContain("manage-users");
+    expect(perms).not.toContain("manage-master-data");
   });
 
   it("dokter-oh has review-mcu but not manage-users", () => {

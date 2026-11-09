@@ -106,6 +106,7 @@ test.describe("SOAP rekam medis", () => {
 
   test("permission ditolak: HR/PIC tidak boleh membuka rekam medis", async ({
     page,
+    backend,
     loginAs,
   }) => {
     await loginAs("hr.pic");
@@ -113,5 +114,7 @@ test.describe("SOAP rekam medis", () => {
 
     await expect(page.getByRole("heading", { name: "Akses Ditolak" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Rekam Medis" })).toHaveCount(0);
+    // Guard menolak sebelum halaman sempat memuat data rekam medis.
+    expect(backend.callsTo("GET", "/patients")).toBe(0);
   });
 });

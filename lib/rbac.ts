@@ -115,7 +115,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "manage-master-data",
     "view-audit-logs",
     "manage-hse",
-    // D&A (forensik) — dipertahankan dari 7c985d8.
+    // D&A (forensik) — permission existing di luar matriks A1 ini.
     "manage-da",
     // Kontrol sistem (7c985d8): navigasi Sistem, API Key, TTE Monitoring,
     // Emergency Mode.
@@ -247,11 +247,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-health-status",
     "view-emergency",
     "view-profile",
-    // Admin Klinik dapat konfigurasi sistem dan monitoring TTE/Emergency
-    "manage-system-config",
-    "manage-api-keys",
-    "view-tte",
-    "monitor-emergency",
   ],
   // HR/PIC — proposal: hanya status kepatuhan + data pekerja.
   // manage-users & manage-master-data dicabut (bukan domain HR).
@@ -259,13 +254,14 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-dashboard",
     "manage-employees",
     "upload-document",
+    "create-mcu",
     "view-reports",
     "export-reports",
     "view-health-status",
     "view-emergency",
     "view-profile",
-    // HR hanya bisa melihat status kepatuhan, tidak boleh manage-users
-    // atau manage-master-data sesuai proposal (terbatas pada status kepatuhan)
+    // HR dapat memulai pembuatan siklus MCU; tanpa view-mcu/view-visits,
+    // alur kembali ke status kesehatan setelah submit.
   ],
   hse: [
     "view-dashboard",

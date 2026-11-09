@@ -19,7 +19,9 @@ const BASE = (process.env.ROLE_BASE_URL ?? "http://localhost:3311").replace(/\/+
 
 /** Anggaran langkah per peran — angka inilah yang diuji, bukan sekadar klaim. */
 export const ROLE_BUDGET = {
-  "admin-klinik": 16, // wizard kunjungan: pasien, lokasi, keluhan, TTV, simpan
+  // Matriks A1: Admin Klinik tanpa izin klinis — pendaftaran kunjungan berhenti
+  // pada panel pembatasan (pengiriman menunggu endpoint tanpa data klinis).
+  "admin-klinik": 3, // daftar kunjungan → buka pendaftaran → periksa pembatasan
   perawat: 3, // satu klik "Panggil berikutnya"
   "dokter-oh": 10, // buka SOAP, tulis S, pilih ICD, simpan
   apoteker: 6, // buka resep, (cek peringatan), proses
@@ -312,43 +314,47 @@ function makeCounter() {
 // ---------------------------------------------------------------------------
 // Skenario utama per peran
 // ---------------------------------------------------------------------------
-/** Nilai TTV yang dipakai skenario TTV (dalam rentang wajar). */
-const NORMAL_VITALS = {
-  "Sistolik (mmHg)": "120",
-  "Diastolik (mmHg)": "80",
-  "Heart Rate (bpm)": "78",
-  "Suhu (°C)": "36.8",
-  "Tinggi Badan (cm)": "172",
-  "Berat Badan (kg)": "70",
-};
-
-/** Admin Klinik: daftarkan kunjungan + catat TTV sampai tersimpan di backend. */
+/**
+ * Admin Klinik (matriks A1): pendaftaran kunjungan TANPA data klinis.
+ *
+ * Role ini memegang `register-patient` tetapi tidak punya `view-clinical-notes`,
+ * jadi form klinis diganti panel yang menandai field terbatas dan menahan
+ * pengiriman. Backend saat ini hanya menyediakan `POST /clinic/encounters`
+ * (encounter klinis) → registrasi administratif menunggu endpoint khusus
+ * (BLOCKER BACKEND: dibutuhkan endpoint registrasi tanpa data klinis).
+ * Skenario ini menguji proteksi
+ * UI dan memastikan tidak ada encounter klinis yang dikirim.
+ */
 async function scenarioAdminKlinik(page, count, calls) {
-  await page.goto(`${BASE}/visits/new`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE}/visits`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1200);
 
-  const next = () => page.getByRole("button", { name: /^Lanjut$/ });
-  await count.select(page.getByLabel("Pasien"), 1, "pilih pasien");
-  await count.click(next(), "lanjut ke lokasi");
-  await count.select(page.getByLabel("Lokasi"), 1, "pilih lokasi");
-  await count.click(next(), "lanjut ke keluhan");
-  await count.type(page.getByLabel("Keluhan Utama"), "Demam tiga hari");
-  await count.click(next(), "lanjut ke TTV");
-  for (const [label, value] of Object.entries(NORMAL_VITALS)) {
-    await count.type(page.getByLabel(label), value);
-  }
-  await count.click(next(), "lanjut ke ringkasan");
+  // Penanda field klinis di daftar kunjungan.
+  await page
+    .getByText(/Field klinis dibatasi untuk role Admin Klinik/i)
+    .first()
+    .waitFor({ state: "visible", timeout: 15000 });
+
   await count.click(
-    page.getByRole("button", { name: /Simpan Kunjungan|Submit/i }).first(),
-    "simpan kunjungan"
+    page.getByRole("link", { name: "Kunjungan Baru" }).first(),
+    "buka pendaftaran kunjungan"
   );
-  await page.waitForTimeout(1500);
+  await page.waitForURL(/\/visits\/new/, { timeout: 15000 });
+  await page
+    .getByText(/Field klinis dibatasi untuk role Admin Klinik/i)
+    .first()
+    .waitFor({ state: "visible", timeout: 15000 });
+
+  const submit = page.getByRole("button", { name: /Submit Kunjungan/i });
+  const submitBlocked = (await submit.count()) > 0 && (await submit.first().isDisabled());
+  const blockerNote = await page.getByText(/BLOCKER BACKEND/i).first().isVisible();
 
   check(
     "SC-admin-klinik",
-    "Admin Klinik: daftar kunjungan + TTV tersimpan ke backend",
-    calls.has("POST /clinic/encounters") && calls.has("PUT /clinic/encounters/enc-1/vitals"),
-    `calls=${[...calls.keys()].join(", ")}`
+    "Admin Klinik: pendaftaran kunjungan tanpa data klinis (pengiriman tertahan)",
+    submitBlocked && blockerNote && !calls.has("POST /clinic/encounters"),
+    `submitTertahan=${submitBlocked} catatanBlocker=${blockerNote} ` +
+      `encounterTerkirim=${calls.has("POST /clinic/encounters")}`
   );
 }
 

@@ -70,12 +70,18 @@ describe("ROLE_TASK_PROFILES", () => {
     }
   });
 
-  it("uses only known tile keys and lists at least four of them", () => {
+  it("uses only known tile keys and keeps restricted roles on permitted summaries", () => {
     for (const role of ROLES) {
       const { tiles } = ROLE_TASK_PROFILES[role];
-      expect(tiles.length).toBeGreaterThanOrEqual(4);
+      expect(tiles.length, role).toBeGreaterThan(0);
       for (const tile of tiles) expect(TILE_KEYS).toContain(tile);
     }
+
+    expect(ROLE_TASK_PROFILES.admin.tiles).not.toContain("pendingMcu");
+    expect(ROLE_TASK_PROFILES.admin.tiles).not.toContain("visitsToday");
+    expect(ROLE_TASK_PROFILES["admin-klinik"].tiles).toEqual(["queueWaiting", "visitsToday"]);
+    expect(ROLE_TASK_PROFILES.hr.tiles).not.toContain("pendingMcu");
+    expect(ROLE_TASK_PROFILES.hr.tiles).not.toContain("visitsToday");
   });
 });
 

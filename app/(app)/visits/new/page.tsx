@@ -5,6 +5,8 @@ import { Can } from "@/components/can";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { can } from "@/lib/rbac";
+import { useDemoMode } from "@/lib/demo-role";
 import { syncPatients, useSyncedModules } from "@/lib/remote-sync";
 import { encounterService } from "@/lib/services/encounter.service";
 import type { ClinicVisit } from "@/lib/types";
@@ -31,6 +33,9 @@ const STEPS = [
 
 export default function VisitNewPage() {
   const router = useRouter();
+  const { role } = useDemoMode();
+  const isClinicAdmin =
+    role !== null && can(role, "view-visits") && !can(role, "view-clinical-notes");
   const employees = useStore((s) => s.employees);
   const locations = useStore((s) => s.locations);
   // Daftar pasien dari backend (Modul 2) dibutuhkan untuk memilih pasien
@@ -71,7 +76,7 @@ export default function VisitNewPage() {
   const canProceed = () => {
     if (currentStep === 1) return !!employeeId;
     if (currentStep === 2) return !!locationId;
-    if (currentStep === 3) return !!chiefComplaint;
+    if (currentStep === 3) return isClinicAdmin || !!chiefComplaint;
     // Langkah TTV: wajib terisi DAN semua nilai dalam rentang wajar.
     if (currentStep === 4) return vitals.canProceed;
     return true;
@@ -81,6 +86,14 @@ export default function VisitNewPage() {
     setSubmitting(true);
     setSubmitError("");
     try {
+      if (isClinicAdmin) {
+        setSubmitError(
+          "Registrasi kunjungan tanpa data klinis belum didukung oleh backend. Minta petugas klinis membuat encounter."
+        );
+        setSubmitting(false);
+        return;
+      }
+
       // Buka kunjungan klinis di backend: POST /api/v1/clinic/encounters
       const encounter = await encounterService.openEncounter(employeeId);
 
@@ -131,6 +144,29 @@ export default function VisitNewPage() {
       );
     }
   };
+
+  if (isClinicAdmin) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Kunjungan Baru</h1>
+          <p className="text-sm text-muted-foreground">Registrasi administratif kunjungan klinik</p>
+        </div>
+        <Card className="space-y-4 p-6">
+          <p className="text-sm text-foreground" role="status">
+            Field klinis dibatasi untuk role Admin Klinik. Backend saat ini hanya menyediakan pembuatan encounter klinis, sehingga registrasi administratif belum dapat dikirim.
+          </p>
+          {submitError && <p className="text-sm text-danger-700" role="alert">{submitError}</p>}
+          <Button disabled aria-describedby="visit-registration-blocker">
+            <Check className="size-4" /> Submit Kunjungan
+          </Button>
+          <p id="visit-registration-blocker" className="text-xs text-muted-foreground">
+            BLOCKER BACKEND: diperlukan endpoint/operasi registrasi antrean tanpa keluhan, pemeriksaan, vital sign, atau SOAP.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">

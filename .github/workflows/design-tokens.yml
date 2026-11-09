@@ -1,9 +1,10 @@
 name: Design tokens (kontras WCAG + larang warna mentah)
 
-# Gerbang visual rebrand LNG:
+# Gerbang visual rebrand LNG dan konsistensi matriks RBAC:
 #  1. kontras WCAG AA semua pasangan token (light + dark) — gagal = exit 1
 #  2. larangan warna tertulis langsung (hex/rgb/kelas palet) di luar
 #     app/globals.css, lewat aturan ESLint `rebrand/no-raw-colors`
+#  3. ROLE_MAPPING.md tidak boleh menyimpang dari sumber permission frontend
 #
 # Catatan: job `raw-colors` hanya menilai aturan rebrand, bukan seluruh baseline
 # lint (yang sudah merah sejak sebelum rebrand — lihat LAPORAN_UI_REBRAND_LNG.md).
@@ -52,6 +53,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Periksa ROLE_MAPPING.md terhadap kode
+        run: node scripts/generate-role-matrix.mjs --check
 
       # Blok `node -e "..."` lama sengaja diganti skrip: backtick template
       # literal di dalam double quotes dieksekusi bash sebagai command
