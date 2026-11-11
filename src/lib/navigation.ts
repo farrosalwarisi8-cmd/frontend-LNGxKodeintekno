@@ -1,6 +1,7 @@
 import { can, type Permission } from "../../lib/rbac";
 import { isLabRadiologyEnabled } from "@/lib/feature-flags";
 import type { Role } from "../../lib/types";
+import { isFeatureDnaEnabled, isFeatureOhReviewEnabled } from "@/lib/env";
 
 /**
  * Konfigurasi navigasi terpusat untuk seluruh shell internal (EmrShell).
@@ -9,7 +10,12 @@ import type { Role } from "../../lib/types";
  * - Route tanpa `permission` selalu ditampilkan (semua role / demo publik).
  * - Item `disabled` untuk fitur yang belum punya halaman (jangan diarahkan
  *   ke route lain yang salah).
+ * - Item `featureFlag` disembunyikan saat flag-nya MATI (default), sehingga
+ *   merge dengan flag mati tidak mengubah perilaku navigasi yang ada.
  */
+
+/** Feature flag lingkungan yang mengendalikan visibilitas item menu. */
+export type NavigationFeatureFlag = "oh-review" | "dna" | "lab-radiology";
 
 export interface NavigationItem {
   label: string;
@@ -20,10 +26,19 @@ export interface NavigationItem {
   permission?: Permission;
   /** Item tanpa halaman (mis. Lab & Radiologi) — tampil disabled. */
   disabled?: boolean;
-  /** Feature flag lingkungan — item hanya tampil bila flag aktif. */
-  featureFlag?: "lab-radiology";
   /** Aktif hanya jika pathname persis sama (mis. /dashboard). */
   end?: boolean;
+  /** Item hanya tampil bila feature flag terkait aktif. */
+  featureFlag?: NavigationFeatureFlag;
+}
+
+/** Apakah feature flag sebuah item menu aktif? */
+export function isNavigationFeatureEnabled(flag: NavigationFeatureFlag | undefined): boolean {
+  if (!flag) return true;
+  if (flag === "oh-review") return isFeatureOhReviewEnabled();
+  if (flag === "dna") return isFeatureDnaEnabled();
+  if (flag === "lab-radiology") return isLabRadiologyEnabled();
+  return false;
 }
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
@@ -54,6 +69,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   // D&A forensik = wewenang Dokter OH & Analis Lab (sesuai @Roles backend
   // pada modul da-test), bukan HSE yang hanya menerima hasilnya.
   { label: "D&A", href: "/da", icon: "flask", permission: "manage-da" },
+  // --- A3: menu baru di balik feature flag (default mati) ----------------
+  // Halaman review MCU (Dokter OH) & pratinjau resume/sertifikat.
+  { label: "Review MCU Dokter OH", href: "/oh-review", icon: "stethoscope", permission: "review-mcu", featureFlag: "oh-review" },
+  { label: "Restriksi Kerja (OH)", href: "/oh-review/restrictions", icon: "shield-check", permission: "manage-restriction", featureFlag: "oh-review" },
+  // Modul D&A terbatas (Dokter OH; HSE hanya bila ditunjuk server).
+  { label: "D&A Forensik (OH)", href: "/dna", icon: "flask", permission: "view-dna", featureFlag: "dna" },
   { label: "Emergency", href: "/emergency", icon: "alert-triangle", permission: "view-emergency" },
   // System Administrator controls
   { label: "Sistem", href: "/system-config", icon: "settings", permission: "manage-system-config" },
@@ -94,6 +115,9 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/waiver": "Waiver",
   "/offline-sync": "Sinkronisasi Offline",
   "/da": "Drug & Alcohol",
+  "/oh-review": "Review MCU Dokter OH",
+  "/oh-review/restrictions": "Restriksi Kerja",
+  "/dna": "D&A Forensik",
   "/emergency": "Emergency",
   "/users": "Pengguna",
   "/master-data": "Master Data",
@@ -118,6 +142,9 @@ const SEGMENT_FALLBACK: Record<string, string> = {
   profile: "Profil",
   mcu: "MCU",
   certificates: "Sertifikat",
+  "oh-review": "Review MCU",
+  restrictions: "Restriksi Kerja",
+  dna: "D&A",
   "": "Beranda",
 };
 
@@ -137,9 +164,8 @@ function humanize(segment: string): string {
  */
 export function getNavigation(role: Role | null | undefined): NavigationItem[] {
   if (!role) return [];
-  const labFlagOn = isLabRadiologyEnabled();
   return NAVIGATION_ITEMS.filter((i) => {
-    if (i.featureFlag === "lab-radiology" && !labFlagOn) return false;
+    if (i.featureFlag && !isNavigationFeatureEnabled(i.featureFlag)) return false;
     if (!i.permission) return true;
     return can(role, i.permission);
   });
