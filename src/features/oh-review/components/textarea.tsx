@@ -22,7 +22,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label htmlFor={textareaId} className="block text-sm font-medium text-slate-700">
+          <label htmlFor={textareaId} className="block text-sm font-medium text-foreground">
             {label}
             {required ? <span className="text-danger-600"> *</span> : null}
           </label>
@@ -32,8 +32,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           required={required}
           className={cn(
-            "flex min-h-24 w-full rounded-xl border bg-white px-3.5 py-2.5 text-base text-slate-900 placeholder:text-slate-500 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-slate-50",
-            error ? "border-danger-500" : "border-slate-200",
+            "flex min-h-24 w-full rounded-xl border bg-card px-3.5 py-2.5 text-base text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-muted",
+            error ? "border-danger-500" : "border-border",
             className
           )}
           aria-label={ariaLabel}
@@ -46,7 +46,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             {error}
           </p>
         ) : helper ? (
-          <p id={`${textareaId}-helper`} className="text-sm text-slate-500">
+          <p id={`${textareaId}-helper`} className="text-sm text-muted-foreground">
             {helper}
           </p>
         ) : null}

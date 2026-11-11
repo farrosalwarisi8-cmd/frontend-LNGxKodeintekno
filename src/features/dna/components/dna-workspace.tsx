@@ -217,8 +217,8 @@ export function DnaWorkspace() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">D&amp;A Forensik — Dokter OH</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">D&amp;A Forensik — Dokter OH</h1>
+        <p className="text-sm text-muted-foreground">
           Sampel, chain of custody, hasil screening, dan confirmation test. Akses terbatas.
         </p>
       </div>
@@ -239,7 +239,7 @@ export function DnaWorkspace() {
               options={STATUS_OPTIONS}
             />
           </div>
-          <p className="flex items-start gap-2 text-xs text-slate-500">
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
             <span>
               Data D&A tidak disimpan di perangkat, tidak masuk URL, dan tidak ditampilkan pada judul
@@ -294,22 +294,22 @@ export function DnaWorkspace() {
                       className={`w-full rounded-xl border p-3 text-left transition-colors ${
                         selectedId === test.id
                           ? "border-primary-500 bg-primary-50"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
+                          : "border-border bg-card hover:bg-muted"
                       }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-slate-900">
+                        <span className="text-sm font-medium text-foreground">
                           {test.patient?.full_name ?? "Nama tidak tersedia dari API"}
                         </span>
                         <Badge variant="outline">{test.status ?? "Status belum tersedia"}</Badge>
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {test.patient?.medical_record_no ?? "MRN belum tersedia"} ·{" "}
                         {test.test_type ?? "Jenis tes belum tersedia"} ·{" "}
                         {formatDate(test.created_at ?? "")}
                       </p>
                       {test.samples?.[0]?.sample_no ? (
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           Sampel: {test.samples[0].sample_no}
                         </p>
                       ) : null}
@@ -325,7 +325,7 @@ export function DnaWorkspace() {
           {!selected ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Pilih satu tes D&amp;A untuk melihat sampel, chain of custody, dan hasilnya.
                 </p>
               </CardContent>
@@ -350,8 +350,8 @@ export function DnaWorkspace() {
                       },
                     ].map((item) => (
                       <div key={item.label} className="flex flex-col">
-                        <dt className="text-xs text-slate-500">{item.label}</dt>
-                        <dd className="text-sm text-slate-900">{item.value}</dd>
+                        <dt className="text-xs text-muted-foreground">{item.label}</dt>
+                        <dd className="text-sm text-foreground">{item.value}</dd>
                       </div>
                     ))}
                   </dl>
@@ -366,29 +366,29 @@ export function DnaWorkspace() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     Kejadian bersifat hanya-tambah: tidak ada aksi ubah atau hapus, dan pencatatan
                     baru tidak dapat mengubah kejadian sebelumnya.
                   </p>
 
                   {custody.length === 0 ? (
-                    <p className="text-sm text-slate-500">Belum ada kejadian custody tercatat.</p>
+                    <p className="text-sm text-muted-foreground">Belum ada kejadian custody tercatat.</p>
                   ) : (
                     <ol className="space-y-2" data-testid="custody-timeline">
                       {custody.map((entry, index) => (
-                        <li key={entry.id} className="rounded-xl border border-slate-200 p-3">
+                        <li key={entry.id} className="rounded-xl border border-border p-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium text-slate-900">
+                            <span className="text-sm font-medium text-foreground">
                               {entry.actionLabel}
                             </span>
                             {index === custody.length - 1 ? (
                               <Badge variant="success">Terakhir</Badge>
                             ) : null}
                           </div>
-                          <p className="mt-1 text-xs text-slate-600">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             {entry.fromParty} → {entry.toParty}
                           </p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-muted-foreground">
                             {entry.eventAt ? formatDateTime(entry.eventAt) : "Waktu belum tersedia dari API"}
                             {entry.note ? ` · ${entry.note}` : ""}
                           </p>
@@ -398,8 +398,8 @@ export function DnaWorkspace() {
                   )}
 
                   {can("dna.record-custody") ? (
-                    <div className="space-y-3 rounded-xl border border-slate-200 p-3">
-                      <p className="text-sm font-medium text-slate-700">Tambah kejadian custody</p>
+                    <div className="space-y-3 rounded-xl border border-border p-3">
+                      <p className="text-sm font-medium text-foreground">Tambah kejadian custody</p>
                       <Input
                         label="Dari (pelaku pengirim)"
                         value={custodyFrom}
@@ -436,7 +436,7 @@ export function DnaWorkspace() {
                       </Button>
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted-foreground">
                       Pencatatan kejadian custody hanya dapat dilakukan oleh Dokter OH.
                     </p>
                   )}
@@ -450,7 +450,7 @@ export function DnaWorkspace() {
                 <CardContent className="space-y-3">
                   {!revealed ? (
                     <div className="space-y-3" data-testid="dna-results-hidden">
-                      <p className="text-sm text-slate-600">{REVEAL_PROMPT}</p>
+                      <p className="text-sm text-muted-foreground">{REVEAL_PROMPT}</p>
                       <Button
                         type="button"
                         variant="outline"
@@ -465,14 +465,14 @@ export function DnaWorkspace() {
                     <div className="space-y-3" data-testid="dna-results-visible">
                       <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                         <div className="flex flex-col">
-                          <dt className="text-xs text-slate-500">Hasil screening</dt>
-                          <dd className="text-sm text-slate-900" data-testid="dna-screening-result">
+                          <dt className="text-xs text-muted-foreground">Hasil screening</dt>
+                          <dd className="text-sm text-foreground" data-testid="dna-screening-result">
                             {screeningResultLabel(result?.screening_result)}
                           </dd>
                         </div>
                         <div className="flex flex-col">
-                          <dt className="text-xs text-slate-500">Hasil konfirmasi</dt>
-                          <dd className="text-sm text-slate-900" data-testid="dna-confirmation-result">
+                          <dt className="text-xs text-muted-foreground">Hasil konfirmasi</dt>
+                          <dd className="text-sm text-foreground" data-testid="dna-confirmation-result">
                             {confirmationResultLabel(result)}
                           </dd>
                         </div>
@@ -485,11 +485,11 @@ export function DnaWorkspace() {
                       </div>
 
                       {needsConfirmation && (
-                        <div className="space-y-3 rounded-xl border border-slate-200 p-3">
-                          <p className="text-sm font-medium text-slate-700">
+                        <div className="space-y-3 rounded-xl border border-border p-3">
+                          <p className="text-sm font-medium text-foreground">
                             Confirmation test diperlukan
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted-foreground">
                             Status tes dan hasil screening dari API menunjukkan confirmation test
                             masih required. Frontend tidak menentukan apa yang dianggap positif.
                           </p>
@@ -518,7 +518,7 @@ export function DnaWorkspace() {
                               </Button>
                             </>
                           ) : (
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-muted-foreground">
                               Pencatatan confirmation test hanya dapat dilakukan oleh Dokter OH.
                             </p>
                           )}
@@ -526,7 +526,7 @@ export function DnaWorkspace() {
                       )}
 
                       {!needsConfirmation && !hasConfirmationResult(result) && (
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           API tidak menandai tes ini memerlukan confirmation test.
                         </p>
                       )}

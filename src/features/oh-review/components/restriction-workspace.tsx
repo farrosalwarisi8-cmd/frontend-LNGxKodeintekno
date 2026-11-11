@@ -113,7 +113,7 @@ export function RestrictionWorkspace() {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Management restriksi kerja hanya dapat dilakukan oleh Dokter OH.
           </p>
         </CardContent>
@@ -131,7 +131,7 @@ export function RestrictionWorkspace() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Notifikasi ke HSE dibuat otomatis di server saat restriksi ditetapkan. Frontend tidak
             mengirim notifikasi sendiri, dan backend belum menyediakan status notifikasi yang
             dapat dibaca di sini (BLOCKER BACKEND).
@@ -166,15 +166,15 @@ export function RestrictionWorkspace() {
                 <li
                   key={row.id}
                   data-testid={`restriction-row-${row.id}`}
-                  className="rounded-xl border border-slate-200 p-3"
+                  className="rounded-xl border border-border p-3"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900">{row.description}</p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="text-sm font-medium text-foreground">{row.description}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {row.patientName} · {row.employeeNo || "NIP belum tersedia"} · {row.mcuNumber}
                       </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {row.effectiveDate ? <span>Mulai {formatDate(row.effectiveDate)}</span> : null}
                         {row.reviewDate ? <span>Review {formatDate(row.reviewDate)}</span> : null}
                         {row.supervisor ? <span>Supervisor: {row.supervisor}</span> : null}
@@ -227,21 +227,21 @@ export function RestrictionWorkspace() {
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-foreground">
               <input
                 type="checkbox"
                 checked={showClosed}
                 onChange={(e) => setShowClosed(e.target.checked)}
-                className="size-4 rounded border-slate-300"
+                className="size-4 rounded border-border"
               />
               Tampilkan riwayat restriksi yang sudah ditutup
             </label>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Aktif: {activeRows.length} · Ditutup: {closedRows.length}
             </p>
           </div>
 
-          <p className="flex items-start gap-2 text-xs text-slate-500">
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" />
             <span>
               Restriksi baru dibuat bersamaan dengan penetapan FTW “Fit with Restriction” pada
@@ -260,7 +260,7 @@ export function RestrictionWorkspace() {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted-foreground">
             Pengakhiran restriksi dicatat di server dan hanya dapat dilakukan oleh Dokter OH.
           </p>
           <Textarea

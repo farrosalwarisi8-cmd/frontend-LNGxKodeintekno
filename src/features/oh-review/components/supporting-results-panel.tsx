@@ -57,7 +57,7 @@ export function SupportingResultsPanel({ cycleId }: { cycleId: string }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           Hanya hasil yang sudah berstatus terverifikasi yang ditampilkan. Modul ini read-only —
           input dan verifikasi hasil tetap milik modul Lab &amp; Radiologi.
         </p>
@@ -80,38 +80,38 @@ export function SupportingResultsPanel({ cycleId }: { cycleId: string }) {
         {!loading && !error && unavailableReason && (
           <p
             data-testid="supporting-results-unavailable"
-            className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600"
+            className="rounded-xl bg-muted p-3 text-sm text-muted-foreground"
           >
             {unavailableReason}
           </p>
         )}
 
         {!loading && !error && !unavailableReason && results.length === 0 && (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Belum ada hasil penunjang terverifikasi yang terkait dengan siklus MCU ini.
           </p>
         )}
 
         {!loading && !error && results.length > 0 && (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-border">
             {results.map((result) => (
               <li
                 key={`${result.resultId}-${result.parameterName}`}
                 className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
-                <span className="text-sm text-slate-700">{result.parameterName}</span>
+                <span className="text-sm text-foreground">{result.parameterName}</span>
                 <span className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-slate-900">
+                  <span className="text-sm font-medium text-foreground">
                     {result.value}
                     {result.unit ? (
-                      <span className="ml-1 text-xs font-normal text-slate-500">{result.unit}</span>
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">{result.unit}</span>
                     ) : null}
                   </span>
                   {result.abnormalFlag === true ? (
                     <Badge variant="warning">Di luar rentang</Badge>
                   ) : null}
                   {result.verifiedAt ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                       <ShieldCheck className="size-3.5" />
                       Terverifikasi
                     </span>

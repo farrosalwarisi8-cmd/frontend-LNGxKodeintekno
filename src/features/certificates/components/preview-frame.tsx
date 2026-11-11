@@ -27,11 +27,11 @@ export function PreviewFrame({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className={`fixed inset-0 z-50 overflow-y-auto bg-slate-100 print:static print:overflow-visible print:bg-white ${printStyles.printRoot ?? ""}`}
+      className={`fixed inset-0 z-50 overflow-y-auto bg-muted print:static print:overflow-visible print:bg-card ${printStyles.printRoot ?? ""}`}
     >
       <div className="mx-auto max-w-3xl p-4 print:p-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
-          <p className="text-sm font-medium text-slate-700">{title}</p>
+          <p className="text-sm font-medium text-foreground">{title}</p>
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -50,7 +50,7 @@ export function PreviewFrame({
         </div>
         <div
           data-print-area
-          className={`rounded-2xl border border-slate-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none ${printStyles.printArea ?? ""}`}
+          className={`rounded-2xl border border-border bg-card p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none ${printStyles.printArea ?? ""}`}
         >
           {children}
         </div>

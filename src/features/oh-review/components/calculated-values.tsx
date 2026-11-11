@@ -27,7 +27,7 @@ export function WorseningMarker({ worsening }: { worsening: boolean | null }) {
   return (
     <span
       data-testid="worsening-marker"
-      className="inline-flex items-center gap-1 text-xs font-medium text-slate-500"
+      className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground"
     >
       <TrendingUp className="size-3.5" />
       Tidak ada perburukan
@@ -55,7 +55,7 @@ export function CalculatedValuesPanel({
         <CardTitle>Nilai terhitung (dari server)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted-foreground">
           BMI, klasifikasi tekanan darah, audiometri, spirometri, dan skor kardiovaskular
           dihitung di server. Nilai di bawah ditampilkan apa adanya.
         </p>
@@ -63,7 +63,7 @@ export function CalculatedValuesPanel({
         {!worseningAvailable && (
           <p
             data-testid="worsening-unavailable"
-            className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-xs text-slate-600"
+            className="flex items-start gap-2 rounded-xl bg-muted p-3 text-xs text-muted-foreground"
           >
             <Info className="mt-0.5 size-3.5 shrink-0" />
             <span>
@@ -74,23 +74,23 @@ export function CalculatedValuesPanel({
         )}
 
         {rows.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground">
             Belum ada nilai hasil perhitungan yang dikirim API untuk siklus ini.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-border">
             {rows.map((row) => (
               <li
                 key={row.key}
                 data-testid="calculation-row"
                 className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
-                <span className="text-sm text-slate-700">{row.label}</span>
+                <span className="text-sm text-foreground">{row.label}</span>
                 <span className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-slate-900">
+                  <span className="text-sm font-medium text-foreground">
                     {row.value}
                     {row.unit ? (
-                      <span className="ml-1 text-xs font-normal text-slate-500">{row.unit}</span>
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">{row.unit}</span>
                     ) : null}
                   </span>
                   <WorseningMarker worsening={row.worsening} />

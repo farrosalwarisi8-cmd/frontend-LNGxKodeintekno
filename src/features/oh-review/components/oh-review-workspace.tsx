@@ -210,8 +210,8 @@ export function OhReviewWorkspace() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Review MCU — Dokter OH</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-semibold text-foreground">Review MCU — Dokter OH</h1>
+          <p className="text-sm text-muted-foreground">
             Antrean review, penetapan FTW, dan management restriksi kerja.
           </p>
         </div>
@@ -240,7 +240,7 @@ export function OhReviewWorkspace() {
         <CardContent className="space-y-3">
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 label="Pencarian"
                 placeholder="Nama, MRN, NIP, nomor MCU..."
@@ -285,7 +285,7 @@ export function OhReviewWorkspace() {
             />
           </div>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Filter perusahaan tidak ditampilkan: kontrak siklus MCU tidak mengirim field perusahaan
             pada respons API.
           </p>
@@ -337,19 +337,19 @@ export function OhReviewWorkspace() {
                       className={`w-full rounded-xl border p-3 text-left transition-colors ${
                         selectedId === cycle.id
                           ? "border-primary-500 bg-primary-50"
-                          : "border-slate-200 bg-white hover:bg-slate-50"
+                          : "border-border bg-card hover:bg-muted"
                       }`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-sm font-medium text-slate-900">{cycle.patientName}</span>
+                        <span className="text-sm font-medium text-foreground">{cycle.patientName}</span>
                         <Badge variant={cycle.hasDecision ? "success" : "warning"}>
                           {cycle.hasDecision ? ftwLabel(cycle.ftwStatus) : "Menunggu review"}
                         </Badge>
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {cycle.mcuNumber} · {cycle.mcuTypeLabel} · {formatDate(cycle.examinationDate)}
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {cycle.employeeNo || "NIP belum tersedia"} · {cycle.siteName || "Site belum tersedia"}
                       </p>
                       {cycle.worsening && (
@@ -369,7 +369,7 @@ export function OhReviewWorkspace() {
           {!selected ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Pilih satu siklus MCU di antrean untuk menampilkan hasil pemeriksaan.
                 </p>
               </CardContent>
@@ -396,15 +396,15 @@ export function OhReviewWorkspace() {
                       },
                     ].map((item) => (
                       <div key={item.label} className="flex flex-col">
-                        <dt className="text-xs text-slate-500">{item.label}</dt>
-                        <dd className="text-sm text-slate-900">{item.value}</dd>
+                        <dt className="text-xs text-muted-foreground">{item.label}</dt>
+                        <dd className="text-sm text-foreground">{item.value}</dd>
                       </div>
                     ))}
                   </dl>
 
                   {selected.ftwSummary ? (
-                    <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                      <p className="text-xs font-medium uppercase text-slate-500">Ringkasan keputusan</p>
+                    <div className="rounded-xl bg-muted p-3 text-sm text-foreground">
+                      <p className="text-xs font-medium uppercase text-muted-foreground">Ringkasan keputusan</p>
                       <p className="mt-1 whitespace-pre-line">{selected.ftwSummary}</p>
                     </div>
                   ) : null}
@@ -436,7 +436,7 @@ export function OhReviewWorkspace() {
                     helper="Catatan dikirim sebagai ringkasan pada penetapan FTW."
                   />
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-slate-500" data-testid="draft-status">
+                    <p className="text-xs text-muted-foreground" data-testid="draft-status">
                       {dirty
                         ? "Ada perubahan yang belum disimpan."
                         : "Draf tersimpan di halaman ini saja (tidak disimpan di perangkat)."}
@@ -454,7 +454,7 @@ export function OhReviewWorkspace() {
                       </Button>
                     </div>
                   </div>
-                  <p className="flex items-start gap-2 text-xs text-slate-500">
+                  <p className="flex items-start gap-2 text-xs text-muted-foreground">
                     <Info className="mt-0.5 size-3.5 shrink-0" />
                     <span>
                       Backend belum menyediakan endpoint draf review MCU, jadi draf hanya bertahan
@@ -471,7 +471,7 @@ export function OhReviewWorkspace() {
                 <CardContent className="space-y-3">
                   {selected.hasDecision ? (
                     <div
-                      className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700"
+                      className="flex items-start gap-2 rounded-xl bg-muted p-3 text-sm text-foreground"
                       data-testid="ftw-locked-notice"
                     >
                       <Info className="mt-0.5 size-4 shrink-0" />
@@ -482,7 +482,7 @@ export function OhReviewWorkspace() {
                       </span>
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted-foreground">
                       Belum ada keputusan FTW pada siklus ini.
                     </p>
                   )}
@@ -498,7 +498,7 @@ export function OhReviewWorkspace() {
                         {selected.hasDecision ? "Tetapkan ulang FTW" : "Tetapkan FTW"}
                       </Button>
                     ) : (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-muted-foreground">
                         Penetapan FTW hanya dapat dilakukan oleh Dokter OH.
                       </p>
                     )}
@@ -538,7 +538,7 @@ export function OhReviewWorkspace() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <RestrictionList restrictions={selected.restrictions} />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Management restriksi (tambah/ubah/akhiri) dilakukan oleh Dokter OH pada halaman
                     Restriksi Kerja.
                   </p>

@@ -113,7 +113,7 @@ export function FtwDecisionDialog({
     >
       <div className="space-y-4">
         {locked && (
-          <div className="flex items-start gap-2 rounded-xl bg-slate-100 p-3 text-sm text-slate-700">
+          <div className="flex items-start gap-2 rounded-xl bg-muted p-3 text-sm text-foreground">
             <Info className="mt-0.5 size-4 shrink-0" />
             <span>
               Siklus ini sudah memiliki keputusan FTW. Penetapan baru akan menggantikan
@@ -124,8 +124,8 @@ export function FtwDecisionDialog({
 
         {!confirming ? (
           <>
-            <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-              <p className="font-medium text-slate-800">Saran sistem</p>
+            <div className="rounded-xl bg-muted p-3 text-sm text-foreground">
+              <p className="font-medium text-foreground">Saran sistem</p>
               <p className="mt-1">
                 {suggested ? (
                   <Badge variant="info">{ftwLabel(suggested)}</Badge>
@@ -138,11 +138,11 @@ export function FtwDecisionDialog({
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-slate-700">Kategori FTW</legend>
+              <legend className="text-sm font-medium text-foreground">Kategori FTW</legend>
               {FTW_CATEGORIES.map((option) => (
                 <label
                   key={option.value}
-                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 text-sm"
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 text-sm"
                 >
                   <input
                     type="radio"
@@ -153,8 +153,8 @@ export function FtwDecisionDialog({
                     className="mt-1 size-4"
                   />
                   <span>
-                    <span className="font-medium text-slate-900">{option.label}</span>
-                    <span className="block text-xs text-slate-500">{option.description}</span>
+                    <span className="font-medium text-foreground">{option.label}</span>
+                    <span className="block text-xs text-muted-foreground">{option.description}</span>
                   </span>
                 </label>
               ))}
@@ -172,8 +172,8 @@ export function FtwDecisionDialog({
             </div>
 
             {chosen === "FIT_WITH_RESTRICTION" && (
-              <div className="space-y-3 rounded-xl border border-slate-200 p-3">
-                <p className="text-sm font-medium text-slate-700">Detail pembatasan kerja</p>
+              <div className="space-y-3 rounded-xl border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Detail pembatasan kerja</p>
                 <Input
                   label="Deskripsi pembatasan"
                   value={restrictionDescription}
@@ -217,38 +217,38 @@ export function FtwDecisionDialog({
           </>
         ) : (
           <>
-            <div className="space-y-2 rounded-xl border border-slate-200 p-4 text-sm">
-              <p className="font-medium text-slate-900">Ringkasan sebelum final</p>
+            <div className="space-y-2 rounded-xl border border-border p-4 text-sm">
+              <p className="font-medium text-foreground">Ringkasan sebelum final</p>
               <dl className="space-y-1">
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-500">Kategori FTW</dt>
-                  <dd className="font-medium text-slate-900">{ftwLabel(chosen)}</dd>
+                  <dt className="text-muted-foreground">Kategori FTW</dt>
+                  <dd className="font-medium text-foreground">{ftwLabel(chosen)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-500">Saran sistem</dt>
-                  <dd className="text-slate-900">
+                  <dt className="text-muted-foreground">Saran sistem</dt>
+                  <dd className="text-foreground">
                     {suggested ? ftwLabel(suggested) : "tidak tersedia dari API"}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-500">Alasan deviasi</dt>
-                  <dd className="text-right text-slate-900">{reason.trim() || "—"}</dd>
+                  <dt className="text-muted-foreground">Alasan deviasi</dt>
+                  <dd className="text-right text-foreground">{reason.trim() || "—"}</dd>
                 </div>
                 {chosen === "FIT_WITH_RESTRICTION" && (
                   <>
                     <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500">Pembatasan</dt>
-                      <dd className="text-right text-slate-900">{restrictionDescription}</dd>
+                      <dt className="text-muted-foreground">Pembatasan</dt>
+                      <dd className="text-right text-foreground">{restrictionDescription}</dd>
                     </div>
                     <div className="flex justify-between gap-4">
-                      <dt className="text-slate-500">Tanggal review</dt>
-                      <dd className="text-slate-900">{restrictionReviewDate}</dd>
+                      <dt className="text-muted-foreground">Tanggal review</dt>
+                      <dd className="text-foreground">{restrictionReviewDate}</dd>
                     </div>
                   </>
                 )}
                 <div className="flex justify-between gap-4">
-                  <dt className="text-slate-500">Catatan dokter</dt>
-                  <dd className="text-right text-slate-900">{notes.trim() || "—"}</dd>
+                  <dt className="text-muted-foreground">Catatan dokter</dt>
+                  <dd className="text-right text-foreground">{notes.trim() || "—"}</dd>
                 </div>
               </dl>
             </div>

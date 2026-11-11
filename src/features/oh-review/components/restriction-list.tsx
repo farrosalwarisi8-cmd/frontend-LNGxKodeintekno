@@ -21,7 +21,7 @@ export function RestrictionList({
   testIdPrefix?: string;
 }) {
   if (restrictions.length === 0) {
-    return <p className="text-sm text-slate-500">{emptyMessage}</p>;
+    return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (
@@ -30,10 +30,10 @@ export function RestrictionList({
         <li
           key={restriction.id}
           data-testid={`${testIdPrefix}-${restriction.id}`}
-          className="rounded-xl border border-slate-200 p-3"
+          className="rounded-xl border border-border p-3"
         >
-          <p className="text-sm font-medium text-slate-900">{restriction.description}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <p className="text-sm font-medium text-foreground">{restriction.description}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {restriction.effectiveDate ? (
               <span>Mulai {formatDate(restriction.effectiveDate)}</span>
             ) : null}

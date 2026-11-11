@@ -17,8 +17,8 @@ export default function OhReviewRestrictionsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Restriksi Kerja</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-semibold text-foreground">Restriksi Kerja</h1>
+        <p className="text-sm text-muted-foreground">
           Restriksi kerja aktif dan riwayatnya. Hanya Dokter OH yang dapat menambah, mengubah, atau
           mengakhiri restriksi.
         </p>

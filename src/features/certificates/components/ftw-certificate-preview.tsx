@@ -18,13 +18,13 @@ export function FtwCertificatePreview({ model }: { model: ResumeModel }) {
       <PreviewNotice />
 
       <header className="text-center">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           PT Layar Nusantara Gas
         </p>
-        <h2 className="mt-1 text-xl font-semibold text-slate-900">
+        <h2 className="mt-1 text-xl font-semibold text-foreground">
           Sertifikat Kelaikan Kerja (Fitness to Work)
         </h2>
-        <p className="mt-1 text-sm text-slate-600">Nomor MCU: {model.mcuNumber}</p>
+        <p className="mt-1 text-sm text-muted-foreground">Nomor MCU: {model.mcuNumber}</p>
       </header>
 
       <section className="mt-6">
@@ -38,21 +38,21 @@ export function FtwCertificatePreview({ model }: { model: ResumeModel }) {
             { label: "Tanggal pemeriksaan", value: identity.get("Tanggal pemeriksaan") },
           ].map((item) => (
             <div key={item.label} className="flex flex-col">
-              <dt className="text-xs text-slate-500">{item.label}</dt>
-              <dd className="text-sm text-slate-900">{item.value ?? "—"}</dd>
+              <dt className="text-xs text-muted-foreground">{item.label}</dt>
+              <dd className="text-sm text-foreground">{item.value ?? "—"}</dd>
             </div>
           ))}
         </dl>
       </section>
 
-      <section className="mt-6 rounded-xl border border-slate-200 p-4">
-        <p className="text-xs uppercase tracking-wide text-slate-500">Status Kelaikan Kerja</p>
-        <p className="mt-1 text-lg font-semibold text-slate-900">{model.decision.ftwLabel}</p>
+      <section className="mt-6 rounded-xl border border-border p-4">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Status Kelaikan Kerja</p>
+        <p className="mt-1 text-lg font-semibold text-foreground">{model.decision.ftwLabel}</p>
         {model.decision.summary ? (
-          <p className="mt-1 text-sm text-slate-700">{model.decision.summary}</p>
+          <p className="mt-1 text-sm text-foreground">{model.decision.summary}</p>
         ) : null}
         {model.decision.decidedAt ? (
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Ditetapkan: {formatDate(model.decision.decidedAt)}
           </p>
         ) : null}
@@ -60,8 +60,8 @@ export function FtwCertificatePreview({ model }: { model: ResumeModel }) {
 
       {model.restrictions.length > 0 && (
         <section className="mt-6">
-          <h3 className="text-sm font-semibold text-slate-900">Pembatasan kerja</h3>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-800">
+          <h3 className="text-sm font-semibold text-foreground">Pembatasan kerja</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-foreground">
             {model.restrictions.map((restriction) => (
               <li key={restriction.id}>
                 {restriction.description}
@@ -74,7 +74,7 @@ export function FtwCertificatePreview({ model }: { model: ResumeModel }) {
 
       <SignaturePlaceholder />
 
-      <p className="mt-6 text-xs text-slate-500">
+      <p className="mt-6 text-xs text-muted-foreground">
         Status dokumen: {model.document.statusLabel}. Dokumen ini belum sah sampai ditandatangani
         pada tahap TTE.
       </p>
