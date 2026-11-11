@@ -52,6 +52,10 @@ export interface BackendEncounter {
   started_at?: string;
   finalized_at?: string | null;
   locked_at?: string | null;
+  /** Ikut di-include `GET /clinic/encounters` (dipakai untuk label pemilih). */
+  patient?: BackendPatientRef;
+  soap_note?: BackendSoapNote | null;
+  outside_treatments?: BackendOutsideTreatment[];
 }
 
 export interface BackendVitalSign {

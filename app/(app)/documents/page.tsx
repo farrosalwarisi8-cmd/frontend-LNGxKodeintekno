@@ -22,6 +22,10 @@ import {
   type SignatureRequest,
 } from "@/lib/services/document.service";
 import {
+  encounterService,
+  type BackendEncounter,
+} from "@/lib/services/encounter.service";
+import {
   FileText,
   Download,
   ShieldCheck,
@@ -52,6 +56,13 @@ const SIG_STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "def
   FAILED: "danger",
   EXPIRED: "danger",
 };
+
+/** Jenis dokumen yang dirender dari encounter klinis, bukan siklus MCU. */
+const ENCOUNTER_DOC_TYPES = ["MEDICAL_RESUME", "SICK_LEAVE"] as const;
+
+function isEncounterDocType(type: string): boolean {
+  return (ENCOUNTER_DOC_TYPES as readonly string[]).includes(type);
+}
 
 const SIG_STATUS_ICON: Record<string, typeof Clock> = {
   PENDING: Clock,
@@ -108,8 +119,16 @@ export default function DocumentsPage() {
   // Modal pembuatan dokumen baru — POST /documents/render-pdf
   const [showRenderModal, setShowRenderModal] = useState(false);
   const [renderType, setRenderType] = useState("FTW_CERTIFICATE");
-  const [renderMcuId, setRenderMcuId] = useState("");
+  /** ID siklus MCU atau encounter, tergantung `renderType`. */
+  const [renderReferenceId, setRenderReferenceId] = useState("");
   const [renderTitle, setRenderTitle] = useState("");
+
+  // Encounter final untuk jenis dokumen klinis (surat sakit / resume medis).
+  const [encounters, setEncounters] = useState<BackendEncounter[]>([]);
+  const [loadingEncounters, setLoadingEncounters] = useState(false);
+  const [encounterError, setEncounterError] = useState<string | null>(null);
+
+  const usesEncounter = isEncounterDocType(renderType);
 
   // Polling untuk PENDING/PROCESSING signatures
   const [polling, setPolling] = useState(true);
@@ -169,22 +188,67 @@ export default function DocumentsPage() {
     };
   }, [polling, hasActiveSignatures, refreshSignatureStatuses]);
 
+  /**
+   * Ambil encounter final/locked untuk pemilih referensi. Backend menolak
+   * render dari encounter berstatus DRAFT, jadi daftar disaring di client.
+   */
+  const loadEncounters = useCallback(async () => {
+    setLoadingEncounters(true);
+    setEncounterError(null);
+    try {
+      const res = await encounterService.listEncounters({ page: 1, limit: 100 });
+      const finalEncounters = (res.data ?? [])
+        .filter((enc) => enc.status === "FINAL" || enc.status === "LOCKED")
+        .sort((a, b) => (b.started_at ?? "").localeCompare(a.started_at ?? ""));
+      setEncounters(finalEncounters);
+    } catch (e) {
+      setEncounterError(
+        e instanceof Error ? e.message : "Gagal memuat daftar encounter."
+      );
+    } finally {
+      setLoadingEncounters(false);
+    }
+  }, []);
+
+  /**
+   * Encounter yang memenuhi syarat backend: surat sakit butuh nomor surat pada
+   * outside treatment, resume medis butuh SOAP final.
+   */
+  const eligibleEncounters = encounters.filter((enc) =>
+    renderType === "SICK_LEAVE"
+      ? enc.outside_treatments?.some((item) => item.sick_letter_no)
+      : Boolean(enc.soap_note && enc.soap_note.status !== "DRAFT")
+  );
+
   /** Render dokumen baru di backend, lalu muat ulang daftar dari GET /documents. */
   const handleRenderPdf = async () => {
-    const mcu = mcus.find((m) => m.id === renderMcuId);
-    if (!mcu) {
-      setGenError("Pilih siklus MCU sebagai referensi dokumen.");
+    const mcu = usesEncounter ? undefined : mcus.find((m) => m.id === renderReferenceId);
+    const encounter = usesEncounter
+      ? eligibleEncounters.find((enc) => enc.id === renderReferenceId)
+      : undefined;
+    if (usesEncounter ? !encounter : !mcu) {
+      setGenError(
+        usesEncounter
+          ? "Pilih encounter final yang memenuhi syarat dokumen."
+          : "Pilih siklus MCU sebagai referensi dokumen."
+      );
       return;
     }
+    const patientName = encounter?.patient?.full_name?.trim() || "Pasien";
     const fallbackTitle =
       renderType === "FTW_CERTIFICATE"
-        ? `Sertifikat Kelaikan Kerja ${mcu.mcuNumber}`
-        : `${renderType} ${mcu.mcuNumber}`;
+        ? `Sertifikat Kelaikan Kerja ${mcu?.mcuNumber}`
+        : renderType === "MCU_RESUME"
+          ? `Resume Medis MCU ${mcu?.mcuNumber}`
+          : renderType === "SICK_LEAVE"
+            ? `Surat Keterangan Sakit ${patientName}`
+            : `Resume Medis ${patientName}`;
     const title = renderTitle.trim() || fallbackTitle;
+    const referenceId = mcu?.id ?? encounter!.id;
     setGenerating(true);
     setGenError(null);
     try {
-      const result = await documentService.renderPdf(renderType, mcu.id, title);
+      const result = await documentService.renderPdf(renderType, referenceId, title);
       const { verificationUrl } = result;
       const token = verifyTokenFromUrl(verificationUrl);
       setShowRenderModal(false);
@@ -552,31 +616,68 @@ export default function DocumentsPage() {
         open={showRenderModal}
         onClose={() => setShowRenderModal(false)}
         title="Render Dokumen PDF"
-        description="Buat dokumen resmi berbasis siklus MCU di backend: sertifikat FTW atau resume MCU."
+        description="Buat dokumen resmi di backend dari siklus MCU atau encounter klinis final."
       >
         <div className="space-y-4 p-6">
           <Select
             label="Jenis Dokumen"
             value={renderType}
-            onChange={(e) => setRenderType(e.target.value)}
+            onChange={(e) => {
+              const nextType = e.target.value;
+              setRenderType(nextType);
+              setRenderReferenceId("");
+              if (isEncounterDocType(nextType) && encounters.length === 0) {
+                void loadEncounters();
+              }
+            }}
             options={[
               { value: "FTW_CERTIFICATE", label: "Sertifikat Kelaikan Kerja (FTW)" },
               { value: "MCU_RESUME", label: "Resume Medis MCU" },
+              { value: "MEDICAL_RESUME", label: "Resume Medis Kunjungan" },
+              { value: "SICK_LEAVE", label: "Surat Keterangan Sakit" },
             ]}
-            helper="Surat sakit & resume medis kunjungan memakai ID encounter, belum tersedia dari halaman ini."
+            helper="Dokumen MCU memakai siklus MCU; surat sakit & resume kunjungan memakai encounter final."
           />
 
-          <Select
-            label="Referensi Siklus MCU"
-            value={renderMcuId}
-            onChange={(e) => setRenderMcuId(e.target.value)}
-            placeholder="Pilih siklus MCU..."
-            options={mcus.map((m) => ({
-              value: m.id,
-              label: `${m.mcuNumber} · ${m.type}`,
-            }))}
-            helper="Dipakai backend sebagai referensi dokumen (field referenceId)."
-          />
+          {usesEncounter ? (
+            <Select
+              label="Referensi Encounter"
+              value={renderReferenceId}
+              onChange={(e) => setRenderReferenceId(e.target.value)}
+              placeholder={
+                loadingEncounters ? "Memuat encounter..." : "Pilih encounter final..."
+              }
+              disabled={loadingEncounters || eligibleEncounters.length === 0}
+              options={eligibleEncounters.map((enc) => ({
+                value: enc.id,
+                label: `${enc.patient?.full_name ?? "Pasien"} · ${
+                  enc.patient?.medical_record_no ?? enc.patient_id.slice(0, 8)
+                } · ${enc.started_at ? formatDate(enc.started_at) : "—"}`,
+              }))}
+              helper={
+                encounterError ??
+                (loadingEncounters
+                  ? "Mengambil encounter dari backend..."
+                  : eligibleEncounters.length === 0
+                    ? renderType === "SICK_LEAVE"
+                      ? "Belum ada encounter final dengan nomor surat sakit pada outside treatment."
+                      : "Belum ada encounter final dengan SOAP yang sudah difinalisasi."
+                    : "Hanya encounter FINAL/LOCKED yang ditampilkan.")
+              }
+            />
+          ) : (
+            <Select
+              label="Referensi Siklus MCU"
+              value={renderReferenceId}
+              onChange={(e) => setRenderReferenceId(e.target.value)}
+              placeholder="Pilih siklus MCU..."
+              options={mcus.map((m) => ({
+                value: m.id,
+                label: `${m.mcuNumber} · ${m.type}`,
+              }))}
+              helper="Dipakai backend sebagai referensi dokumen (field referenceId)."
+            />
+          )}
 
           <Input
             label="Judul Dokumen"
