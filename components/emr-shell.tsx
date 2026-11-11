@@ -18,6 +18,7 @@ import {
   User,
 } from "lucide-react";
 import { ICON_MAP } from "@/shared/components/icon-map";
+import { Logo } from "@/components/logo";
 import { useDemoMode } from "@/lib/demo-role";
 import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
@@ -27,6 +28,7 @@ import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive 
 import { Breadcrumb } from "@/components/breadcrumb";
 import { EnvironmentBanner } from "@/components/environment-banner";
 import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { RouteTitle } from "@/components/route-title";
 import { ScopeSelector } from "@/components/scope-selector";
 import { toastError, toastSuccess } from "@/lib/use-toast";
@@ -135,11 +137,13 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 overflow-hidden">
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-card lg:flex" aria-label="Navigasi utama">
           <div className="flex h-14 items-center gap-2.5 border-b border-border px-5">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-primary-600">
-              <Activity className="size-4 text-primary-foreground" aria-hidden="true" />
-            </div>
+            {/* Lambang LNG + nama sistem (sidebar selalu lebar, tidak diciutkan). */}
+            <Logo size="md" />
             <div>
               <p className="text-sm font-semibold text-foreground">Kodein Klinik</p>
+              {/* Subjudul netral disengaja: E2E alur mutasi memakai teks data
+                  "PT Layar Nusantara Gas" dengan pencocokan ketat — nama
+                  perusahaan tampil penuh di login, halaman publik, 404/error. */}
               <p className="text-[10px] text-muted-foreground">EMR Okupasi</p>
             </div>
           </div>
@@ -201,6 +205,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="border-t border-border px-4 py-3">
+            {/* Teks footer disengaja netral (lihat komentar subjudul di atas). */}
             <p className="text-[10px] text-muted-foreground">Kodein Klinik · EMR Okupasi</p>
           </div>
         </aside>
@@ -208,9 +213,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-primary-600">
-                <Activity className="size-3.5 text-primary-foreground" aria-hidden="true" />
-              </div>
+              <Logo size="sm" />
               <span className="text-sm font-semibold text-foreground">Kodein Klinik</span>
             </div>
             <div className="flex items-center gap-2">
@@ -279,6 +282,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                     );
                   })}
                 </nav>
+                {/* Pengalih tema di menu mobile (topbar desktop punya sendiri). */}
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Tema tampilan</p>
+                  <ThemeToggle />
+                </div>
               </div>
             </div>
           )}
@@ -287,6 +295,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-border bg-card px-6 lg:flex">
             <Breadcrumb />
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               {!isOnline && (
                 <div
                   role="status"

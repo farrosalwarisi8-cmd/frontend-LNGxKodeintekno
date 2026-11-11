@@ -24,6 +24,7 @@ import {
   type WaiverDecision,
 } from "@/lib/services/waiver.service";
 import { masterDataService } from "@/lib/services/master-data.service";
+import VisitorWaiverPanel from "./visitor-waiver-panel";
 import { ShieldAlert, Plus, CheckCircle, Clock, XCircle, Send, Ban, Search, Loader2 } from "lucide-react";
 
 const EMPTY_FORM = {
@@ -645,6 +646,9 @@ export default function WaiverPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Waiver pengunjung offshore — endpoint /mcu/visitor-waivers */}
+      <VisitorWaiverPanel />
     </div>
   );
 }

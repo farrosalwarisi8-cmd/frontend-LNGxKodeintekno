@@ -137,24 +137,15 @@ export default function DocumentsPage() {
   );
 
   const refreshSignatureStatuses = useCallback(async () => {
-    // Refresh each PENDING/PROCESSING signature individually
-    const activeDocs = documents.filter(
-      (d) => d.signature && (d.signature.status === "PENDING" || d.signature.status === "PROCESSING")
-    );
-    for (const doc of activeDocs) {
-      if (!doc.signature) continue;
-      try {
-        const updated = await documentService.getSignature(doc.signature.id);
-        setDocuments((prev) =>
-          prev.map((d) =>
-            d.id === doc.id ? { ...d, signature: updated } : d
-          )
-        );
-      } catch {
-        // silent fail per document
-      }
+    // Satu round-trip GET /documents (signature_reqs ikut di-include
+    // backend) — tidak ada endpoint GET /signatures tersendiri.
+    try {
+      const res = await documentService.getDocuments({ page: 1, limit: 100 });
+      setDocuments((res.data ?? []).map(mapBackendDocument));
+    } catch {
+      // silent fail — polling berikutnya mencoba lagi
     }
-  }, [documents]);
+  }, []);
 
   useEffect(() => {
     if (!polling || !hasActiveSignatures) {

@@ -37,6 +37,7 @@ export interface BackendAuditLogRow {
   resource_id?: string | null;
   prev_hash?: string;
   event_hash?: string;
+  ip_hash?: string | null;
   payload_snapshot?: unknown;
   created_at: string;
   actor?: { id?: string; username?: string; email?: string };
@@ -46,6 +47,11 @@ export interface AuditChainResult {
   isValid: boolean;
   brokenAtIndex?: number;
   brokenEntryId?: string;
+  /** Field tambahan dari backend (verify-chain): ringkasan verifikasi. */
+  verified?: boolean;
+  totalEventsChecked?: number;
+  reason?: string | null;
+  message?: string;
 }
 
 export interface CreateUserInput {
@@ -125,11 +131,29 @@ export const iamService = {
     return apiClient.get<BackendUserRow>(`/iam/users/${id}`);
   },
 
-  async listAuditLogs(page = 1, limit = 20) {
-    const res = await apiClient.getPaged<BackendAuditLogRow[]>(
-      `/iam/audit-logs?page=${page}&limit=${limit}`
-    );
+  async listAuditLogs(
+    page = 1,
+    limit = 20,
+    filters?: {
+      action?: string;
+      resourceType?: string;
+      actorUserId?: string;
+      startDate?: string;
+      endDate?: string;
+    }
+  ) {
+    const qs = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (filters?.action) qs.set("action", filters.action);
+    if (filters?.resourceType) qs.set("resourceType", filters.resourceType);
+    if (filters?.actorUserId) qs.set("actorUserId", filters.actorUserId);
+    if (filters?.startDate) qs.set("startDate", filters.startDate);
+    if (filters?.endDate) qs.set("endDate", filters.endDate);
+    const res = await apiClient.getPaged<BackendAuditLogRow[]>(`/iam/audit-logs?${qs.toString()}`);
     return { data: res.data ?? [], meta: res.meta };
+  },
+
+  async getAuditLog(id: string): Promise<BackendAuditLogRow> {
+    return apiClient.get<BackendAuditLogRow>(`/iam/audit-logs/${id}`);
   },
 
   async verifyChain(): Promise<AuditChainResult> {

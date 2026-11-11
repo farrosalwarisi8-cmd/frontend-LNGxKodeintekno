@@ -2,6 +2,7 @@
 
 import { Component, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
@@ -33,14 +34,17 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="flex min-h-[400px] flex-col items-center justify-center p-6">
-          <div className="rounded-2xl border border-danger-100 bg-danger-50/50 p-8 text-center">
-            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-danger-100">
-              <AlertTriangle className="size-6 text-danger-600" />
+        <div className="flex min-h-[400px] flex-col items-center justify-center bg-muted p-6">
+          <div className="mx-auto w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center">
+            <div className="mb-4 flex justify-center">
+              <Logo size="lg" />
+            </div>
+            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-danger-soft">
+              <AlertTriangle className="size-6 text-danger" aria-hidden="true" />
             </div>
             <h2 className="text-lg font-semibold text-foreground">Terjadi Kesalahan</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {this.state.error?.message || "Terjadi kesalahan yang tidak terduga."}
+              Halaman gagal dimuat. Coba lagi, atau muat ulang aplikasi bila masalah berlanjut.
             </p>
             <Button
               variant="outline"

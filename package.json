@@ -14,6 +14,7 @@
     "test:raw-colors": "node scripts/check-raw-colors.mjs",
     "test:a11y": "node scripts/a11y-audit.mjs",
     "test:a11y:keyboard": "node scripts/a11y-keyboard-flow.mjs",
+    "test:theme": "node scripts/qa-theme.mjs",
     "test:roles": "node scripts/role-scenarios.mjs",
     "test:e2e:frontend": "node e2e/run-frontend-e2e.mjs",
     "test:e2e:frontend:contract": "node e2e/run-frontend-e2e.mjs --mode=contract",

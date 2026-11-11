@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Logo } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { environmentLabel, getDemoPassword, isDemoModeEnabled } from "@/lib/env";
-import { Activity, ShieldCheck, KeyRound, AlertTriangle } from "lucide-react";
+import { ShieldCheck, KeyRound, AlertTriangle, Loader2 } from "lucide-react";
 
 /**
  * Akun uji seed backend (deployment demo/development).
@@ -38,6 +40,27 @@ const DEMO_PASSWORD = DEMO_MODE_ENABLED ? getDemoPassword() : "";
 const DEMO_ACCOUNTS_READY = DEMO_MODE_ENABLED && DEMO_PASSWORD.length > 0;
 
 const MAX_ATTEMPTS = 5;
+
+/**
+ * Kepala merek bersama untuk halaman login (form + MFA).
+ *
+ * Lambang berdampingan dengan nama sistem sehingga alt dekoratif ("").
+ * Urutan Tab tidak berubah: tidak ada elemen fokus di sini.
+ */
+function BrandHeader() {
+  return (
+    <div className="mb-8 flex flex-col items-center gap-3 text-center">
+      <Logo size="lg" />
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Kodein Klinik</h1>
+        <p className="mt-1 text-sm text-muted-foreground">PT Layar Nusantara Gas</p>
+      </div>
+      <Badge variant="outline" data-testid="environment-label">
+        {environmentLabel()}
+      </Badge>
+    </div>
+  );
+}
 
 export default function LoginPageContent() {
   const router = useRouter();
@@ -136,94 +159,84 @@ export default function LoginPageContent() {
     const mfaUser =
       users.find((u) => u.id === mfaUserId) ?? users.find((u) => u.username === username);
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-muted p-6">
-        <div className="mb-8 flex flex-col items-center gap-2">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-primary-600">
-            <KeyRound className="size-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Verifikasi MFA</h1>
-          <p className="text-sm text-muted-foreground">
-            {mfaSetupRequired
-              ? "Akun Anda wajib mengaktifkan Two-Factor Authentication (TOTP)."
-              : "Masukkan kode 6 digit dari aplikasi authenticator Anda"}
-          </p>
+      <div className="relative flex min-h-screen flex-col items-center justify-center bg-muted p-6">
+        <main className="w-full max-w-sm">
+          <BrandHeader />
+          <Card>
+            <CardHeader className="text-center">
+              <span className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-primary-soft">
+                <KeyRound className="size-6 text-primary" aria-hidden="true" />
+              </span>
+              <CardTitle>Two-Factor Authentication</CardTitle>
+              <CardDescription>
+                Akun: {mfaUser?.name ?? username} ({mfaUser?.username ?? username})
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {mfaSetupRequired && (
+                <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-600">
+                  Kebijakan keamanan mewajibkan MFA untuk peran Anda. Pada environment
+                  demo/non-production, backend mengizinkan kode OTP demo <strong>123456</strong>{" "}
+                  untuk menyelesaikan login. Pada production, daftarkan akun ke aplikasi
+                  authenticator (Google/Microsoft Authenticator) lebih dahulu.
+                </div>
+              )}
+              <Input
+                label="Kode MFA"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onKeyDown={(e) => e.key === "Enter" && doVerifyMfa()}
+                placeholder="123456"
+                maxLength={6}
+                className="text-center text-2xl tracking-widest"
+                autoFocus
+              />
+              {error && (
+                <div
+                  role="alert"
+                  className="flex items-center gap-2 rounded-xl bg-danger-50 p-3 text-sm text-danger-700"
+                >
+                  <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+                  {error}
+                </div>
+              )}
+              <Button className="w-full" onClick={doVerifyMfa}>
+                <ShieldCheck className="size-4" /> Verifikasi
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setMfaUserId(null);
+                  setMfaSetupRequired(false);
+                  setMfaCode("");
+                  setError("");
+                }}
+              >
+                Kembali
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+        {/* Pengalih tema: di DOM setelah main agar urutan Tab formulir tetap. */}
+        <div className="absolute right-4 top-4">
+          <ThemeToggle />
         </div>
-
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle>Two-Factor Authentication</CardTitle>
-            <CardDescription>
-              Akun: {mfaUser?.name ?? username} ({mfaUser?.username ?? username})
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {mfaSetupRequired && (
-              <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-600">
-                Kebijakan keamanan mewajibkan MFA untuk peran Anda. Pada environment
-                demo/non-production, backend mengizinkan kode OTP demo <strong>123456</strong>{" "}
-                untuk menyelesaikan login. Pada production, daftarkan akun ke aplikasi
-                authenticator (Google/Microsoft Authenticator) lebih dahulu.
-              </div>
-            )}
-            <Input
-              label="Kode MFA"
-              value={mfaCode}
-              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              onKeyDown={(e) => e.key === "Enter" && doVerifyMfa()}
-              placeholder="123456"
-              maxLength={6}
-              className="text-center text-2xl tracking-widest"
-              autoFocus
-            />
-            {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
-                <AlertTriangle className="size-4 shrink-0" />
-                {error}
-              </div>
-            )}
-            <Button className="w-full" onClick={doVerifyMfa}>
-              <ShieldCheck className="size-4" /> Verifikasi
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() => {
-                setMfaUserId(null);
-                setMfaSetupRequired(false);
-                setMfaCode("");
-                setError("");
-              }}
-            >
-              Kembali
-            </Button>
-          </CardContent>
-        </Card>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-muted p-6">
-      <div className="mb-8 flex flex-col items-center gap-2">
-        <div className="flex size-12 items-center justify-center rounded-xl bg-primary-600">
-          <Activity className="size-6 text-primary-foreground" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Kodein Klinik</h1>
-        <p className="text-sm text-muted-foreground">
-          Occupational Health &amp; Clinic Management
-        </p>
-        <Badge variant="outline" data-testid="environment-label">
-          {environmentLabel()}
-        </Badge>
-      </div>
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-muted p-6">
+      <main className="w-full max-w-md">
+        <BrandHeader />
 
-      <div className="grid w-full max-w-4xl gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Masuk</CardTitle>
             <CardDescription>
               {DEMO_ACCOUNTS_READY
-                ? "Gunakan akun demo di samping atau isi manual."
+                ? "Gunakan akun demo di bawah atau isi manual."
                 : "Masukkan username dan password akun Anda."}
             </CardDescription>
           </CardHeader>
@@ -243,19 +256,34 @@ export default function LoginPageContent() {
               placeholder="••••••"
             />
             {error && (
-              <div className="flex items-center gap-2 rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
-                <AlertTriangle className="size-4 shrink-0" />
+              <div
+                role="alert"
+                className="flex items-center gap-2 rounded-xl bg-danger-50 p-3 text-sm text-danger-700"
+              >
+                <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
                 {error}
               </div>
             )}
-            <Button className="w-full" onClick={() => doLogin(username, password)} disabled={isLocked || isSubmitting}>
-              <ShieldCheck className="size-4" /> {isSubmitting ? "Memeriksa..." : "Masuk"}
+            <Button
+              className="w-full"
+              onClick={() => doLogin(username, password)}
+              disabled={isLocked || isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Memeriksa...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="size-4" aria-hidden="true" /> Masuk
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
 
         {DEMO_ACCOUNTS_READY && (
-          <Card>
+          <Card className="mt-6">
             <CardHeader>
               <CardTitle>Akun Demo</CardTitle>
               <CardDescription>
@@ -285,11 +313,15 @@ export default function LoginPageContent() {
             </CardContent>
           </Card>
         )}
-      </div>
 
-      <p className="mt-6 text-xs text-muted-foreground">
-        Seluruh data pada demo ini bersifat fiktif dan tidak menggunakan data pasien sebenarnya.
-      </p>
-    </main>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Seluruh data pada demo ini bersifat fiktif dan tidak menggunakan data pasien sebenarnya.
+        </p>
+      </main>
+      {/* Pengalih tema: di DOM setelah main agar urutan Tab formulir tetap. */}
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
+    </div>
   );
 }

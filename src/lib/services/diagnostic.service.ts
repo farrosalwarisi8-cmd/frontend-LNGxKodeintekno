@@ -12,6 +12,12 @@ export interface BackendLabOrderItem {
     unit?: string;
     reference_range?: unknown;
   } | null;
+  /**
+   * Hasil lab per item (di-include backend pada GET list & detail order).
+   * Backend tidak menyediakan `GET /diagnostic/lab-results` — hasil dibaca
+   * dari sini, bukan dari endpoint tersendiri.
+   */
+  lab_result?: BackendLabOrderItemResult | null;
 }
 
 export interface BackendLabOrder {
@@ -42,6 +48,11 @@ export interface BackendLabResult {
   values?: BackendLabResultValue[];
 }
 
+/** Hasil lab yang ditempel pada item order (dari `GET /diagnostic/lab-orders/:id`). */
+export interface BackendLabOrderItemResult extends BackendLabResult {
+  lab_result_id?: string;
+}
+
 export interface BackendRadiologyOrder {
   id: string;
   encounter_id?: string | null;
@@ -63,16 +74,53 @@ export interface BackendRadiologyResult {
 }
 
 export const diagnosticService = {
-  async listLabOrders(): Promise<BackendLabOrder[]> {
-    return apiClient.get<BackendLabOrder[]>("/diagnostic/lab-orders");
+  async listLabOrders(params?: {
+    encounterId?: string;
+    mcuCycleId?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<BackendLabOrder[]> {
+    const qs = new URLSearchParams();
+    if (params?.encounterId) qs.set("encounterId", params.encounterId);
+    if (params?.mcuCycleId) qs.set("mcuCycleId", params.mcuCycleId);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return apiClient.get<BackendLabOrder[]>(
+      `/diagnostic/lab-orders${query ? `?${query}` : ""}`
+    );
   },
 
   async getLabOrder(id: string): Promise<BackendLabOrder> {
     return apiClient.get<BackendLabOrder>(`/diagnostic/lab-orders/${id}`);
   },
 
+  /**
+   * Daftar hasil lab — backend tidak menyediakan `GET /diagnostic/lab-results`
+   * (hanya `POST` submit & verify). Hasil dikumpulkan dari `lab_result` yang
+   * di-include tiap item pada daftar order, sehingga satu round-trip cukup.
+   */
   async listLabOrderResults(): Promise<BackendLabResult[]> {
-    return apiClient.get<BackendLabResult[]>("/diagnostic/lab-results");
+    const orders = await diagnosticService.listLabOrders();
+    const results: BackendLabResult[] = [];
+    for (const order of orders) {
+      for (const item of order.order_items ?? []) {
+        const r = item.lab_result;
+        if (r) {
+          results.push({
+            id: r.id,
+            lab_order_item_id: item.id,
+            status: r.status,
+            verified_by: r.verified_by,
+            verified_at: r.verified_at,
+            values: r.values,
+          });
+        }
+      }
+    }
+    return results;
   },
 
   async createLabOrder(input: {
@@ -105,8 +153,23 @@ export const diagnosticService = {
     });
   },
 
-  async listRadiologyOrders(): Promise<BackendRadiologyOrder[]> {
-    return apiClient.get<BackendRadiologyOrder[]>("/diagnostic/radiology-orders");
+  async listRadiologyOrders(params?: {
+    encounterId?: string;
+    status?: string;
+    modality?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<BackendRadiologyOrder[]> {
+    const qs = new URLSearchParams();
+    if (params?.encounterId) qs.set("encounterId", params.encounterId);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.modality) qs.set("modality", params.modality);
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return apiClient.get<BackendRadiologyOrder[]>(
+      `/diagnostic/radiology-orders${query ? `?${query}` : ""}`
+    );
   },
 
   async getRadiologyOrder(id: string): Promise<BackendRadiologyOrder> {

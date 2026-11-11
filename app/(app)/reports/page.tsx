@@ -81,7 +81,7 @@ export default function ReportsPage() {
         : Promise.resolve(null),
       reportingService.getDefinitions().catch(() => []),
     ]);
-    setTopDiseases(analytics ? analytics.topDiseases ?? analytics.top10Morbidity ?? [] : []);
+    setTopDiseases(analytics ? analytics.top10Morbidity ?? [] : []);
     setDefinitions(defs);
   });
 
@@ -126,12 +126,12 @@ export default function ReportsPage() {
   const topRows = (
     topDiseases.length > 0
       ? topDiseases.map((t, i) => {
-          const code = (t.icd10 ?? t.code ?? "").trim();
-          const name = (t.name ?? t.disease ?? "").trim();
+          const code = (t.icd10Code ?? "").trim();
+          const name = (t.diseaseName ?? "").trim();
           return {
             key: code || name || String(i),
             label: [code, name].filter(Boolean).join(" — "),
-            count: t.caseCount ?? t.count ?? 0,
+            count: t.totalCases ?? 0,
           };
         })
       : diagnosisCounts.map((d) => ({ key: d.id, label: `${d.code} — ${d.description}`, count: d.count }))

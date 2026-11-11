@@ -11,7 +11,6 @@ import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
-import { ApiError } from "@/lib/api-client";
 import {
   pharmacyService,
   resolvePharmacySiteScope,
@@ -32,7 +31,6 @@ export default function ReturnMedicinePage() {
   // Dibedakan dari kegagalan lain: inventory tetap dimuat & ditampilkan,
   // tombol retur disembunyikan (tanpa baris dispensing tidak ada yang bisa
   // dipilih), dan empty state menjelaskan apa yang kurang.
-  const [historyMissing, setHistoryMissing] = useState(false);
   const [inventory, setInventory] = useState<BackendInventoryItem[]>([]);
   const [search, setSearch] = useState("");
 
@@ -56,7 +54,6 @@ export default function ReturnMedicinePage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setHistoryMissing(false);
     const siteId = useStore.getState().activeSiteId ?? undefined;
     // Inventory diambil TERLEBIH DAHULU & terpisah dari riwayat: bila
     // `GET /pharmacy/dispensing/history` 404, inventory tetap tampil dan
@@ -72,17 +69,14 @@ export default function ReturnMedicinePage() {
       return;
     }
 
-    let historyData: DispensingHistoryItem[];
+    // Riwayat direkonstruksi dari dispensing sesi ini (backend belum
+    // mengekspos GET /pharmacy/dispensing/history) — kegagalan di sini
+    // tidak menggagalkan inventory yang sudah dimuat di atas.
+    let historyData: DispensingHistoryItem[] = [];
     try {
       historyData = await pharmacyService.getDispensingHistory();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 404) {
-        // Route backend belum tersedia — bukan kesalahan pengguna.
-        setHistory([]);
-        setHistoryMissing(true);
-      } else {
-        setError(e instanceof Error ? e.message : "Gagal memuat riwayat dispensing.");
-      }
+      setError(e instanceof Error ? e.message : "Gagal memuat riwayat dispensing.");
       setLoading(false);
       return;
     }
@@ -156,10 +150,8 @@ export default function ReturnMedicinePage() {
       const entries = diffStockLedger(stockSnapshot, newInventory, "RETURN");
       setLedgerEntries((prev) => [...entries, ...prev]);
       setStockSnapshot(newInventory);
-      if (!historyMissing) {
-        const newHistory = await pharmacyService.getDispensingHistory().catch(() => [] as DispensingHistoryItem[]);
-        setHistory(newHistory);
-      }
+      const newHistory = await pharmacyService.getDispensingHistory().catch(() => [] as DispensingHistoryItem[]);
+      setHistory(newHistory);
 
       setShowReturnModal(false);
       setReturnBatchId("");
@@ -267,18 +259,10 @@ export default function ReturnMedicinePage() {
 
       {!loading && error && <ErrorState title="Gagal memuat data" message={error} onRetry={load} />}
 
-      {!loading && !error && historyMissing && (
-        <EmptyState
-          title="Riwayat dispensing belum tersedia"
-          description="GET /pharmacy/dispensing/history belum tersedia di backend (404), jadi daftar retur belum bisa ditampilkan. Inventory di bawah tetap dimuat dari backend."
-          icon={ScrollText}
-        />
-      )}
-
-      {!loading && !error && !historyMissing && filtered.length === 0 && (
+      {!loading && !error && filtered.length === 0 && (
         <EmptyState
           title="Belum ada riwayat dispensing"
-          description="Belum ada data dispensing pada scope Anda."
+          description="Belum ada dispensing pada sesi ini. Dispensing yang berhasil dari halaman farmasi akan muncul di sini dan dapat diretur."
           icon={Undo2}
         />
       )}

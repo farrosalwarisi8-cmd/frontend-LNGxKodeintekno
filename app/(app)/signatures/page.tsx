@@ -124,7 +124,7 @@ export default function SignaturesPage() {
     setRetryError(null);
     try {
       await documentService.retrySignature(id);
-      setMsg("Retry berhasil. Status akan diperbarui otomatis.");
+      setMsg("Signature request baru diterbitkan untuk dokumen yang sama.");
       await load(false);
     } catch (e) {
       setRetryError(e instanceof Error ? e.message : "Gagal retry signature.");
@@ -162,7 +162,7 @@ export default function SignaturesPage() {
             Tanda Tangan Elektronik
           </h1>
           <p className="text-sm text-muted-foreground">
-            Tracking semua signature request PSrE/PTTE
+            Tracking semua signature request PSrE/PTTE (dari daftar dokumen backend)
           </p>
         </div>
         <div className="flex items-center gap-2">

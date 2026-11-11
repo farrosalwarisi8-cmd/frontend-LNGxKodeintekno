@@ -1,32 +1,60 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { inter } from "@/lib/fonts";
 import { Toaster } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { VitalsReporter } from "@/components/vitals-reporter";
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
   applicationName: "Kodein Klinik",
   title: {
-    default: "Kodein Klinik — EMR Okupasi & Klinik Perusahaan",
+    default: "Kodein Klinik — EMR PT Layar Nusantara Gas",
     template: "%s · Kodein Klinik",
   },
   description:
-    "Electronic Medical Record (EMR) okupasi: registrasi pekerja & MRN, consent digital, " +
-    "MCU & Fitness to Work, kunjungan klinik, farmasi, dan sertifikat kesehatan kerja.",
+    "Electronic Medical Record (EMR) okupasi PT Layar Nusantara Gas: registrasi pekerja & MRN, " +
+    "consent digital, MCU & Fitness to Work, kunjungan klinik, farmasi, dan sertifikat kesehatan kerja.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    // Lambang LNG (public/brand/lng-flame.png) — favicon lama app/favicon.ico
+    // bawaan Next digantikan ikon dari aset yang sama (Tugas 2 rebrand visible).
+    icon: [
+      { url: "/icons/icon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
+
+// Warna merek LNG (biru sidebar) untuk bilah browser / splash PWA.
+// Next 16 mewajibkan themeColor di `viewport`, bukan `metadata`.
+// Nilai hex literal = pengecualian sah guard no-raw-colors (meta wajib
+// literal, disalin dari --c-sidebar di app/globals.css).
+/* eslint-disable rebrand/no-raw-colors -- viewport theme-color wajib hex literal */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0b2a4a" },
+    { media: "(prefers-color-scheme: dark)", color: "#08203a" },
+  ],
+};
+/* eslint-enable rebrand/no-raw-colors */
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="id"
-      className={`${inter.className} h-full antialiased`}
-      data-scroll-behavior="smooth"
-    >
+      <html
+        lang="id"
+        className={`${inter.className} h-full antialiased`}
+        data-scroll-behavior="smooth"
+        suppressHydrationWarning
+      >
       <body className="min-h-full bg-surface-page font-sans text-text-primary">
-        <ErrorBoundary>{children}</ErrorBoundary>
+        <ThemeProvider>
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </ThemeProvider>
         <Toaster />
         <VitalsReporter />
       </body>

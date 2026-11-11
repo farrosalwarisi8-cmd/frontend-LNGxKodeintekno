@@ -47,6 +47,10 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Laporan", href: "/reports", icon: "bar-chart", permission: "view-reports" },
   { label: "Status Kesehatan", href: "/health-status", icon: "heart-pulse", permission: "view-health-status" },
   { label: "Waiver", href: "/waiver", icon: "shield-check", permission: "manage-hse" },
+  // Sinkronisasi offline (Domain 11): registrasi perangkat, push batch, dan
+  // resolusi konflik — backend membatasi resolve ke DOCTOR_OH/DOCTOR_CLINIC/
+  // SYSTEM_ADMIN, dipetakan ke permission review-mcu di UI.
+  { label: "Sinkronisasi Offline", href: "/offline-sync", icon: "refresh-cw", permission: "review-mcu" },
   // D&A forensik = wewenang Dokter OH & Analis Lab (sesuai @Roles backend
   // pada modul da-test), bukan HSE yang hanya menerima hasilnya.
   { label: "D&A", href: "/da", icon: "flask", permission: "manage-da" },
@@ -88,6 +92,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/reports": "Laporan",
   "/health-status": "Status Kesehatan",
   "/waiver": "Waiver",
+  "/offline-sync": "Sinkronisasi Offline",
   "/da": "Drug & Alcohol",
   "/emergency": "Emergency",
   "/users": "Pengguna",

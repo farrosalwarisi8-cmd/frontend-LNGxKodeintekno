@@ -105,6 +105,7 @@ Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`)
 | `/reports` | `view-reports` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `/health-status` | `view-health-status` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `/waiver` | `manage-hse` | ✓ | — | — | — | — | — | — | — | ✓ | — | — |
+| `/offline-sync` | `review-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
 | `/da` | `manage-da` | ✓ | ✓ | — | — | — | ✓ | — | — | — | — | — |
 | `/emergency` | `view-emergency` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `/system-config` | `manage-system-config` | ✓ | — | — | — | — | — | ✓ | — | — | — | — |

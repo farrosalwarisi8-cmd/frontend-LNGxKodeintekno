@@ -5,14 +5,13 @@ import LoginPageContent from "./login-page-content";
 function LoginLoadingState() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-muted p-6">
-      <div className="mb-8 flex flex-col items-center gap-2">
-        <div className="flex size-12 animate-pulse items-center justify-center rounded-xl bg-primary-600/60" />
+      <div className="mb-8 flex flex-col items-center gap-3">
+        <div className="size-10 animate-pulse rounded-2xl bg-muted" />
         <div className="h-6 w-40 animate-pulse rounded bg-border" />
         <div className="h-4 w-56 animate-pulse rounded bg-border" />
       </div>
-      <div className="grid w-full max-w-4xl gap-6 md:grid-cols-2">
-        <div className="h-64 animate-pulse rounded-2xl border border-border bg-card" />
-        <div className="h-64 animate-pulse rounded-2xl border border-border bg-card" />
+      <div className="w-full max-w-md">
+        <div className="h-96 animate-pulse rounded-2xl border border-border bg-card" />
       </div>
       <span className="sr-only" role="status">
         Memuat halaman masuk…

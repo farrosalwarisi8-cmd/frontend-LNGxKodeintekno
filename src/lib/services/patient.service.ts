@@ -221,8 +221,10 @@ export const patientService = {
       orgUnitId: scope.orgUnitId,
       siteId: scope.siteId,
       siteCode: scope.siteCode,
+      jobTaskId: draft.jobTaskId,
       identifierType: draft.identifierType,
       identifierValue: draft.identifierValue,
+      patientType: "PERMANENT_EMPLOYEE",
     });
 
     // Kirim consent digital (POST /consents/send) -> token verifikasi publik
@@ -257,28 +259,40 @@ export const patientService = {
   },
 
   async duplicateCheck(input: DuplicateCheckInput): Promise<DuplicateCheckResult> {
-    const result = await patientService.list({
-      search: input.identifierValue,
-      pageSize: 1,
+    // Endpoint backend asli: POST /patients/check-duplicate memeriksa hash
+    // identifier di server (bukan tebakan dari daftar pasien).
+    const res = await apiClient.post<{
+      isDuplicate: boolean;
+      severity: "NONE" | "WARNING" | "BLOCK";
+      message: string;
+      existingPerson?: {
+        id: string;
+        fullName: string;
+        mrn: string;
+        employeeNo?: string | null;
+        maskedIdentifier?: string | null;
+        siteName?: string;
+        employmentStatus?: string;
+      };
+    }>("/patients/check-duplicate", {
+      identifierType: input.identifierType,
+      identifierValue: input.identifierValue,
+      fullName: input.fullName,
     });
-    const existing = result.data[0];
-    if (!existing) {
-      return { isDuplicate: false, severity: "NONE", message: "Identifier tersedia." };
-    }
     return {
-      isDuplicate: true,
-      severity: existing.employmentStatus === "ACTIVE" ? "BLOCK" : "WARNING",
-      message:
-        existing.employmentStatus === "ACTIVE"
-          ? "Identifier ini sudah terdaftar sebagai pekerja aktif."
-          : "Identifier terdeteksi sudah digunakan.",
-      existingPerson: {
-        id: existing.id,
-        fullName: existing.fullName,
-        mrn: existing.mrn,
-        employeeNo: existing.employeeNo,
-        employmentStatus: existing.employmentStatus,
-      },
+      isDuplicate: res.isDuplicate,
+      severity: res.severity,
+      message: res.message,
+      existingPerson: res.existingPerson
+        ? {
+            id: res.existingPerson.id,
+            fullName: res.existingPerson.fullName,
+            mrn: res.existingPerson.mrn,
+            employeeNo: res.existingPerson.employeeNo ?? "",
+            employmentStatus:
+              res.existingPerson.employmentStatus === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+          }
+        : undefined,
     };
   },
 

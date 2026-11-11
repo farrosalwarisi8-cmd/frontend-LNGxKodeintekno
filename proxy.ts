@@ -41,5 +41,10 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // Aset merek publik (logo, ikon aplikasi, manifest) tidak butuh sesi:
+  // tanpa ini, optimizer `/_next/image` gagal memuat sumbernya karena
+  // request server-ke-server tidak membawa cookie sesi (redirect ke /login
+  // lalu optimizer menerima HTML, bukan gambar). Logika auth di atas tidak
+  // berubah — hanya matcher statis yang dilewatkan.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|brand|icons|manifest.webmanifest).*)"],
 };
