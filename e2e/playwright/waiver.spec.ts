@@ -80,11 +80,17 @@ test.describe("Waiver visitor", () => {
     await expect(page.getByText("APPROVED", { exact: true })).toHaveCount(0);
   });
 
-  test("permission ditolak: HR/PIC tidak boleh memutuskan waiver", async ({ page, loginAs }) => {
+  test("permission ditolak: HR/PIC tidak boleh memutuskan waiver", async ({
+    page,
+    backend,
+    loginAs,
+  }) => {
     await loginAs("hr.pic");
     await page.goto("/waiver");
 
     await expect(page.getByRole("heading", { name: "Akses Ditolak" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Waiver Visitor" })).toHaveCount(0);
+    // Guard menolak sebelum halaman sempat memuat daftar waiver.
+    expect(backend.callsTo("GET", "/waivers")).toBe(0);
   });
 });

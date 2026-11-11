@@ -78,8 +78,9 @@ describe("canPerform() — action per role", () => {
     expect(canPerform("hr", "uses.manage" as ActionId)).toBe(false);
     expect(canPerform("hr", "users.manage")).toBe(false);
     expect(canPerform("hr", "master-data.edit")).toBe(false);
-    expect(canPerform("hr", "mcu.create")).toBe(false);
+    expect(canPerform("hr", "mcu.create")).toBe(true);
     expect(canPerform("hr", "mcu.review")).toBe(false);
+    expect(canPerform("hr", "mcu.acknowledge-restriction")).toBe(false);
     expect(canPerform("hr", "mcu.approve")).toBe(false);
     expect(canPerform("hr", "pharmacy.dispense")).toBe(false);
     expect(canPerform("hr", "pharmacy.receive-stock")).toBe(false);

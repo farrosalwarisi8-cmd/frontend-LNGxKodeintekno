@@ -29,6 +29,7 @@ export default function VisitsPage() {
   // punya akses tersebut — data klinis tidak boleh bocor lewat UI.
   const can = useCan();
   const showClinical = can("visits.view-clinical");
+  const isClinicAdmin = can("visits.call-ticket") && !showClinical;
 
   // Modul 3 — sinkron antrean/kunjungan dari backend (GET /clinic/queues)
   const { loading, error, refetch } = useSyncedModules(() => syncQueues());
@@ -68,6 +69,12 @@ export default function VisitsPage() {
           </Link>
         </Can>
       </div>
+
+      {isClinicAdmin && (
+        <p className="text-sm text-muted-foreground" role="status">
+          Field klinis dibatasi untuk role Admin Klinik.
+        </p>
+      )}
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">

@@ -95,11 +95,13 @@ test.describe("Retur obat", () => {
     await expect(page.getByText(/retur/).first()).toBeVisible();
   });
 
-  test("permission ditolak: Analis Lab tidak boleh retur obat", async ({ page, loginAs }) => {
+  test("permission ditolak: Analis Lab tidak boleh retur obat", async ({ page, backend, loginAs }) => {
     await loginAs("lab.analis");
     await page.goto("/medicine/return");
 
     await expect(page.getByRole("heading", { name: "Akses Ditolak" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Retur Obat" })).toHaveCount(0);
+    // Guard menolak sebelum halaman sempat memuat inventori farmasi.
+    expect(backend.callsTo("GET", "/pharmacy/inventory")).toBe(0);
   });
 });

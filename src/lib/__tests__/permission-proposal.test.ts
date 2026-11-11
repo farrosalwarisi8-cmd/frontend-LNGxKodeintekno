@@ -7,6 +7,7 @@ import {
   type Permission,
 } from "../../../lib/rbac";
 import { canPerform, permissionsForAction } from "../../../lib/actions";
+import { resolveRouteAccess } from "@/components/route-guard";
 import { getNavigation, getBottomNavigation } from "@/lib/navigation";
 import { matchRoutePermission } from "@/components/route-guard";
 import type { Role } from "../../../lib/types";
@@ -67,6 +68,10 @@ describe("A1 — System Administrator (admin)", () => {
     expect(can("admin", "view-emergency")).toBe(true);
     expect(can("admin", "view-dashboard")).toBe(true);
     expect(can("admin", "view-profile")).toBe(true);
+    expect(can("admin", "manage-system-config")).toBe(true);
+    expect(can("admin", "manage-api-keys")).toBe(true);
+    expect(can("admin", "view-tte")).toBe(true);
+    expect(can("admin", "monitor-emergency")).toBe(true);
   });
 
   it("tidak punya akses data klinis sama sekali (positif & negatif per permission)", () => {
@@ -103,10 +108,10 @@ describe("A1 — HR/PIC (hr)", () => {
     expect(can("hr", "manage-master-data")).toBe(false);
   });
 
-  it("tidak melihat data MCU penuh / kunjungan / membuat MCU", () => {
+  it("hanya membuat jadwal MCU; daftar MCU/kunjungan dan detail klinis tetap tertutup", () => {
     expect(can("hr", "view-mcu")).toBe(false);
     expect(can("hr", "view-visits")).toBe(false);
-    expect(can("hr", "create-mcu")).toBe(false);
+    expect(can("hr", "create-mcu")).toBe(true);
     expect(can("hr", "approve-mcu")).toBe(false);
     expect(can("hr", "review-mcu")).toBe(false);
   });
@@ -119,7 +124,7 @@ describe("A1 — HR/PIC (hr)", () => {
     expect(can("hr", "issue-certificate")).toBe(false);
   });
 
-  it("tidak ada role selain admin yang boleh mengelola user/master data", () => {
+  it("hanya admin yang memegang izin user/master data", () => {
     for (const role of ALL_ROLES) {
       if (role === "admin") continue;
       expect(can(role, "manage-users"), role).toBe(false);
@@ -158,6 +163,10 @@ describe("A1 — Admin Klinik (admin-klinik)", () => {
     expect(can("admin-klinik", "upload-document")).toBe(true);
     expect(can("admin-klinik", "view-visits")).toBe(true);
     expect(can("admin-klinik", "edit-visit")).toBe(true);
+    expect(can("admin-klinik", "manage-system-config")).toBe(false);
+    expect(can("admin-klinik", "manage-api-keys")).toBe(false);
+    expect(can("admin-klinik", "view-tte")).toBe(false);
+    expect(can("admin-klinik", "monitor-emergency")).toBe(false);
   });
 
   it("tidak punya akses data klinis", () => {
@@ -181,6 +190,10 @@ describe("A1 — Admin Klinik (admin-klinik)", () => {
     expect(can("admin-klinik", "manage-users")).toBe(false);
     expect(can("admin-klinik", "manage-master-data")).toBe(false);
     expect(can("admin-klinik", "view-audit-logs")).toBe(false);
+    expect(can("admin-klinik", "manage-system-config")).toBe(false);
+    expect(can("admin-klinik", "manage-api-keys")).toBe(false);
+    expect(can("admin-klinik", "view-tte")).toBe(false);
+    expect(can("admin-klinik", "monitor-emergency")).toBe(false);
   });
 });
 
@@ -201,6 +214,10 @@ describe("A1 — pembatasan berlaku di tiga lapis", () => {
     { role: "admin", route: "/people/new" },
     { role: "admin", route: "/employees" },
     { role: "admin", route: "/lab" },
+    { role: "admin-klinik", route: "/system-config" },
+    { role: "admin-klinik", route: "/api-keys" },
+    { role: "admin-klinik", route: "/tte" },
+    { role: "admin-klinik", route: "/emergency-detail" },
     { role: "hr", route: "/mcu" },
     { role: "hr", route: "/visits" },
     { role: "hr", route: "/users" },
@@ -228,18 +245,54 @@ describe("A1 — pembatasan berlaku di tiga lapis", () => {
         can(role, required!),
         `${role} tidak boleh membuka ${route} (butuh ${required})`
       ).toBe(false);
+      expect(
+        resolveRouteAccess({
+          hydrated: true,
+          authenticated: true,
+          role,
+          pathname: route,
+        }),
+        `${role} harus mendapat AccessDenied untuk ${route}`
+      ).toBe("denied");
     }
   });
 
   it("lapis 3 — aksi klinis/farmasi tersembunyi untuk role tanpa izin", () => {
+    const protectedActions: Array<{
+      role: Role;
+      action: Parameters<typeof canPerform>[1];
+      allowed: boolean;
+    }> = [
+      { role: "admin", action: "mcu.create", allowed: false },
+      { role: "admin", action: "mcu.approve", allowed: false },
+      { role: "admin", action: "visits.edit-soap", allowed: false },
+      { role: "admin", action: "pharmacy.dispense", allowed: false },
+      { role: "admin", action: "people.create", allowed: false },
+      { role: "admin-klinik", action: "mcu.create", allowed: false },
+      { role: "admin-klinik", action: "mcu.approve", allowed: false },
+      { role: "admin-klinik", action: "visits.edit-soap", allowed: false },
+      { role: "admin-klinik", action: "pharmacy.dispense", allowed: false },
+      { role: "admin-klinik", action: "people.create", allowed: true },
+      { role: "hr", action: "mcu.create", allowed: true },
+      { role: "hr", action: "users.manage", allowed: false },
+      { role: "hr", action: "master-data.edit", allowed: false },
+    ];
+    for (const { role, action, allowed } of protectedActions) {
+      expect(canPerform(role, action), `${role} → ${action}`).toBe(allowed);
+    }
+
     expect(canPerform("admin", "mcu.approve")).toBe(false);
     expect(canPerform("admin", "pharmacy.dispense")).toBe(false);
     expect(canPerform("admin", "people.create")).toBe(false);
-    expect(canPerform("hr", "mcu.create")).toBe(false);
+    // D&A forensik (manage-da) di luar matriks A1: dipertahankan untuk admin
+    // karena termasuk fitur fase lain, bukan data klinis yang dicabut.
+    expect(canPerform("admin", "da.manage")).toBe(true);
+    expect(canPerform("hr", "mcu.create")).toBe(true);
     expect(canPerform("hr", "users.manage")).toBe(false);
     expect(canPerform("hr", "master-data.edit")).toBe(false);
     expect(canPerform("lab", "visits.edit-soap")).toBe(false);
     expect(canPerform("admin-klinik", "pharmacy.dispense")).toBe(false);
+    expect(canPerform("admin-klinik", "da.manage")).toBe(false);
   });
 
   it("admin-klinik boleh edit-visit tetapi TIDAK boleh SOAP (butuh izin klinis)", () => {
@@ -255,6 +308,13 @@ describe("A1 — pembatasan berlaku di tiga lapis", () => {
     // Role klinis tetap boleh.
     expect(canPerform("dokter-oh", "visits.edit-soap")).toBe(true);
     expect(canPerform("perawat", "visits.edit-soap")).toBe(true);
+    // Role admin tetap mengakses kontrol sistem; rule route harus konsisten dengan menu.
+    for (const route of ["/system-config", "/api-keys", "/tte", "/emergency-detail"]) {
+      const permission = matchRoutePermission(route);
+      expect(permission, route).not.toBeNull();
+      expect(can("admin", permission!), route).toBe(true);
+      expect(getNavigation("admin").map((item) => item.href), route).toContain(route);
+    }
   });
 });
 

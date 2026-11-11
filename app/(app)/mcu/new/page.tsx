@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
+import { can } from "@/lib/rbac";
+import { useDemoMode } from "@/lib/demo-role";
 import {
   mapMcuTypeToBackend,
   syncMcu,
@@ -108,6 +110,9 @@ function classifySpirometry(fev1Percent: number): { category: string; color: str
 export default function MCUNewPage() {
   const router = useRouter();
   const employees = useStore((s) => s.employees);
+  const { role } = useDemoMode();
+  const statusOnlyCreation =
+    role !== null && can(role, "create-mcu") && !can(role, "view-mcu");
 
   // Modul 4 — daftar pekerja (Modul 2) untuk memilih subjek MCU
   const { loading: loadingPatients, error: patientsError, refetch } = useSyncedModules(() =>
@@ -198,6 +203,13 @@ export default function MCUNewPage() {
         examDate
       );
 
+      if (statusOnlyCreation) {
+        // HR membuat siklus/jadwal saja. Jangan membaca ulang daftar MCU yang
+        // memang tidak diberikan ke role ini.
+        router.push("/health-status");
+        return;
+      }
+
       // 2. Jalankan dynamic clinical calculation engine:
       //    POST /api/v1/mcu/cycles/:id/calculate
       await mcuService.calculate(cycle.id, {
@@ -212,12 +224,73 @@ export default function MCUNewPage() {
       // 3. Sinkronkan daftar MCU terbaru dari backend
       await syncMcu(1, 100);
 
-      router.push("/mcu");
+      router.push(statusOnlyCreation ? "/health-status" : "/mcu");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Terjadi kesalahan.");
       setSubmitting(false);
     }
   };
+
+  if (statusOnlyCreation) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        <div>
+            <h1 className="text-2xl font-semibold text-foreground">Jadwalkan MCU</h1>
+          <p className="text-sm text-muted-foreground">
+            HR hanya membuat jadwal siklus; pemeriksaan dan data klinis ditangani petugas klinis.
+          </p>
+        </div>
+        <Card className="space-y-4 p-6">
+          <Select
+            label="Pekerja"
+            value={employeeId}
+            onChange={(e) => setEmployeeId(e.target.value)}
+            placeholder={loadingPatients ? "Memuat pekerja..." : "Pilih pekerja"}
+            options={employees.map((e) => ({
+              value: e.id,
+              label: `${e.fullName} (${e.employeeId})`,
+            }))}
+          />
+          {patientsError && (
+            <div className="text-sm text-danger-700" role="alert">
+              Gagal memuat daftar pekerja: {patientsError}{" "}
+              <button className="underline" onClick={refetch}>Coba lagi</button>
+            </div>
+          )}
+          <Select
+            label="Tipe MCU"
+            value={mcuType}
+            onChange={(e) => setMcuType(e.target.value)}
+            placeholder="Pilih tipe MCU"
+            options={MCU_TYPES.map((t) => ({ value: t, label: t }))}
+          />
+          <Input
+            label="Tanggal Pemeriksaan"
+            type="date"
+            value={examDate}
+            onChange={(e) => setExamDate(e.target.value)}
+          />
+          {error && (
+            <p className="text-sm text-danger-700" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-between">
+            <Button variant="ghost" onClick={() => router.push("/health-status")}>
+              Kembali
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              loading={submitting}
+              disabled={!employeeId || !mcuType || !examDate || loadingPatients}
+            >
+              <Check className="size-4" /> Jadwalkan MCU
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl">

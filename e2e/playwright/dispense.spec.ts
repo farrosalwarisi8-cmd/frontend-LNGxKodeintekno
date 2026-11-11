@@ -140,11 +140,17 @@ test.describe("Dispense obat (FEFO)", () => {
     expect(early?.available).toBe(40);
   });
 
-  test("permission ditolak: Analis Lab tidak boleh dispensing", async ({ page, loginAs }) => {
+  test("permission ditolak: Analis Lab tidak boleh dispensing", async ({
+    page,
+    backend,
+    loginAs,
+  }) => {
     await loginAs("lab.analis");
     await page.goto("/medicine/dispense");
 
     await expect(page.getByRole("heading", { name: "Akses Ditolak" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Dispensing Obat" })).toHaveCount(0);
+    // Guard menolak sebelum halaman sempat memuat data farmasi.
+    expect(backend.callsTo("GET", "/pharmacy/inventory")).toBe(0);
   });
 });

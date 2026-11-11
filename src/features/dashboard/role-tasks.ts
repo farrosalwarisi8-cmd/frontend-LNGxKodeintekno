@@ -220,8 +220,15 @@ const HR_TASKS: RoleTask[] = [
     label: "Direktori pekerja",
     href: "/employees",
     icon: "users",
-    description: "Cari pekerja, kontak, dan riwayat MCU",
+    description: "Cari pekerja dan kelola dokumen",
     permission: "manage-employees",
+  },
+  {
+    label: "Buat MCU",
+    href: "/mcu/new",
+    icon: "activity",
+    description: "Jadwalkan siklus pemeriksaan pekerja",
+    permission: "create-mcu",
   },
   {
     label: "Laporan",
@@ -229,13 +236,6 @@ const HR_TASKS: RoleTask[] = [
     icon: "bar-chart",
     description: "Ekspor rekap untuk manajemen",
     permission: "view-reports",
-  },
-  {
-    label: "MCU & FTW",
-    href: "/mcu",
-    icon: "activity",
-    description: "Status siklus MCU seluruh pekerja",
-    permission: "view-mcu",
   },
 ];
 
@@ -274,7 +274,7 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
   "admin-klinik": {
     focus: "Layani pendaftaran dan antrean secepat mungkin.",
     tasks: CLINIC_INTAKE,
-    tiles: ["queueWaiting", "visitsToday", "pendingMcu", "pendingPrescriptions", "lowStock", "employees"],
+    tiles: ["queueWaiting", "visitsToday"],
   },
   perawat: {
     focus: "Siapkan pasien: registrasi, antrean, dan TTV.",
@@ -299,7 +299,7 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
   hr: {
     focus: "Pastikan MCU pekerja tidak lewat jatuh tempo.",
     tasks: HR_TASKS,
-    tiles: ["mcuDueSoon", "pendingMcu", "employees", "fitToWork", "restricted", "fitWithRestriction"],
+    tiles: ["mcuDueSoon", "fitToWork", "restricted", "fitWithRestriction"],
   },
   hse: {
     focus: "Pantau FTW, restriction, dan MCU jatuh tempo.",
@@ -399,7 +399,7 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
         permission: "view-health-status",
       },
     ],
-    tiles: ["employees", "pendingMcu", "visitsToday", "queueWaiting", "lowStock", "validCerts"],
+    tiles: ["mcuDueSoon", "fitToWork", "restricted", "fitWithRestriction"],
   },
   pekerja: {
     focus: "Lihat status kesehatan dan dokumen Anda.",

@@ -133,6 +133,7 @@ test.describe("Registrasi pekerja", () => {
 
   test("permission ditolak: Analis Lab tidak boleh membuka wizard registrasi", async ({
     page,
+    backend,
     loginAs,
   }) => {
     await loginAs("lab.analis");
@@ -140,5 +141,7 @@ test.describe("Registrasi pekerja", () => {
 
     await expect(page.getByRole("heading", { name: "Akses Ditolak" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Registrasi Pekerja Baru" })).toHaveCount(0);
+    // Guard menolak sebelum wizard sempat memuat daftar pasien/pekerja.
+    expect(backend.callsTo("GET", "/patients")).toBe(0);
   });
 });

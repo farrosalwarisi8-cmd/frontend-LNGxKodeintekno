@@ -84,6 +84,7 @@ test.describe("Master data", () => {
 
   test("permission ditolak: HR/PIC tidak boleh mengelola master data", async ({
     page,
+    backend,
     loginAs,
   }) => {
     await loginAs("hr.pic");
@@ -91,5 +92,7 @@ test.describe("Master data", () => {
 
     await expect(page.getByRole("heading", { name: "Akses Ditolak" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Master Data" })).toHaveCount(0);
+    // Guard menolak sebelum halaman sempat memuat master data.
+    expect(backend.callsTo("GET", "/master-data/organizations")).toBe(0);
   });
 });
