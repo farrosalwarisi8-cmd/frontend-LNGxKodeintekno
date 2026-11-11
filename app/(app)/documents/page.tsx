@@ -16,6 +16,7 @@ import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
 import {
   documentService,
+  verifyTokenFromUrl,
   type BackendDocument,
   type RenderPdfResult,
   type SignatureRequest,
@@ -63,25 +64,24 @@ const SIG_STATUS_ICON: Record<string, typeof Clock> = {
 /**
  * Petakan row `GET /documents` (backend) ke tipe tampilan halaman ini.
  * - `signature` : signature request terakhir pada dokumen (bila ada).
- * - `renderResult` disintesis dari `qr_token` sehingga tombol verifikasi QR
- *   tetap bisa dibuka untuk dokumen yang sudah ada di backend.
+ * - `renderResult` hanya menandai PDF sudah tersedia; token QR mentah tidak
+ *   dikembalikan `GET /documents` (hanya `token_hash`) sehingga tautan
+ *   verifikasi baru tersedia untuk dokumen yang dirender pada sesi ini.
  */
 function mapBackendDocument(doc: BackendDocument): DocumentRecord {
   const sig = doc.signature_reqs?.[doc.signature_reqs.length - 1];
-  const qrToken = doc.qr_token?.token_hash ?? undefined;
   return {
     id: doc.id,
     documentType: doc.document_type ?? "DOCUMENT",
     referenceId: "",
     title: doc.title ?? "Dokumen",
     createdAt: doc.created_at ?? "",
-    renderResult: qrToken
+    renderResult: doc.object_key
       ? {
           documentId: doc.id,
           title: doc.title ?? "",
-          objectKey: doc.object_key ?? "",
-          qrToken,
-          verificationUrl: `/verify/${qrToken}`,
+          status: doc.status,
+          objectKey: doc.object_key,
         }
       : undefined,
     signature: sig
@@ -103,6 +103,7 @@ export default function DocumentsPage() {
   const [genError, setGenError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"documents" | "signatures">("documents");
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Modal pembuatan dokumen baru — POST /documents/render-pdf
   const [showRenderModal, setShowRenderModal] = useState(false);
@@ -183,14 +184,50 @@ export default function DocumentsPage() {
     setGenerating(true);
     setGenError(null);
     try {
-      await documentService.renderPdf(renderType, mcu.id, title);
+      const result = await documentService.renderPdf(renderType, mcu.id, title);
+      const { verificationUrl } = result;
+      const token = verifyTokenFromUrl(verificationUrl);
       setShowRenderModal(false);
       setRenderTitle("");
       await loadDocuments();
+      // Token QR mentah hanya ada pada respons render; simpan agar tautan
+      // verifikasi bisa dibuka dari daftar sebelum halaman dimuat ulang.
+      if (verificationUrl && token) {
+        setDocuments((prev) =>
+          prev.map((d) =>
+            d.id === result.documentId
+              ? {
+                  ...d,
+                  renderResult: {
+                    ...d.renderResult,
+                    documentId: result.documentId,
+                    title: result.title,
+                    status: result.status,
+                    sha256Hash: result.sha256Hash,
+                    verificationUrl,
+                  },
+                }
+              : d
+          )
+        );
+      }
     } catch (e) {
       setGenError(e instanceof Error ? e.message : "Gagal membuat dokumen PDF.");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleDownload = async (doc: DocumentRecord) => {
+    setDownloadingId(doc.id);
+    setGenError(null);
+    try {
+      const { url } = await documentService.downloadDocument(doc.id);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setGenError(e instanceof Error ? e.message : "Gagal mengunduh dokumen.");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -357,17 +394,31 @@ export default function DocumentsPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        {doc.renderResult && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void handleDownload(doc)}
+                          disabled={downloadingId === doc.id}
+                        >
+                          <Download className="size-3.5" />
+                          {downloadingId === doc.id ? "Menyiapkan..." : "Unduh PDF"}
+                        </Button>
+                        {doc.renderResult?.verificationUrl && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() =>
-                              window.open(
-                                doc.renderResult!.verificationUrl,
-                                "_blank",
-                                "noopener"
-                              )
-                            }
+                            onClick={() => {
+                              const token = verifyTokenFromUrl(
+                                doc.renderResult!.verificationUrl
+                              );
+                              if (token) {
+                                window.open(
+                                  `/verify/${encodeURIComponent(token)}`,
+                                  "_blank",
+                                  "noopener"
+                                );
+                              }
+                            }}
                           >
                             <QrCode className="size-3.5" />
                             Verifikasi
@@ -412,23 +463,31 @@ export default function DocumentsPage() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             <span className="font-medium">Object Key:</span>{" "}
-                            <span className="font-mono">{doc.renderResult.objectKey}</span>
+                            <span className="font-mono">{doc.renderResult.objectKey ?? "—"}</span>
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            <span className="font-medium">QR Token:</span>{" "}
-                            <span className="font-mono">{doc.renderResult.qrToken}</span>
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            <span className="font-medium">Verification URL:</span>{" "}
-                            <a
-                              href={doc.renderResult.verificationUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary-600 hover:underline"
-                            >
-                              Buka <ExternalLink className="inline size-3" />
-                            </a>
-                          </p>
+                          {doc.renderResult.sha256Hash && (
+                            <p className="text-xs text-muted-foreground">
+                              <span className="font-medium">SHA-256:</span>{" "}
+                              <span className="font-mono break-all">
+                                {doc.renderResult.sha256Hash}
+                              </span>
+                            </p>
+                          )}
+                          {doc.renderResult.verificationUrl && (
+                            <p className="text-xs text-muted-foreground">
+                              <span className="font-medium">Verifikasi publik:</span>{" "}
+                              <a
+                                href={`/verify/${encodeURIComponent(
+                                  verifyTokenFromUrl(doc.renderResult.verificationUrl) ?? ""
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary-600 hover:underline"
+                              >
+                                Buka <ExternalLink className="inline size-3" />
+                              </a>
+                            </p>
+                          )}
                           {doc.signature?.status === "SIGNED" && (
                             <div className="mt-2 rounded-lg bg-success-50 p-2">
                               <p className="text-xs text-success-700">
@@ -493,7 +552,7 @@ export default function DocumentsPage() {
         open={showRenderModal}
         onClose={() => setShowRenderModal(false)}
         title="Render Dokumen PDF"
-        description="Buat dokumen resmi di backend: sertifikat FTW, resume MCU, atau surat sakit."
+        description="Buat dokumen resmi berbasis siklus MCU di backend: sertifikat FTW atau resume MCU."
       >
         <div className="space-y-4 p-6">
           <Select
@@ -503,8 +562,8 @@ export default function DocumentsPage() {
             options={[
               { value: "FTW_CERTIFICATE", label: "Sertifikat Kelaikan Kerja (FTW)" },
               { value: "MCU_RESUME", label: "Resume Medis MCU" },
-              { value: "SICK_LEAVE", label: "Surat Sakit (Sick Leave)" },
             ]}
+            helper="Surat sakit & resume medis kunjungan memakai ID encounter, belum tersedia dari halaman ini."
           />
 
           <Select

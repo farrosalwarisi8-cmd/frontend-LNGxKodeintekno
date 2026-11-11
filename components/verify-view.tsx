@@ -6,7 +6,6 @@ import {
   ShieldX,
   ShieldQuestion,
   Loader2,
-  Award,
   Printer,
 } from "lucide-react";
 import { documentService, type PublicVerifyResult } from "@/lib/services/document.service";
@@ -14,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PublicShell } from "@/components/public-shell";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * Verifikasi publik dokumen medis via QR token (Tugas 5 rebrand visible).
@@ -58,6 +57,7 @@ export function VerifyView({ token }: { token: string }) {
   }, [token]);
 
   const verified = result?.isValid === true;
+  const notSigned = result?.status === "NOT_SIGNED";
 
   return (
     <PublicShell>
@@ -103,13 +103,18 @@ export function VerifyView({ token }: { token: string }) {
               <span className={`flex size-12 items-center justify-center rounded-2xl bg-danger-soft ${PRINT_PAPER}`}>
                 <ShieldX className="size-6 text-danger" aria-hidden="true" />
               </span>
-              <p className="font-medium text-foreground">Sertifikat tidak valid</p>
+              <p className="font-medium text-foreground">
+                {notSigned ? "Dokumen belum ditandatangani" : "Sertifikat tidak valid"}
+              </p>
               <p className="text-sm text-muted-foreground">
-                {result.message ?? `Status: ${result.status}`}
+                {notSigned
+                  ? "Dokumen ini terdaftar, tetapi belum memiliki tanda tangan elektronik yang tervalidasi."
+                  : `Status: ${result.status}`}
               </p>
               <p className="text-xs text-muted-foreground">
-                Tautan mungkin kedaluwarsa atau sudah dipakai. Minta tautan baru dari klinik bila
-                diperlukan.
+                {notSigned
+                  ? "Minta dokumen bertanda tangan resmi dari klinik penerbit."
+                  : "Tautan mungkin kedaluwarsa atau sudah dipakai. Minta tautan baru dari klinik bila diperlukan."}
               </p>
             </CardContent>
           </Card>
@@ -125,39 +130,11 @@ export function VerifyView({ token }: { token: string }) {
               <CardDescription>Dokumen terverifikasi dari penerbit resmi.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Row label="Judul Dokumen" value={result.documentTitle ?? ""} />
               <Row label="Jenis Dokumen" value={result.documentType ?? ""} />
-              <Row label="Penerbit" value={result.issuer ?? ""} />
+              <Row label="Nomor Dokumen" value={result.documentNumber ?? ""} />
               <Row label="Tanggal Terbit" value={formatDateTime(result.issuedAt)} />
-
-              {result.signatures && result.signatures.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Tanda Tangan Digital
-                  </p>
-                  {result.signatures.map((sig, i) => (
-                    <div
-                      key={i}
-                      className={`flex items-center justify-between rounded-xl border border-border bg-muted px-3 py-2 ${PRINT_PAPER}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Award className="size-4 text-primary" aria-hidden="true" />
-                        <div>
-                          <p className="text-xs font-medium text-foreground">{sig.type ?? "PSrE"}</p>
-                          <p className="font-mono text-[10px] text-muted-foreground">
-                            {sig.certificateSerial ?? "—"}
-                          </p>
-                        </div>
-                      </div>
-                      {sig.signedAt && (
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(sig.signedAt)}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <Row label="Waktu Tanda Tangan" value={formatDateTime(result.signedAt ?? undefined)} />
+              <Row label="Serial Sertifikat" value={result.certificateSerial ?? ""} />
 
               <div className="flex items-center justify-center gap-2 pt-2">
                 <Badge variant="outline" className="bg-success-soft text-success">

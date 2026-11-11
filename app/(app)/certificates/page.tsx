@@ -6,7 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { syncCertificates, syncMcu, syncPatients, useSyncedModules } from "@/lib/remote-sync";
-import { documentService } from "@/lib/services/document.service";
+import { documentService, verifyTokenFromUrl } from "@/lib/services/document.service";
 import { CERT_STATUS } from "@/lib/constants";
 import { Card } from "@/shared/components/design-system/card";
 import { Button } from "@/shared/components/design-system/button";
@@ -37,9 +37,11 @@ export default function CertificatesPage() {
   const [qrResult, setQrResult] = useState<{
     isValid: boolean;
     status: string;
-    documentTitle?: string;
-    issuer?: string;
+    documentType?: string;
+    documentNumber?: string;
     issuedAt?: string;
+    signedAt?: string | null;
+    certificateSerial?: string | null;
   } | null>(null);
   const [qrError, setQrError] = useState<string | null>(null);
 
@@ -73,12 +75,17 @@ export default function CertificatesPage() {
         `Sertifikat Kelaikan Kerja ${mcu?.mcuNumber ?? mcuId}`
       );
       await documentService.requestSignature(doc.documentId, "CERTIFIED_PSRE");
-      useStore.setState((s) => ({
-        certificates: s.certificates.map((c) =>
-          c.id === localId ? { ...c, qrToken: doc.qrToken } : c
-        ),
-      }));
-      setMsg(`Sertifikat dibuat di backend (QR: ${doc.qrToken.slice(0, 12)}...)`);
+      const qrToken = verifyTokenFromUrl(doc.verificationUrl);
+      if (qrToken) {
+        useStore.setState((s) => ({
+          certificates: s.certificates.map((c) =>
+            c.id === localId ? { ...c, qrToken } : c
+          ),
+        }));
+      }
+      setMsg(
+        `Sertifikat dibuat di backend${qrToken ? ` (QR: ${qrToken.slice(0, 12)}...)` : ""}.`
+      );
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Gagal membuat dokumen di backend.");
     } finally {
@@ -100,9 +107,11 @@ export default function CertificatesPage() {
       setQrResult({
         isValid: result.isValid,
         status: result.status,
-        documentTitle: result.documentTitle,
-        issuer: result.issuer,
+        documentType: result.documentType,
+        documentNumber: result.documentNumber,
         issuedAt: result.issuedAt,
+        signedAt: result.signedAt,
+        certificateSerial: result.certificateSerial,
       });
     } catch (e) {
       setQrError(e instanceof Error ? e.message : "Gagal memverifikasi QR.");
@@ -277,9 +286,11 @@ export default function CertificatesPage() {
                 </div>
               </div>
               <div className="rounded-xl bg-muted p-3 text-sm space-y-1">
-                <p><span className="font-medium">Judul:</span> {qrResult.documentTitle ?? "—"}</p>
-                <p><span className="font-medium">Penerbit:</span> {qrResult.issuer ?? "—"}</p>
+                <p><span className="font-medium">Jenis:</span> {qrResult.documentType ?? "—"}</p>
+                <p><span className="font-medium">Nomor:</span> {qrResult.documentNumber ?? "—"}</p>
                 <p><span className="font-medium">Terbit:</span> {qrResult.issuedAt ? formatDate(qrResult.issuedAt) : "—"}</p>
+                <p><span className="font-medium">Ditandatangani:</span> {qrResult.signedAt ? formatDate(qrResult.signedAt) : "—"}</p>
+                <p><span className="font-medium">Serial Sertifikat:</span> {qrResult.certificateSerial ?? "—"}</p>
               </div>
             </div>
           )}

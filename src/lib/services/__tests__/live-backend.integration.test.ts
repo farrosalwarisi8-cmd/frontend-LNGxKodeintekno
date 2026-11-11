@@ -57,6 +57,7 @@ let notificationService: (typeof import("@/lib/services/notification.service"))[
 let iamService: (typeof import("@/lib/services/iam.service"))["iamService"];
 let reportingService: (typeof import("@/lib/services/reporting.service"))["reportingService"];
 let documentService: (typeof import("@/lib/services/document.service"))["documentService"];
+let verifyTokenFromUrl: (typeof import("@/lib/services/document.service"))["verifyTokenFromUrl"];
 let daService: (typeof import("@/lib/services/da.service"))["daService"];
 let referenceService: typeof import("@/lib/services/reference.service");
 
@@ -84,7 +85,9 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
     notificationService = (await import("@/lib/services/notification.service")).notificationService;
     iamService = (await import("@/lib/services/iam.service")).iamService;
     reportingService = (await import("@/lib/services/reporting.service")).reportingService;
-    documentService = (await import("@/lib/services/document.service")).documentService;
+    const documentModule = await import("@/lib/services/document.service");
+    documentService = documentModule.documentService;
+    verifyTokenFromUrl = documentModule.verifyTokenFromUrl;
     daService = (await import("@/lib/services/da.service")).daService;
     referenceService = await import("@/lib/services/reference.service");
   });
@@ -352,14 +355,17 @@ describe.runIf(LIVE)("Integrasi live backend (Modul 1-10)", () => {
       "Sertifikat Integrasi Automated"
     );
     expect(doc.documentId).toBeTruthy();
-    expect(doc.qrToken).toBeTruthy();
+    const qrToken = verifyTokenFromUrl(doc.verificationUrl);
+    expect(qrToken).toBeTruthy();
     created.documentId = doc.documentId;
-    created.qrToken = doc.qrToken;
+    created.qrToken = qrToken ?? "";
 
-    const verify = await documentService.verifyPublic(doc.qrToken);
-    expect(verify.isValid).toBe(true);
-    expect(verify.status).toBe("VERIFIED");
-    expect(verify.documentTitle).toBe("Sertifikat Integrasi Automated");
+    const verify = await documentService.verifyPublic(qrToken ?? "");
+    // Dokumen baru belum ditandatangani PSrE → NOT_SIGNED (bukan VERIFIED),
+    // dan judul/identitas pasien tidak lagi dikembalikan (zero disclosure).
+    expect(verify.isValid).toBe(false);
+    expect(verify.status).toBe("NOT_SIGNED");
+    expect(verify.documentNumber).toBe(doc.documentId);
     // zero medical disclosure — tidak ada field diagnosis/medication
     expect(JSON.stringify(verify)).not.toMatch(/diagnos|medication|soap/i);
   });

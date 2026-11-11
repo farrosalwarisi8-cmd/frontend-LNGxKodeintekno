@@ -10,17 +10,32 @@ import { apiClient } from "@/lib/api-client";
  *   GET  /api/v1/public/verify/:qrToken
  *
  * Backend TIDAK menyediakan `GET /signatures`, `GET /signatures/:id`,
- * `POST /signatures/:id/retry`, maupun `GET /documents/:id/download`.
- * Status tanda tangan dibaca dari `signature_reqs` yang di-include pada
- * `GET /documents` (lihat `BackendDocument.signature_reqs`).
+ * maupun `POST /signatures/:id/retry`. Status tanda tangan dibaca dari
+ * `signature_reqs` yang di-include pada `GET /documents`
+ * (lihat `BackendDocument.signature_reqs`).
  */
 
 export interface RenderPdfResult {
   documentId: string;
   title: string;
-  objectKey: string;
-  qrToken: string;
-  verificationUrl: string;
+  status?: string;
+  /** Lokasi berkas di object storage (tersedia dari `GET /documents`). */
+  objectKey?: string;
+  /** Hash SHA-256 berkas PDF versi 1 (backend fase 6). */
+  sha256Hash?: string;
+  /**
+   * URL verifikasi publik dari backend — satu-satunya tempat token QR mentah
+   * dikembalikan. `GET /documents` hanya memuat `token_hash`, sehingga token
+   * mentah tidak bisa direkonstruksi dari daftar dokumen.
+   */
+  verificationUrl?: string;
+}
+
+/** Ambil token QR mentah dari URL verifikasi backend (`.../public/verify/<token>`). */
+export function verifyTokenFromUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  const token = url.split("?")[0].split("/").filter(Boolean).pop();
+  return token || undefined;
 }
 
 export type SignatureStatus = "PENDING" | "SIGNED" | "FAILED" | "EXPIRED" | "PROCESSING" | string;
@@ -51,19 +66,19 @@ export interface SignatureAuditEntry {
   created_at?: string;
 }
 
+/**
+ * Respons `GET /public/verify/:qrToken` (zero medical disclosure).
+ * Tidak ada identitas pasien, diagnosis, maupun judul dokumen.
+ * Status: `VERIFIED`, `NOT_SIGNED`, `INVALID`, `INVALID_OR_EXPIRED`.
+ */
 export interface PublicVerifyResult {
   isValid: boolean;
   status: string;
-  message?: string;
   documentType?: string;
-  documentTitle?: string;
+  documentNumber?: string;
   issuedAt?: string;
-  issuer?: string;
-  signatures?: Array<{
-    type?: string;
-    signedAt?: string;
-    certificateSerial?: string;
-  }>;
+  signedAt?: string | null;
+  certificateSerial?: string | null;
 }
 
 export interface BackendSignatureReq {
@@ -211,6 +226,7 @@ export const documentService = {
   async getDocuments(params?: {
     page?: number;
     limit?: number;
+    patientId?: string;
     documentType?: string;
     status?: string;
     search?: string;
@@ -221,6 +237,7 @@ export const documentService = {
     const qs = new URLSearchParams();
     if (params?.page) qs.set("page", String(params.page));
     if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.patientId) qs.set("patientId", params.patientId);
     if (params?.documentType) qs.set("documentType", params.documentType);
     if (params?.status) qs.set("status", params.status);
     if (params?.search) qs.set("search", params.search);
@@ -229,18 +246,15 @@ export const documentService = {
   },
 
   /**
-   * Unduhan dokumen — backend menyimpan PDF di object storage di bawah
-   * `object_key` dan belum menyediakan endpoint unduh publik; frontend
-   * mengembalikan penunjuk lokasi penyimpanan agar UI dapat menjelaskan
-   * keadaan ini, bukan request ke route yang tidak ada (404).
+   * Unduhan dokumen — `GET /documents/:id/download` mengembalikan presigned
+   * URL (berlaku 60 menit) setelah backend memeriksa role & data scope.
    */
-  async downloadDocument(documentId: string): Promise<{ downloadUrl?: string }> {
-    const docsRes = await documentService.getDocuments({ page: 1, limit: 100 });
-    const doc = docsRes.data.find((d) => d.id === documentId);
-    if (!doc?.object_key) {
-      throw new Error(`Dokumen ${documentId} tidak ditemukan.`);
-    }
-    return { downloadUrl: undefined };
+  async downloadDocument(
+    documentId: string
+  ): Promise<{ url: string; expiresIn: number }> {
+    return apiClient.get<{ url: string; expiresIn: number }>(
+      `/documents/${documentId}/download`
+    );
   },
 
   async verifyPublic(qrToken: string): Promise<PublicVerifyResult> {
