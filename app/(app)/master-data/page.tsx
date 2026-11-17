@@ -79,11 +79,10 @@ export default function MasterDataPage() {
     setLoading(true);
     setLoadError(null);
     setLoadWarning(null);
-    // Ketiga modul dibaca TERPISAH: bila satu route backend belum terpasang
-    // (mis. /master-data/sites 404 karena modulnya belum diaktifkan), tab lain
-    // tetap menampilkan data backend yang berhasil dimuat, bukan seluruh
-    // halaman gagal. Kegagalan dicatat per sumber agar user tahu mana yang
-    // belum tersedia.
+    // Ketiga modul dibaca TERPISAH: bila satu sumber gagal (mis. RBAC 403 atau
+    // gangguan jaringan pada /master-data/sites), tab lain tetap menampilkan
+    // data backend yang berhasil dimuat, bukan seluruh halaman gagal.
+    // Kegagalan dicatat per sumber agar user tahu mana yang bermasalah.
     const failures: string[] = [];
     const [orgs, depts, siteRows] = await Promise.all([
       masterDataService.listOrganizations().catch((e: unknown) => {

@@ -102,6 +102,17 @@ describe("ROLE_PERMISSIONS", () => {
     expect(perms).not.toContain("manage-employees");
   });
 
+  it("role non-medis tidak memegang view-visits (medical firewall backend)", () => {
+    // Backend MEDICAL_ROLES (src/common/guards/medical-firewall.guard.ts):
+    // DOCTOR_OH, DOCTOR_CLINIC, NURSE, PHARMACIST, LAB_ANALYST, RADIOLOGIST,
+    // SYSTEM_ADMIN. Semua endpoint /clinic/* dijaga guard tersebut, sehingga
+    // role di luar daftar itu akan menerima 403 bila menu kunjungan dibuka.
+    for (const role of ["hse", "manajemen", "pekerja"] as const) {
+      expect(can(role, "view-visits"), `${role} tidak boleh view-visits`).toBe(false);
+      expect(getPermissionsForRole(role)).not.toContain("view-visits");
+    }
+  });
+
   it("A1 — role lab TIDAK memiliki view-mcu (hanya data penunjang)", () => {
     const perms = getPermissionsForRole("lab");
     expect(perms).not.toContain("view-mcu");

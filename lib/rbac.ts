@@ -292,10 +292,13 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     // HR dapat memulai pembuatan siklus MCU; tanpa view-mcu/view-visits,
     // alur kembali ke status kesehatan setelah submit.
   ],
+  // HSE tidak memegang `view-visits`: seluruh endpoint klinik
+  // (/clinic/queues, /clinic/encounters) dijaga MedicalFirewallGuard
+  // (Permenkes 24/2022 & UU PDP) untuk peran medis saja, sehingga menu
+  // kunjungan akan selalu berakhir 403.
   hse: [
     "view-dashboard",
     "view-mcu",
-    "view-visits",
     "view-reports",
     "export-reports",
     "view-health-status",
@@ -307,10 +310,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "view-emergency",
     "view-profile",
   ],
+  // Sama seperti HSE: data kunjungan klinik dilindungi medical firewall
+  // backend, jadi Management memakai agregat pada /reports & /health-status.
   manajemen: [
     "view-dashboard",
     "view-mcu",
-    "view-visits",
     "view-reports",
     "export-reports",
     "view-health-status",
@@ -320,10 +324,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     // Pastikan halaman hanya menampilkan data agregat dan anonim,
     // tanpa nama pekerja individual.
   ],
+  // Pekerja hanya melihat data dirinya sendiri (tidak ada antrean klinik).
   pekerja: [
     "view-dashboard",
     "view-mcu",
-    "view-visits",
     "view-reports",
     "view-health-status",
     "view-emergency",

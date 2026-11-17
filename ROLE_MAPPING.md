@@ -51,7 +51,7 @@ Permission frontend adalah **proteksi UI/UX**. Otorisasi sebenarnya tetap milik 
 | `approve-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
 | `create-mcu` | — | — | ✓ | ✓ | — | — | — | ✓ | — | — | — |
 | `input-mcu-result` | — | ✓ | ✓ | ✓ | — | ✓ | — | — | — | — | — |
-| `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
 | `register-patient` | — | — | — | ✓ | — | — | ✓ | — | — | — | — |
 | `edit-visit` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
 | `view-clinical-notes` | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — |
@@ -101,9 +101,9 @@ Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`)
 | `/employees` | `manage-employees` | — | — | — | — | — | — | ✓ | ✓ | — | — | — |
 | `/mcu` | `view-mcu` | — | ✓ | ✓ | ✓ | ✓ | — | — | — | ✓ | ✓ | ✓ |
 | `/mcu/review` | `review-mcu` | — | ✓ | — | — | — | — | — | — | — | — | — |
-| `/visits` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| `/visits` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
 | `/visits/new` | `register-patient` | — | — | — | ✓ | — | — | ✓ | — | — | — | — |
-| `/visits/queue` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| `/visits/queue` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
 | `/medical-records` | `view-clinical-notes` | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — |
 | `/medicine` | `manage-stock` | — | — | — | — | ✓ | — | — | — | — | — | — |
 | `/medicine/dispense` | `dispense-medicine` | — | — | — | — | ✓ | — | — | — | — | — | — |

@@ -304,7 +304,7 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
   hse: {
     focus: "Pantau FTW, restriction, dan MCU jatuh tempo.",
     tasks: HSE_TASKS,
-    tiles: ["restricted", "mcuDueSoon", "fitWithRestriction", "fitToWork", "pendingMcu", "visitsToday"],
+    tiles: ["restricted", "mcuDueSoon", "fitWithRestriction", "fitToWork", "pendingMcu"],
   },
   manajemen: {
     focus: "Lihat ringkasan kesehatan kerja seluruh site.",
@@ -324,14 +324,14 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
         permission: "view-health-status",
       },
       {
-        label: "Kunjungan",
-        href: "/visits",
-        icon: "clipboard-list",
-        description: "Volume kunjungan klinik",
-        permission: "view-visits",
+        label: "MCU & FTW",
+        href: "/mcu",
+        icon: "activity",
+        description: "Siklus MCU pekerja seluruh site",
+        permission: "view-mcu",
       },
     ],
-    tiles: ["fitToWork", "fitWithRestriction", "restricted", "mcuDueSoon", "visitsToday", "employees"],
+    tiles: ["fitToWork", "fitWithRestriction", "restricted", "mcuDueSoon", "employees"],
   },
   lab: {
     focus: "Masukkan hasil lab dan D&A tepat waktu.",
