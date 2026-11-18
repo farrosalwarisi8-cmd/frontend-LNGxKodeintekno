@@ -45,6 +45,7 @@ import {
   loadPlaywright,
 } from "./lib/browser.mjs";
 import { runContractConsent, runContractPeople } from "./lib/contract-suites.mjs";
+import { runTteContract } from "./lib/tte-contract-suite.mjs";
 
 const BASE = (process.env.E2E_BASE_URL ?? "http://localhost:3001").replace(/\/+$/, "");
 const API_URL = (process.env.E2E_API_URL ?? "").replace(/\/+$/, "");
@@ -902,6 +903,7 @@ async function main() {
       const ctx = { browser, reporter, record, BASE, newPage, bodyText, waitIdle, horizontalOverflow };
       await runContractConsent(ctx);
       await runContractPeople(ctx);
+      await runTteContract(ctx);
     }
   } finally {
     await browser.close().catch(() => {});

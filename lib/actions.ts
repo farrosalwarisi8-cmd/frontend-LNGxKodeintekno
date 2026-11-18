@@ -37,9 +37,14 @@ export const ACTION_PERMISSIONS = {
   "pharmacy.dispense": "dispense-medicine",
   "certificates.issue": "issue-certificate",
   "certificates.revoke": "issue-certificate",
-  // Permintaan tanda tangan PSrE (POST /signatures/request) adalah bagian alur
-  // penerbitan sertifikat — memakai ulang permission `issue-certificate`.
+  // Dokumen & TTE (backend: POST /documents/render-pdf, POST /signatures/request,
+  // GET /documents/:id/download). Semua memakai ulang `issue-certificate`, tetapi
+  // dipisahkan menjadi tiga aksi agar guard UI bisa diselaraskan independen bila
+  // backend kelak membedakan permission (backend tetap otoritas sebenarnya).
+  "documents.render": "issue-certificate",
   "documents.request-signature": "issue-certificate",
+  "documents.retry-signature": "issue-certificate",
+  "documents.download-signed": "issue-certificate",
   "reports.view": "view-reports",
   "reports.export": "export-reports",
   // Kartu pada halaman laporan memakai izin sesuai sumber datanya, supaya role

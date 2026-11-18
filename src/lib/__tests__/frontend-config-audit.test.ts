@@ -102,3 +102,57 @@ describe("audit konfigurasi frontend (static)", () => {
     expect(gitignore).toMatch(/^!\.env\.example$/m);
   });
 });
+
+describe("audit rahasia PSP/TTE (frontend only)", () => {
+  const SECRET_TOKENS = [
+    "PSP_API_KEY",
+    "PSP_CALLBACK_SECRET",
+    "PSP_PROVIDER_CODE",
+    "NEXT_PUBLIC_PSP_API_KEY",
+    "NEXT_PUBLIC_PSP_CALLBACK_SECRET",
+    "NEXT_PUBLIC_PROVIDER_PRIVATE_KEY",
+    "X-Provider-Token",
+  ];
+
+  it("tidak ada secret provider pada source runtime maupun .env.example", () => {
+    const files = [...runtimeFiles, path.join(root, ".env.example")];
+    const offenders: string[] = [];
+    for (const file of files) {
+      const src = read(file);
+      for (const token of SECRET_TOKENS) {
+        // Komentar dokumentasi di .env.example memperingatkan agar tidak
+        // menaruh secret; itu tidak boleh dihitung sebagai pemakaian.
+        if (token.startsWith("NEXT_PUBLIC_") && src.includes(token)) {
+          offenders.push(`${rel(file)} (${token})`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("service TTE tidak mengirim field PSP/secret ke backend", () => {
+    const service = read(path.join(root, "src/lib/services/document.service.ts"));
+    for (const forbidden of [
+      "requestId",
+      "accountId",
+      "callbackUrl",
+      "signerEmail",
+      "signerName",
+      "PSP_API_KEY",
+      "PSP_CALLBACK_SECRET",
+    ]) {
+      expect(service).not.toContain(forbidden);
+    }
+    expect(service).toContain('"/signatures/request"');
+    expect(service).toContain("documentId");
+    expect(service).toContain("signatureType");
+  });
+
+  it("tidak ada implementasi HMAC atau pemanggilan provider langsung di browser", () => {
+    for (const file of runtimeFiles) {
+      const src = read(file);
+      expect(src).not.toMatch(/createHmac|timingSafeEqual|crypto\.subtle.*hmac/i);
+      expect(src).not.toMatch(/fetch\(["']https?:\/\/(?!\$\{)/);
+    }
+  });
+});

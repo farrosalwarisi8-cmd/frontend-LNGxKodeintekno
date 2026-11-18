@@ -5,6 +5,9 @@ import {
   BadgeCheck,
   ShieldX,
   ShieldQuestion,
+  Clock,
+  Ban,
+  FileClock,
   Loader2,
   Printer,
 } from "lucide-react";
@@ -14,17 +17,34 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { PublicShell } from "@/components/public-shell";
 import { formatDateTime } from "@/lib/format";
+import {
+  classifyVerifyResult,
+  type VerifyUiState,
+} from "@/features/tte/verify-state";
 
 /**
- * Verifikasi publik dokumen medis via QR token (Tugas 5 rebrand visible).
+ * Verifikasi publik dokumen medis via QR token.
  * Backend: GET /api/v1/public/verify/:qrToken (zero medical disclosure).
  *
- * - Hanya field yang SUDAH ditampilkan sebelumnya (kontrak
- *   PublicVerifyResult) — tidak ada data tambahan, tidak ada data sensitif.
- * - Token tidak pernah ditampilkan di UI, judul tab, log, maupun pesan error.
- * - Tiap status memakai ikon + judul + penjelasan (tidak bergantung warna).
- * - Aman cetak: `print:` menghapus latar berat/bayangan.
+ * - Token tidak pernah ditampilkan di UI, judul tab, log, console, maupun
+ *   pesan error, dan tidak disimpan ke localStorage.
+ * - Status tampil berdasarkan response backend. Status tidak dikenali TIDAK
+ *   pernah dinyatakan valid.
+ * - Backend saat ini belum memisahkan EXPIRED/REVOKED; kedua state disiapkan
+ *   untuk status yang kelak dikirim backend, bukan hasil tebakan frontend.
  */
+
+const STATE_ICON: Record<VerifyUiState, typeof BadgeCheck> = {
+  valid: BadgeCheck,
+  "found-unsigned": FileClock,
+  invalid: ShieldX,
+  expired: Clock,
+  revoked: Ban,
+  "expired-or-invalid": ShieldQuestion,
+  "backend-error": ShieldQuestion,
+  empty: ShieldQuestion,
+};
+
 export function VerifyView({ token }: { token: string }) {
   const [result, setResult] = useState<PublicVerifyResult | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -34,7 +54,9 @@ export function VerifyView({ token }: { token: string }) {
     let alive = true;
     const timer = setTimeout(() => {
       if (!token) {
-        if (alive) setLoading(false);
+        setResult(null);
+        setFetchError(null);
+        setLoading(false);
         return;
       }
       setLoading(true);
@@ -43,8 +65,9 @@ export function VerifyView({ token }: { token: string }) {
         .then((res) => {
           if (alive) setResult(res);
         })
-        .catch((e: unknown) => {
-          if (alive) setFetchError(e instanceof Error ? e.message : "Gagal memverifikasi token.");
+        .catch(() => {
+          // Pesan backend sengaja tidak dipakai; token tidak pernah di-log.
+          if (alive) setFetchError("Verifikasi tidak dapat diselesaikan.");
         })
         .finally(() => {
           if (alive) setLoading(false);
@@ -56,8 +79,12 @@ export function VerifyView({ token }: { token: string }) {
     };
   }, [token]);
 
-  const verified = result?.isValid === true;
-  const notSigned = result?.status === "NOT_SIGNED";
+  const view = classifyVerifyResult(result, {
+    hasToken: Boolean(token),
+    hasError: Boolean(fetchError),
+  });
+  const Icon = STATE_ICON[view.state];
+  const isProblem = view.state !== "valid" && view.state !== "found-unsigned";
 
   return (
     <PublicShell>
@@ -82,74 +109,59 @@ export function VerifyView({ token }: { token: string }) {
           </Card>
         )}
 
-        {!loading && fetchError && !result && (
-          <Card className="print:border-border print:shadow-none">
-            <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-              <span className={`flex size-12 items-center justify-center rounded-2xl bg-danger-soft ${PRINT_PAPER}`}>
-                <ShieldQuestion className="size-6 text-danger" aria-hidden="true" />
-              </span>
-              <p className="font-medium text-foreground">Tidak dapat memverifikasi</p>
-              <p className="text-sm text-muted-foreground">{fetchError}</p>
-              <p className="text-xs text-muted-foreground">
-                Periksa koneksi Anda lalu muat ulang halaman, atau minta tautan baru dari klinik.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!loading && result && !verified && (
-          <Card className="print:border-border print:shadow-none">
-            <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-              <span className={`flex size-12 items-center justify-center rounded-2xl bg-danger-soft ${PRINT_PAPER}`}>
-                <ShieldX className="size-6 text-danger" aria-hidden="true" />
-              </span>
-              <p className="font-medium text-foreground">
-                {notSigned ? "Dokumen belum ditandatangani" : "Sertifikat tidak valid"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {notSigned
-                  ? "Dokumen ini terdaftar, tetapi belum memiliki tanda tangan elektronik yang tervalidasi."
-                  : `Status: ${result.status}`}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {notSigned
-                  ? "Minta dokumen bertanda tangan resmi dari klinik penerbit."
-                  : "Tautan mungkin kedaluwarsa atau sudah dipakai. Minta tautan baru dari klinik bila diperlukan."}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!loading && verified && result && (
+        {!loading && (
           <Card className={`print:border-border ${PRINT_PAPER} print:shadow-none`}>
             <CardHeader className="text-center">
-              <span className={`mx-auto mb-2 flex size-12 items-center justify-center rounded-2xl bg-success-soft ${PRINT_PAPER}`}>
-                <BadgeCheck className="size-6 text-success" aria-hidden="true" />
+              <span
+                className={`mx-auto mb-2 flex size-12 items-center justify-center rounded-2xl ${
+                  isProblem ? "bg-danger-soft" : "bg-success-soft"
+                } ${PRINT_PAPER}`}
+              >
+                <Icon className={`size-6 ${isProblem ? "text-danger" : "text-success"}`} aria-hidden="true" />
               </span>
-              <CardTitle>Health Certificate</CardTitle>
-              <CardDescription>Dokumen terverifikasi dari penerbit resmi.</CardDescription>
+              <CardTitle>{view.title}</CardTitle>
+              <CardDescription>
+                {view.state === "valid" ? "Status: terverifikasi" : view.description}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Row label="Jenis Dokumen" value={result.documentType ?? ""} />
-              <Row label="Nomor Dokumen" value={result.documentNumber ?? ""} />
-              <Row label="Tanggal Terbit" value={formatDateTime(result.issuedAt)} />
-              <Row label="Waktu Tanda Tangan" value={formatDateTime(result.signedAt ?? undefined)} />
-              <Row label="Serial Sertifikat" value={result.certificateSerial ?? ""} />
+              {view.state !== "valid" && (
+                <>
+                  <p className="text-center text-sm text-muted-foreground" role="status">
+                    {view.description}
+                  </p>
+                  <p className="text-center text-xs text-muted-foreground">{view.hint}</p>
+                  {view.statusLabel && (
+                    <p className="text-center">
+                      <Badge variant="outline">Status backend: {view.statusLabel}</Badge>
+                    </p>
+                  )}
+                </>
+              )}
 
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <Badge variant="outline" className="bg-success-soft text-success">
-                  <BadgeCheck className="size-3.5" aria-hidden="true" />
-                  {result.status}
-                </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.print()}
-                  className="print:hidden"
-                >
-                  <Printer className="size-3.5" aria-hidden="true" /> Cetak
-                </Button>
-              </div>
+              {view.showAsValid && result && (
+                <>
+                  <Row label="Jenis Dokumen" value={result.documentType ?? ""} />
+                  <Row label="Nomor Dokumen" value={result.documentNumber ?? ""} />
+                  <Row label="Tanggal Terbit" value={formatDateTime(result.issuedAt)} />
+                  <Row label="Waktu Tanda Tangan" value={formatDateTime(result.signedAt ?? undefined)} />
+                  <Row label="Serial Sertifikat" value={result.certificateSerial ?? ""} />
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    <Badge variant="outline" className="bg-success-soft text-success">
+                      <BadgeCheck className="size-3.5" aria-hidden="true" />
+                      TERVERIFIKASI
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.print()}
+                      className="min-h-11 print:hidden"
+                    >
+                      <Printer className="size-3.5" aria-hidden="true" /> Cetak
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}
@@ -158,10 +170,7 @@ export function VerifyView({ token }: { token: string }) {
   );
 }
 
-/**
- * Cetak di kertas putih pada kedua mode — pengecualian sah dari guard warna
- * (latar token dark akan boros tinta dan tidak terbaca bila dicetak).
- */
+/** Cetak di kertas putih pada kedua mode — pengecualian sah dari guard warna. */
 // eslint-disable-next-line rebrand/no-raw-colors -- cetak: kertas putih di kedua mode
 const PRINT_PAPER = "print:bg-white";
 

@@ -1,4 +1,12 @@
 import { apiClient } from "@/lib/api-client";
+import { API_BASE_URL } from "@/lib/env";
+import { assertSafeDocumentUrl, safeDownloadFilename } from "@/features/tte/download";
+import {
+  BACKEND_SIGNATURE_TYPES,
+  MAX_PDF_BYTES,
+  isBackendSignatureType,
+  type BackendSignatureType,
+} from "@/features/tte/validation";
 
 /**
  * Modul 9 — Dokumen Medis, Tanda Tangan PSrE & Verifikasi Publik.
@@ -37,6 +45,11 @@ export function verifyTokenFromUrl(url?: string): string | undefined {
   const token = url.split("?")[0].split("/").filter(Boolean).pop();
   return token || undefined;
 }
+
+/** Enum `RequestSignatureDto.signatureType` — satu-satunya nilai yang dikirim ke backend. */
+export const SIGNATURE_TYPES = BACKEND_SIGNATURE_TYPES;
+export { MAX_PDF_BYTES };
+export type { BackendSignatureType };
 
 export type SignatureStatus = "PENDING" | "SIGNED" | "FAILED" | "EXPIRED" | "PROCESSING" | string;
 
@@ -126,11 +139,26 @@ export const documentService = {
     });
   },
 
+  /**
+   * POST /signatures/request — satu-satunya endpoint request TTE yang terbukti
+   * ada (OpenAPI + live wiring). Body dibatasi pada field RequestSignatureDto:
+   * documentId, signatureType, providerCode.
+   *
+   * Field PSP (request ID, account ID, file PDF, email/nama penanda tangan,
+   * callback URL) adalah komunikasi BACKEND → PROVIDER dan tidak pernah
+   * dikirim dari browser. Tidak ada secret yang masuk payload ini.
+   */
   async requestSignature(
     documentId: string,
     signatureType: string,
     providerCode?: string
   ): Promise<SignatureRequest> {
+    if (!documentId) {
+      throw new Error("Dokumen tidak tersedia. Permintaan tanda tangan dibatalkan.");
+    }
+    if (!isBackendSignatureType(signatureType)) {
+      throw new Error("Jenis tanda tangan tidak dikenali. Pilih jenis yang disediakan backend.");
+    }
     return apiClient.post<SignatureRequest>("/signatures/request", {
       documentId,
       signatureType,
@@ -242,19 +270,35 @@ export const documentService = {
     if (params?.status) qs.set("status", params.status);
     if (params?.search) qs.set("search", params.search);
     const query = qs.toString();
-    return apiClient.get(`/documents${query ? `?${query}` : ""}`);
+    // `getPaged` mengembalikan { data, meta } dari envelope backend —
+    // `get` sudah membuka envelope sehingga tidak cocok untuk daftar berhalaman.
+    return apiClient.getPaged<BackendDocument[]>(`/documents${query ? `?${query}` : ""}`);
   },
 
   /**
-   * Unduhan dokumen — `GET /documents/:id/download` mengembalikan presigned
-   * URL (berlaku 60 menit) setelah backend memeriksa role & data scope.
+   * Satu-satunya jalur unduhan signed PDF — `GET /documents/:id/download`.
+   * Backend yang memeriksa role & data scope, lalu mengembalikan URL berkas.
+   * Frontend TIDAK memanggil provider PSP dan TIDAK menyimpan token provider.
+   *
+   * BACKEND CONTRACT CATATAN: path ini dipakai service & live wiring, tetapi
+   * belum tercantum pada snapshot OpenAPI Fase 6 — perlu diverifikasi ulang
+   * terhadap OpenAPI staging sebelum E2E staging (lihat laporan TTE).
    */
   async downloadDocument(
-    documentId: string
-  ): Promise<{ url: string; expiresIn: number }> {
-    return apiClient.get<{ url: string; expiresIn: number }>(
+    documentId: string,
+    title?: string
+  ): Promise<{ url: string; filename: string; expiresIn: number; source: "backend" }> {
+    const res = await apiClient.get<{ url?: string; downloadUrl?: string; expiresIn?: number }>(
       `/documents/${documentId}/download`
     );
+    const rawUrl = res.url ?? res.downloadUrl;
+    const url = assertSafeDocumentUrl(rawUrl, API_BASE_URL);
+    return {
+      url,
+      filename: safeDownloadFilename(title, documentId),
+      expiresIn: typeof res.expiresIn === "number" ? res.expiresIn : 3600,
+      source: "backend",
+    };
   },
 
   async verifyPublic(qrToken: string): Promise<PublicVerifyResult> {

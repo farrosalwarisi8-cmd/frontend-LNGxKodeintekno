@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { VerifyView } from "@/components/verify-view";
+import { decodeVerifyToken } from "@/features/tte/verify-state";
 
 /**
  * Halaman verifikasi publik — token bertanda tangan di URL.
@@ -19,5 +20,7 @@ export default async function VerifyPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  return <VerifyView token={decodeURIComponent(token ?? "")} />;
+  // decode aman: URI malformed tidak boleh menabrak error boundary publik,
+  // dan token tidak pernah dicatat ke log maupun judul halaman.
+  return <VerifyView token={decodeVerifyToken(token)} />;
 }

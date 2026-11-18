@@ -1,7 +1,7 @@
 "use client";
 
 import { Can } from "@/components/can";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
@@ -20,40 +20,21 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  AlertTriangle,
   RefreshCw,
   Search,
   ChevronDown,
-  ShieldCheck,
+  WifiOff,
 } from "lucide-react";
-
-const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default" | "info"> = {
-  PENDING: "warning",
-  PROCESSING: "info",
-  SIGNED: "success",
-  FAILED: "danger",
-  EXPIRED: "danger",
-};
-
-const STATUS_ICON: Record<string, typeof Clock> = {
-  PENDING: Clock,
-  PROCESSING: RefreshCw,
-  SIGNED: CheckCircle,
-  FAILED: XCircle,
-  EXPIRED: AlertTriangle,
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Menunggu",
-  PROCESSING: "Diproses",
-  SIGNED: "Tertandatangani",
-  FAILED: "Gagal",
-  EXPIRED: "Kedaluwarsa",
-};
+import { useSignaturePolling } from "@/features/tte/hooks/use-signature-polling";
+import { SignatureStatusBadge } from "@/features/tte/components/signature-status-badge";
+import { RetrySignatureDialog } from "@/features/tte/components/retry-signature-dialog";
+import { SignedPdfButton } from "@/features/tte/components/signed-pdf-button";
+import { mapSignatureStatus } from "@/features/tte/signature-status";
+import { formatErrorMessage, TTE_MESSAGES } from "@/features/tte/messages";
 
 const SIGNATURE_TYPE_LABEL: Record<string, string> = {
   CERTIFIED_PSRE: "PSrE Tersertifikasi",
-  DIGITAL: "Digital Sederhana",
+  INTERNAL_PIN: "PIN Internal",
 };
 
 export default function SignaturesPage() {
@@ -64,11 +45,12 @@ export default function SignaturesPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const [retryTarget, setRetryTarget] = useState<SignatureRequest | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [retryRelation, setRetryRelation] = useState<{ oldId: string; newId: string } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Polling untuk status PENDING/PROCESSING
-  const [polling, setPolling] = useState(true);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const statusRegionRef = useRef<HTMLDivElement | null>(null);
+  const retryInFlightRef = useRef(false);
 
   const load = useCallback(async (showSkeleton = true) => {
     if (showSkeleton) setLoading(true);
@@ -82,58 +64,49 @@ export default function SignaturesPage() {
       const res = await documentService.getSignatures(params);
       setSignatures(res.data ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat data tanda tangan.");
+      setError(formatErrorMessage(e));
+      throw e;
     } finally {
       setLoading(false);
     }
   }, [statusFilter]);
 
+  // Polling aman: hanya PENDING/PROCESSING, backoff, tab hidden/offline stop,
+  // satu interval aktif, cleanup saat unmount/route change/filter change.
+  const refreshStatuses = useCallback(async () => {
+    const res = await documentService.getSignatures({ page: 1, limit: 100 });
+    setSignatures(res.data ?? []);
+    setError(null);
+  }, []);
+
+  const signatureStatuses = useMemo(() => signatures.map((s) => s.status), [signatures]);
+  const polling = useSignaturePolling(signatureStatuses, refreshStatuses);
+
   useEffect(() => {
-    const timer = setTimeout(() => void load(), 0);
+    const timer = setTimeout(() => void load().catch(() => undefined), 0);
     return () => clearTimeout(timer);
   }, [load]);
 
-  // Auto-polling setiap 5 detik untuk PENDING/PROCESSING
-  useEffect(() => {
-    if (!polling) return;
-    const hasActive = signatures.some(
-      (s) => s.status === "PENDING" || s.status === "PROCESSING"
-    );
-    if (!hasActive) {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-      return;
-    }
-    if (!pollingRef.current) {
-      pollingRef.current = setInterval(() => {
-        void load(false);
-      }, 5000);
-    }
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-    };
-  }, [polling, signatures, load]);
-
-  const handleRetry = async (id: string) => {
-    setRetryingId(id);
+  const confirmRetry = async () => {
+    if (!retryTarget || retryInFlightRef.current) return;
+    const oldId = retryTarget.id;
+    retryInFlightRef.current = true;
+    setRetryingId(oldId);
     setRetryError(null);
     try {
-      await documentService.retrySignature(id);
-      setMsg("Signature request baru diterbitkan untuk dokumen yang sama.");
-      await load(false);
+      const updated = await documentService.retrySignature(oldId);
+      setRetryRelation({ oldId, newId: updated.id });
+      setMsg(TTE_MESSAGES.retrySubmitted);
+      setRetryTarget(null);
+      await refreshStatuses();
+      statusRegionRef.current?.focus();
     } catch (e) {
-      setRetryError(e instanceof Error ? e.message : "Gagal retry signature.");
+      setRetryError(formatErrorMessage(e));
     } finally {
       setRetryingId(null);
+      retryInFlightRef.current = false;
     }
   };
-
-  const [msg, setMsg] = useState<string | null>(null);
 
   const filtered = signatures.filter((sig) => {
     if (!search) return true;
@@ -165,27 +138,62 @@ export default function SignaturesPage() {
             Tracking semua signature request PSrE/PTTE (dari daftar dokumen backend)
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
-            onClick={() => setPolling((p) => !p)}
-            disabled={!pendingCount}
+            className="min-h-11"
+            onClick={() => polling.setEnabled(!polling.enabled)}
+            aria-pressed={polling.enabled}
           >
-            <RefreshCw className={`size-4 ${polling && pendingCount > 0 ? "animate-spin" : ""}`} />
-            {polling ? "Auto-refresh ON" : "Auto-refresh OFF"}
+            <RefreshCw className={`size-4 ${polling.isPolling ? "animate-spin" : ""}`} />
+            Auto-refresh {polling.enabled ? "ON" : "OFF"}
           </Button>
-          <Button variant="outline" onClick={() => load()} disabled={loading}>
+          <Button
+            variant="outline"
+            className="min-h-11"
+            onClick={() => void polling.refreshNow()}
+            disabled={polling.refreshing}
+            loading={polling.refreshing}
+            aria-label="Refresh status tanda tangan sekarang"
+          >
             <RefreshCw className="size-4" />
             Refresh
           </Button>
         </div>
       </div>
 
+      <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
+        {polling.lastUpdated
+          ? `Terakhir diperbarui: ${polling.lastUpdated.toLocaleTimeString("id-ID")}`
+          : "Belum ada pembaruan pada sesi ini."}
+      </p>
+
+      {!polling.online && (
+        <div className="flex items-center gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-sm text-warning-700" role="alert">
+          <WifiOff className="size-4" aria-hidden="true" />
+          Anda sedang offline. Polling dijeda sampai koneksi kembali.
+        </div>
+      )}
+
+      {/* Fokus berpindah ke sini setelah retry. */}
+      <div
+        ref={statusRegionRef}
+        tabIndex={-1}
+        role="status"
+        aria-live="polite"
+        className="sr-only focus:not-sr-only focus:rounded-xl focus:border focus:border-primary focus:bg-primary-50 focus:p-3 focus:text-sm focus:text-primary-700"
+      >
+        {msg ?? ""}
+        {retryRelation
+          ? ` Request lama ${retryRelation.oldId} digantikan request baru ${retryRelation.newId}.`
+          : ""}
+      </div>
+
       {msg && (
         <div className="rounded-xl bg-success-50 p-3 text-sm text-success-700">{msg}</div>
       )}
       {retryError && (
-        <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+        <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">
           {retryError}
         </div>
       )}
@@ -275,29 +283,16 @@ export default function SignaturesPage() {
         <div className="space-y-3">
           {filtered.map((sig) => {
             const isExpanded = expandedId === sig.id;
-            const canRetry =
-              (sig.status === "FAILED" || sig.status === "EXPIRED") &&
-              retryingId !== sig.id;
-            const isPolling =
-              sig.status === "PENDING" || sig.status === "PROCESSING";
+            const statusView = mapSignatureStatus(sig.status);
+            const canRetry = Boolean(statusView.canRetry && retryingId !== sig.id);
+            const isPolling = statusView.isActive;
 
             return (
               <Card key={sig.id} className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-start gap-3">
-                    <div
-                      className={`flex size-10 items-center justify-center rounded-xl ${
-                        sig.status === "SIGNED"
-                          ? "bg-success-100 text-success-600"
-                          : sig.status === "FAILED" || sig.status === "EXPIRED"
-                            ? "bg-danger-100 text-danger-600"
-                            : "bg-warning-100 text-warning-600"
-                      }`}
-                    >
-                      {(() => {
-                        const Icon = STATUS_ICON[sig.status] ?? Clock;
-                        return <Icon className={`size-5 ${isPolling ? "animate-spin" : ""}`} />;
-                      })()}
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                      <PenLine className="size-5" aria-hidden="true" />
                     </div>
                     <div>
                       <p className="font-medium text-foreground">
@@ -309,9 +304,7 @@ export default function SignaturesPage() {
                         ID: {sig.id.slice(0, 8)} · Dok: {sig.document_id?.slice(0, 8) ?? "—"}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <Badge variant={STATUS_VARIANT[sig.status] ?? "default"}>
-                          {STATUS_LABEL[sig.status] ?? sig.status}
-                        </Badge>
+                        <SignatureStatusBadge status={sig.status} animate={isPolling} />
                         {sig.provider_code && (
                           <Badge variant="default">{sig.provider_code}</Badge>
                         )}
@@ -329,13 +322,18 @@ export default function SignaturesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Can action="documents.request-signature">
+                    <Can action="documents.retry-signature">
                       {canRetry && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleRetry(sig.id)}
+                          className="min-h-11"
+                          onClick={() => {
+                            setRetryError(null);
+                            setRetryTarget(sig);
+                          }}
                           disabled={retryingId === sig.id}
+                          aria-label={`Retry tanda tangan untuk dokumen ${sig.document_id ?? sig.id}`}
                         >
                           <RefreshCw className="size-3.5" />
                           {retryingId === sig.id ? "Retrying..." : "Retry"}
@@ -345,7 +343,10 @@ export default function SignaturesPage() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="min-h-11"
                       onClick={() => setExpandedId(isExpanded ? null : sig.id)}
+                      aria-label={isExpanded ? "Tutup detail signature" : "Lihat detail signature"}
+                      aria-expanded={isExpanded}
                     >
                       <ChevronDown
                         className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
@@ -393,36 +394,29 @@ export default function SignaturesPage() {
                       </div>
                     </div>
 
-                    {/* Error info */}
+                    {/* Error info — pesan netral, tanpa detail internal/secret */}
                     {sig.last_error && (
-                      <div className="rounded-xl bg-danger-50 p-3">
-                        <p className="text-xs font-medium text-danger-700">Error:</p>
-                        <p className="mt-1 text-xs text-danger-600">{sig.last_error}</p>
+                      <div className="rounded-xl bg-danger-50 p-3" role="alert">
+                        <p className="text-xs font-medium text-danger-700">
+                          Permintaan sebelumnya gagal
+                        </p>
+                        <p className="mt-1 text-xs text-danger-600">
+                          Periksa status terbaru. Retry tersedia bila status FAILED
+                          atau EXPIRED.
+                        </p>
                       </div>
                     )}
 
-                    {/* Signed document download */}
-                    {sig.status === "SIGNED" && sig.document_id && (
+                    {/* Satu jalur download resmi lewat service adapter. */}
+                    {statusView.canDownload && sig.document_id && (
                       <div className="rounded-xl border border-success-200 bg-success-50 p-3">
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck className="size-4 text-success-600" />
-                          <p className="text-xs font-medium text-success-700">
-                            Dokumen sudah tertandatangani — siap download
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            window.open(
-                              `/api/v1/documents/${sig.document_id}/download`,
-                              "_blank",
-                              "noopener"
-                            );
-                          }}
-                        >
-                          Download Signed PDF
-                        </Button>
+                        <Can action="documents.download-signed">
+                          <SignedPdfButton
+                            documentId={sig.document_id}
+                            canDownload
+                            compact
+                          />
+                        </Can>
                       </div>
                     )}
                   </div>
@@ -431,6 +425,18 @@ export default function SignaturesPage() {
             );
           })}
         </div>
+      )}
+
+      {retryTarget && (
+        <RetrySignatureDialog
+          open
+          oldRequestId={retryTarget.id}
+          status={retryTarget.status}
+          busy={retryingId === retryTarget.id}
+          error={retryError}
+          onClose={() => setRetryTarget(null)}
+          onConfirm={() => void confirmRetry()}
+        />
       )}
     </div>
   );

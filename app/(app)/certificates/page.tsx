@@ -16,6 +16,7 @@ import { Modal } from "@/shared/components/design-system/modal";
 import { formatDate } from "@/lib/format";
 import { Search, BadgeCheck, Plus, QrCode, ShieldCheck, ExternalLink } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import { classifyVerifyResult, maskVerifyToken } from "@/features/tte/verify-state";
 
 export default function CertificatesPage() {
   const certificates = useStore((s) => s.certificates);
@@ -44,6 +45,9 @@ export default function CertificatesPage() {
     certificateSerial?: string | null;
   } | null>(null);
   const [qrError, setQrError] = useState<string | null>(null);
+  // Token QR mentah dari response backend disimpan HANYA di memori komponen.
+  // Zustand store dipersist ke localStorage — jangan menaruh token di sana.
+  const [ephemeralQrTokens, setEphemeralQrTokens] = useState<Record<string, string>>({});
 
   // Modul 9 — data MCU & pekerja dari backend untuk menerbitkan sertifikat;
   // daftar sertifikat + QR-nya diambil dari dokumen FTW backend.
@@ -77,14 +81,10 @@ export default function CertificatesPage() {
       await documentService.requestSignature(doc.documentId, "CERTIFIED_PSRE");
       const qrToken = verifyTokenFromUrl(doc.verificationUrl);
       if (qrToken) {
-        useStore.setState((s) => ({
-          certificates: s.certificates.map((c) =>
-            c.id === localId ? { ...c, qrToken } : c
-          ),
-        }));
+        setEphemeralQrTokens((prev) => ({ ...prev, [localId]: qrToken }));
       }
       setMsg(
-        `Sertifikat dibuat di backend${qrToken ? ` (QR: ${qrToken.slice(0, 12)}...)` : ""}.`
+        `Permintaan tanda tangan dikirim ke backend${qrToken ? ` (QR: ${maskVerifyToken(qrToken)})` : ""}. Status akan diverifikasi melalui halaman publik.`
       );
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Gagal membuat dokumen di backend.");
@@ -129,6 +129,11 @@ export default function CertificatesPage() {
   });
 
   const approvedMCUs = mcus.filter((m) => m.status === "Approved" && !certificates.find((c) => c.mcuId === m.id));
+
+  const verificationView = classifyVerifyResult(qrResult, {
+    hasToken: true,
+    hasError: Boolean(qrError),
+  });
 
   return (
     <div className="space-y-4">
@@ -201,6 +206,7 @@ export default function CertificatesPage() {
         {filtered.map((cert) => {
           const emp = employees.find((e) => e.id === cert.employeeId);
           const statusMeta = CERT_STATUS[cert.status];
+          const qrToken = ephemeralQrTokens[cert.id] ?? cert.qrToken;
           return (
             <Card key={cert.id} className="p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -222,22 +228,25 @@ export default function CertificatesPage() {
                 <div className="flex items-center gap-2">
                   <StatusBadge meta={statusMeta} />
                   {/* Fase 6 — Tombol Verifikasi QR langsung dari sini */}
-                  {cert.qrToken && (
+                  {qrToken && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleVerifyQr(cert.qrToken)}
+                      className="min-h-11"
+                      onClick={() => handleVerifyQr(qrToken)}
                     >
                       <QrCode className="size-3.5" />
                       Verifikasi QR
                     </Button>
                   )}
-                  <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="size-3.5" />
-                      Buka
-                    </Button>
-                  </Link>
+                  {qrToken && (
+                    <Link href={`/verify/${encodeURIComponent(qrToken)}`} target="_blank">
+                      <Button variant="outline" size="sm" className="min-h-11">
+                        <ExternalLink className="size-3.5" />
+                        Buka
+                      </Button>
+                    </Link>
+                  )}
                   {cert.status === "valid" && (
                     <Can action="certificates.revoke">
                       <Button variant="danger" size="sm" onClick={() => revokeCertificate(cert.id)}>
@@ -276,13 +285,13 @@ export default function CertificatesPage() {
             </div>
           )}
 
-          {qrResult && qrResult.isValid && (
+          {qrResult && verificationView.showAsValid && (
             <div className="space-y-3">
               <div className="flex items-center gap-2 rounded-xl bg-success-50 p-3">
                 <ShieldCheck className="size-5 text-success-600" />
                 <div>
-                  <p className="text-sm font-medium text-success-700">Sertifikat Valid</p>
-                  <p className="text-xs text-success-600">{qrResult.status}</p>
+                  <p className="text-sm font-medium text-success-700">{verificationView.title}</p>
+                  <p className="text-xs text-success-600">{verificationView.description}</p>
                 </div>
               </div>
               <div className="rounded-xl bg-muted p-3 text-sm space-y-1">
@@ -295,11 +304,12 @@ export default function CertificatesPage() {
             </div>
           )}
 
-          {qrResult && !qrResult.isValid && (
-            <div className="flex flex-col items-center gap-2 rounded-xl bg-danger-50 p-6 text-center">
+          {qrResult && !verificationView.showAsValid && (
+            <div className="flex flex-col items-center gap-2 rounded-xl bg-danger-50 p-6 text-center" role="status">
               <QrCode className="size-8 text-danger-600" />
-              <p className="font-medium text-danger-700">Sertifikat Tidak Ditemukan</p>
-              <p className="text-sm text-danger-600">{qrResult.status}</p>
+              <p className="font-medium text-danger-700">{verificationView.title}</p>
+              <p className="text-sm text-danger-600">{verificationView.description}</p>
+              <p className="text-xs text-danger-600">{verificationView.hint}</p>
             </div>
           )}
         </div>

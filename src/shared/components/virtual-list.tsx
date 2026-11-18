@@ -90,6 +90,8 @@ export function VirtualList<Item>({
       onScroll={onScroll}
       role="region"
       aria-label={ariaLabel}
+      // Kontainer scroll harus bisa menerima fokus keyboard (WCAG 2.1.1).
+      tabIndex={0}
     >
       <div style={{ height: totalHeight, position: "relative", width: "100%" }}>
         {items.slice(start, end).map((item, i) => {
