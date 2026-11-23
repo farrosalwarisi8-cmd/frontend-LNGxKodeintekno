@@ -14,6 +14,8 @@ import {
   syncWorkHealthStatus,
   useSyncedModules,
 } from "@/lib/remote-sync";
+import { diagnosticService } from "@/lib/services/diagnostic.service";
+import { DEMO_ROLE_LABELS } from "@/lib/demo-role-map";
 import { ROLES, MCU_STATUS, VISIT_STATUS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Avatar } from "@/shared/components/design-system/avatar";
@@ -30,6 +32,7 @@ import {
 import {
   buildTiles,
   computeDashboardMetrics,
+  mergeExternalMetric,
   mergePendingPrescriptions,
   openVisits,
 } from "@/features/dashboard/dashboard-metrics";
@@ -61,10 +64,13 @@ const TONE_CLASS: Record<string, string> = {
  */
 export default function DashboardPage() {
   const user = useCurrentUser();
-  const { role } = useDemoMode();
+  const { enabled: demoEnabled, demoRole, role } = useDemoMode();
   const profile = getRoleDashboard(role);
   const tasks = getRoleTasks(role);
-  const canViewMcu = role ? can(role, "view-mcu") : false;
+  const isWorker = role === "pekerja";
+  // Pekerja tidak boleh memicu sinkronisasi data pekerja lain hanya untuk
+  // menggambar dashboard-nya.
+  const canViewMcu = role ? can(role, "view-mcu") && !isWorker : false;
   const canViewVisits = role ? can(role, "view-visits") : false;
   const canViewClinical = role ? can(role, "view-clinical-notes") : false;
 
@@ -85,7 +91,8 @@ export default function DashboardPage() {
     if (canViewMcu) requests.push(syncPatients(1, 100), syncMcu(1, 100));
     if (canViewVisits) requests.push(syncQueues());
     if (role && can(role, "manage-stock")) requests.push(syncInventory());
-    if (role && can(role, "issue-certificate")) requests.push(syncCertificates(1, 100));
+    // Pekerja membutuhkan sertifikat miliknya sendiri untuk kartu "Sertifikat saya".
+    if (role && (can(role, "issue-certificate") || isWorker)) requests.push(syncCertificates(1, 100));
     await Promise.all(requests);
   });
 
@@ -93,6 +100,36 @@ export default function DashboardPage() {
   // (menghindari request yang tidak terpakai untuk peran lain).
   const wantsPendingPrescriptions = profile.tiles.includes("pendingPrescriptions");
   const [pendingPrescriptions, setPendingPrescriptions] = useState<number | null>(null);
+
+  // Angka lab (order & hasil) diambil dari sumber penunjang yang sudah ada.
+  const wantsLabMetrics = profile.tiles.some(
+    (key) => key === "labOrdersPending" || key === "labResultsAvailable"
+  );
+  const [labMetrics, setLabMetrics] = useState<{ orders: number | null; results: number | null }>({
+    orders: null,
+    results: null,
+  });
+
+  useEffect(() => {
+    if (!wantsLabMetrics) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      Promise.allSettled([
+        diagnosticService.listLabOrders(),
+        diagnosticService.listLabOrderResults(),
+      ]).then(([orders, results]) => {
+        if (cancelled) return;
+        setLabMetrics({
+          orders: orders.status === "fulfilled" ? orders.value.length : null,
+          results: results.status === "fulfilled" ? results.value.length : null,
+        });
+      });
+    }, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [wantsLabMetrics, activeSiteId, scopeVersion]);
 
   useEffect(() => {
     if (!wantsPendingPrescriptions) return;
@@ -120,19 +157,27 @@ export default function DashboardPage() {
 
   // Perhitungan murni (satu lintasan atas array kecil) — tanpa memo manual;
   // React Compiler yang menangani memoization.
-  const metrics = mergePendingPrescriptions(
-    computeDashboardMetrics({
-      employees,
-      mcus,
-      visits,
-      certificates,
-      workHealthStatus,
-      medicines,
-      stockBatches,
-      today,
-      currentEmployeeId: user?.employeeId ?? null,
-    }),
-    wantsPendingPrescriptions ? pendingPrescriptions : null
+  const metrics = mergeExternalMetric(
+    mergeExternalMetric(
+      mergePendingPrescriptions(
+        computeDashboardMetrics({
+          employees,
+          mcus,
+          visits,
+          certificates,
+          workHealthStatus,
+          medicines,
+          stockBatches,
+          today,
+          currentEmployeeId: user?.employeeId ?? null,
+        }),
+        wantsPendingPrescriptions ? pendingPrescriptions : null
+      ),
+      "labOrdersPending",
+      wantsLabMetrics ? labMetrics.orders : null
+    ),
+    "labResultsAvailable",
+    wantsLabMetrics ? labMetrics.results : null
   );
 
   // Susunan kartu murah (hanya beberapa item) — dihitung langsung, tanpa memo,
@@ -141,8 +186,12 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  const roleMeta = ROLES[user.role];
-  const unreadCount = notifications.filter((n) => n.userId === user.id && !n.read).length;
+  const roleMeta = role ? ROLES[role] : ROLES[user.role];
+  // Pekerja tidak melihat notifikasi sistem (hanya data pribadi).
+  const unreadCount = isWorker
+    ? 0
+    : notifications.filter((n) => n.userId === user.id && !n.read).length;
+  const greetingName = demoEnabled ? DEMO_ROLE_LABELS[demoRole] : user.name;
   const recentMCU = canViewMcu ? mcus.slice(0, 5) : [];
   const recentVisits = canViewVisits ? openVisits(visits).slice(0, 5) : [];
   const workerLinks = getWorkerHomeLinks();
@@ -152,7 +201,7 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
-            Halo, {user.name.split(" ")[0]}
+            Halo, {demoEnabled ? greetingName : greetingName.split(" ")[0]}
           </h1>
           <p className="text-sm text-muted-foreground">
             {roleMeta?.label ?? user.role} — {profile.focus}

@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useCurrentUser, useStore } from "@/lib/store";
+import { Globe2 } from "lucide-react";
+import { useStore } from "@/lib/store";
 import { masterDataService } from "@/lib/services/master-data.service";
 import { iamService } from "@/lib/services/iam.service";
+import { useDemoMode } from "@/lib/demo-role";
+import { canSwitchSiteScope, dataScopeForRole, DATA_SCOPE_LABELS } from "@/lib/data-scope";
 
 /**
  * Opsi site untuk selector scope.
@@ -34,9 +37,6 @@ async function loadSiteOptions(): Promise<SiteOption[] | null> {
   }
 
   try {
-    // Backend membatasi `limit` ≤ 100 (validation DTO) — tarik beberapa halaman
-    // sampai habis, dengan batas aman, agar site milik role yang muncul di
-    // halaman belakang tetap terbaca.
     const byId = new Map<string, SiteOption>();
     for (let page = 1; page <= 5; page++) {
       const rows = await iamService.listUsers(page, 100);
@@ -48,7 +48,6 @@ async function loadSiteOptions(): Promise<SiteOption[] | null> {
           byId.set(site.id, { id: site.id, name: site.name, code: site.code });
         }
       }
-      // Halaman terakhir = jumlah baris < limit (tidak ada halaman berikut).
       if (data.length < 100) break;
     }
     return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
@@ -58,34 +57,26 @@ async function loadSiteOptions(): Promise<SiteOption[] | null> {
 }
 
 /**
- * Fase 4 — pemilih scope site untuk user multi-site (GLOBAL).
+ * Pemilih scope site untuk user multi-site (GLOBAL/ORG).
  *
- * Perilaku:
- *  - Nilai aktif disimpan di store (`activeSiteId`) supaya tetap konsisten
- *    antar halaman dan di-reset saat logout.
- *  - Saat scope berubah, store MEMBUANG data tersinkron milik scope lama dan
- *    menaikkan `scopeVersion` sehingga halaman yang terbuka memuat ulang data
- *    (kriteria: data scope sebelumnya tidak boleh tetap tampil).
- *  - Pilihan "Semua site" mengembalikan tampilan ke cakupan bawaan backend
- *    (backend tetap membatasi per token — selector ini hanya gangguan tampilan).
+ * Role efektif (termasuk demo role) menentukan apakah kontrol ini tampil:
+ * Pekerja (PERSONAL) dan peran SITE tidak memiliki selector. Nilai aktif
+ * disimpan di store agar tetap konsisten antar halaman; backend tetap
+ * menegakkan cakupan sebenarnya.
  */
 export function ScopeSelector({ className }: { className?: string }) {
-  const currentUser = useCurrentUser();
+  const { role } = useDemoMode();
   const activeSiteId = useStore((s) => s.activeSiteId);
   const activeSiteName = useStore((s) => s.activeSiteName);
   const setActiveSite = useStore((s) => s.setActiveSite);
   const [sites, setSites] = useState<SiteOption[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const canSwitchScope =
-    currentUser?.role === "admin" ||
-    currentUser?.role === "manajemen" ||
-    currentUser?.role === "hse";
+  const allowed = canSwitchSiteScope(role);
+  const scope = dataScopeForRole(role);
 
   useEffect(() => {
-    if (!canSwitchScope) return;
-    // Defer agar setState tidak dipanggil sinkron di dalam effect
-    // (react-hooks/set-state-in-effect), konsisten dengan useSyncedModules.
+    if (!allowed) return;
     const timer = setTimeout(() => {
       loadSiteOptions()
         .then((rows) => setSites(rows ?? []))
@@ -93,21 +84,24 @@ export function ScopeSelector({ className }: { className?: string }) {
         .finally(() => setLoading(false));
     }, 0);
     return () => clearTimeout(timer);
-  }, [canSwitchScope]);
+  }, [allowed]);
 
-  if (!canSwitchScope) return null;
+  if (!allowed || !scope) return null;
 
   return (
     <div className={`flex items-center gap-2 ${className ?? ""}`}>
-      <span className="text-xs text-muted-foreground">Scope:</span>
+      <Globe2 className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <label htmlFor="scope-site" className="sr-only">
+        Pilih scope site ({DATA_SCOPE_LABELS[scope]})
+      </label>
       <select
-        aria-label="Pilih scope site"
-        className="rounded-lg border border-input bg-card px-2 py-1 text-sm text-text-secondary"
+        id="scope-site"
+        aria-label={`Scope site — ${DATA_SCOPE_LABELS[scope]}`}
+        className="h-9 rounded-lg border border-input bg-card px-2 text-sm text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         value={activeSiteId ?? ""}
         onChange={(e) => {
           const newSiteId = e.target.value || null;
           const site = sites.find((s) => s.id === newSiteId);
-          // null = "Semua site" (tampilan kembali ke cakupan bawaan token).
           setActiveSite(newSiteId, site?.name ?? null);
         }}
         disabled={loading}
@@ -115,14 +109,13 @@ export function ScopeSelector({ className }: { className?: string }) {
         <option value="">Semua site</option>
         {sites.map((site) => (
           <option key={site.id} value={site.id}>
-            {site.name} ({site.code})
+            {site.name}
+            {site.code ? ` (${site.code})` : ""}
           </option>
         ))}
       </select>
       {activeSiteName && (
-        <span className="hidden text-xs text-muted-foreground xl:inline">
-          Menampilkan: {activeSiteName}
-        </span>
+        <span className="hidden text-xs text-muted-foreground xl:inline">Menampilkan: {activeSiteName}</span>
       )}
     </div>
   );

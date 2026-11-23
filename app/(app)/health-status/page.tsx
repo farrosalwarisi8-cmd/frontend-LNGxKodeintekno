@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, useCurrentUser } from "@/lib/store";
+import { useDemoMode } from "@/lib/demo-role";
 import { syncPatients, syncWorkHealthStatus, useSyncedModules } from "@/lib/remote-sync";
 import { HEALTH_STATUS } from "@/lib/constants";
 import { RestrictionAcknowledgementSection } from "@/features/mcu/components/restriction-acknowledgement";
@@ -25,6 +26,13 @@ import { StatusBadge } from "@/components/status-badge";
 export default function HealthStatusPage() {
   const workHealthStatus = useStore((s) => s.workHealthStatus);
   const employees = useStore((s) => s.employees);
+  const user = useCurrentUser();
+  const { role } = useDemoMode();
+  // Pekerja hanya boleh melihat status kesehatannya sendiri.
+  const workerOnly = role === "pekerja";
+  const visibleStatuses = workerOnly
+    ? workHealthStatus.filter((w) => Boolean(user?.employeeId) && w.employeeId === user?.employeeId)
+    : workHealthStatus;
   // Catatan kepatuhan yang menampilkan garis waktu tahapan reminder.
   const [expandedReminderId, setExpandedReminderId] = useState<string | null>(null);
 
@@ -54,7 +62,7 @@ export default function HealthStatusPage() {
   const dueSoonOnly = filters.dueSoon === "1";
   const restrictionOnly = filters.restriction === "1";
 
-  const filtered = workHealthStatus.filter((w) => {
+  const filtered = visibleStatuses.filter((w) => {
     const emp = employees.find((e) => e.id === w.employeeId);
     const q = filters.search.trim().toLowerCase();
     const matchSearch =
@@ -71,16 +79,23 @@ export default function HealthStatusPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Status Kesehatan Kerja</h1>
-        <p className="text-sm text-muted-foreground">Pantau status kesehatan kerja pekerja</p>
+        <h1 className="text-2xl font-semibold text-foreground">
+          {workerOnly ? "Status Kesehatan Saya" : "Status Kesehatan Kerja"}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {workerOnly
+            ? "Fitness to Work dan masa berlaku MCU Anda"
+            : "Pantau status kesehatan kerja pekerja"}
+        </p>
       </div>
 
       {/* HSE only: komponen ini mengembalikan null bila role tidak punya
           permission `acknowledge-restriction` (route tetap view-health-status). */}
-      <RestrictionAcknowledgementSection />
+      {!workerOnly && <RestrictionAcknowledgementSection />}
 
-      <EscalationPanel />
+      {!workerOnly && <EscalationPanel />}
 
+      {!workerOnly && (
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative flex-1">
@@ -135,9 +150,12 @@ export default function HealthStatusPage() {
           </div>
         )}
       </Card>
+      )}
 
       <p className="text-sm text-muted-foreground" role="status">
-        {filtered.length} dari {workHealthStatus.length} status kesehatan
+        {workerOnly
+          ? `${filtered.length} status kesehatan milik Anda`
+          : `${filtered.length} dari ${workHealthStatus.length} status kesehatan`}
       </p>
 
       {error && (
@@ -160,14 +178,18 @@ export default function HealthStatusPage() {
         <EmptyState
           icon={ClipboardCheck}
           title={
-            workHealthStatus.length === 0
-              ? "Belum ada status kesehatan kerja"
-              : "Tidak ada data yang cocok dengan filter"
+            workerOnly
+              ? "Belum ada status kesehatan untuk Anda"
+              : workHealthStatus.length === 0
+                ? "Belum ada status kesehatan kerja"
+                : "Tidak ada data yang cocok dengan filter"
           }
           description={
-            workHealthStatus.length === 0
-              ? "Status Fitness to Work akan tampil di sini setelah dokter menetapkan assessment pada siklus MCU."
-              : "Ubah kata kunci atau reset filter yang tersimpan."
+            workerOnly
+              ? "Status Fitness to Work akan tampil di sini setelah dokter menetapkan assessment pada siklus MCU Anda."
+              : workHealthStatus.length === 0
+                ? "Status Fitness to Work akan tampil di sini setelah dokter menetapkan assessment pada siklus MCU."
+                : "Ubah kata kunci atau reset filter yang tersimpan."
           }
         />
       )}

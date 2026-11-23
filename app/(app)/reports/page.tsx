@@ -3,7 +3,10 @@
 import { Can, useCan } from "@/components/can";
 
 import { useState } from "react";
-import { useStore } from "@/lib/store";
+import Link from "next/link";
+import { useStore, useCurrentUser } from "@/lib/store";
+import { useDemoMode } from "@/lib/demo-role";
+import { can as hasPermission } from "@/lib/rbac";
 import {
   syncDispensings,
   syncMcu,
@@ -22,7 +25,48 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Download, TrendingUp, Users, Activity, HeartPulse, Pill } from "lucide-react";
+import { formatDate } from "@/lib/format";
+import {
+  BarChart3,
+  Download,
+  TrendingUp,
+  Users,
+  Activity,
+  HeartPulse,
+  Pill,
+  BadgeCheck,
+  ShieldCheck,
+} from "lucide-react";
+
+interface StatusBarProps {
+  label: string;
+  count: number;
+  total: number;
+  barClass: string;
+}
+
+/** Bar status dengan label + angka + persen (bukan warna saja). */
+function StatusBar({ label, count, total, barClass }: StatusBarProps) {
+  const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <span className="text-text-secondary">{label}</span>
+        <span className="shrink-0 font-medium text-foreground">
+          {count}
+          <span className="ml-1 text-xs font-normal text-muted-foreground">({percent}%)</span>
+        </span>
+      </div>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-muted"
+        role="img"
+        aria-label={`${label}: ${count} dari ${total} (${percent}%)`}
+      >
+        <div className={`h-2 rounded-full ${barClass}`} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
 
 export default function ReportsPage() {
   const employees = useStore((s) => s.employees);
@@ -31,15 +75,21 @@ export default function ReportsPage() {
   const workHealthStatus = useStore((s) => s.workHealthStatus);
   const dispensings = useStore((s) => s.dispensings);
   const diagnoses = useStore((s) => s.diagnoses);
+  const user = useCurrentUser();
+  const { role } = useDemoMode();
+
+  // Pekerja hanya melihat ringkasan pribadi — tanpa agregat perusahaan.
+  const isWorker = role === "pekerja";
+  const canViewEmployees = role ? hasPermission(role, "manage-employees") : false;
 
   // Setiap kartu laporan memakai izin sesuai sumber datanya. Role non-klinis
   // (HR/PIC, System Administrator) tetap bisa memantau kepatuhan, tetapi tidak
   // melihat angka/kolom yang berasal dari data klinis.
   const can = useCan();
-  const showMcuMetrics = can("reports.view-mcu");
-  const showVisitMetrics = can("reports.view-visits");
-  const showDiagnosisMetrics = can("reports.view-diagnosis");
-  const showPharmacyMetrics = can("reports.view-pharmacy");
+  const showMcuMetrics = !isWorker && can("reports.view-mcu");
+  const showVisitMetrics = !isWorker && can("reports.view-visits");
+  const showDiagnosisMetrics = !isWorker && can("reports.view-diagnosis");
+  const showPharmacyMetrics = !isWorker && can("reports.view-pharmacy");
 
   const [topDiseases, setTopDiseases] = useState<TopDiseaseItem[]>([]);
   const [definitions, setDefinitions] = useState<ReportDefinition[]>([]);
@@ -55,7 +105,8 @@ export default function ReportsPage() {
     // Hanya sumber data yang boleh diakses role ini yang diambil, supaya
     // laporan non-klinis (HR/System Administrator) tidak memicu request
     // klinis yang pasti ditolak backend.
-    const tasks: Array<Promise<unknown>> = [syncPatients(1, 100)];
+    const tasks: Array<Promise<unknown>> = [];
+    if (!isWorker && canViewEmployees) tasks.push(syncPatients(1, 100));
     if (showMcuMetrics) tasks.push(syncMcu(1, 100));
     if (showVisitMetrics) tasks.push(syncQueues());
     if (showPharmacyMetrics) tasks.push(syncDispensings());
@@ -116,6 +167,11 @@ export default function ReportsPage() {
   const temporarilyUnfit = workHealthStatus.filter((w) => w.status === "Temporarily Unfit").length;
   const unfit = workHealthStatus.filter((w) => w.status === "Unfit").length;
 
+  const ownStatus =
+    isWorker && user?.employeeId
+      ? workHealthStatus.find((w) => w.employeeId === user.employeeId)
+      : undefined;
+
   const diagnosisCounts = diagnoses.map((d) => ({
     ...d,
     count: visits.filter((v) => v.diagnosisIds?.includes(d.id)).length,
@@ -146,19 +202,26 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Laporan & Analitik</h1>
-          <p className="text-sm text-muted-foreground">Dashboard reporting per role</p>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {isWorker ? "Ringkasan Saya" : "Laporan & Analitik"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isWorker
+              ? "Hanya data kesehatan milik Anda sendiri"
+              : "Ringkasan sesuai cakupan peran Anda"}
+          </p>
         </div>
         <Can action="reports.export">
           <Button variant="outline" onClick={handleExport} loading={exporting} disabled={exporting || loading}>
-            <Download className="size-4" />
-            Ekspor PDF
+            <Download className="size-4" /> Ekspor PDF
           </Button>
         </Can>
       </div>
 
       {exportMsg && (
-        <div className="rounded-xl bg-muted p-3 text-sm text-text-secondary">{exportMsg}</div>
+        <div role="status" className="rounded-xl bg-muted p-3 text-sm text-text-secondary">
+          {exportMsg}
+        </div>
       )}
 
       {partialNotice && (
@@ -169,157 +232,239 @@ export default function ReportsPage() {
 
       {error && <ErrorState title="Gagal memuat data laporan" message={error} onRetry={refetch} />}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
-              <Users className="size-6" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-foreground">{totalEmployees}</p>
-              <p className="text-xs text-muted-foreground">Total Pekerja</p>
-            </div>
-          </CardContent>
-        </Card>
-        {showMcuMetrics && (
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-success-100 text-success-600">
-                <Activity className="size-6" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-foreground">{approvedMCU}</p>
-                <p className="text-xs text-muted-foreground">MCU Approved</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {showVisitMetrics && (
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-info-100 text-info-600">
-                <BarChart3 className="size-6" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-foreground">{totalVisits}</p>
-                <p className="text-xs text-muted-foreground">Total Kunjungan</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {showPharmacyMetrics && (
-          <Card>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
-                <Pill className="size-6" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-foreground">{dispensings.length}</p>
-                <p className="text-xs text-muted-foreground">Dispensing</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {isWorker ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Card>
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-success-100 text-success-600">
+                  <HeartPulse className="size-6" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xl font-semibold text-foreground">
+                    {ownStatus?.status ?? "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Status FTW saya</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-info-100 text-info-600">
+                  <Activity className="size-6" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xl font-semibold text-foreground">
+                    {ownStatus?.validUntil ? formatDate(ownStatus.validUntil) : "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Berlaku sampai</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
+                  <ShieldCheck className="size-6" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xl font-semibold text-foreground">
+                    {ownStatus?.restriction ? "Ada" : "Tidak ada"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Restriksi kerja</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <HeartPulse className="size-5 text-success-600" />
-              Status Kesehatan Kerja
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-text-secondary">Fit to Work</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-success-500" style={{ width: `${workHealthStatus.length > 0 ? (fitToWork / workHealthStatus.length) * 100 : 0}%` }} />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{fitToWork}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-text-secondary">Fit with Restriction</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-warning-500" style={{ width: `${workHealthStatus.length > 0 ? (fitWithRestriction / workHealthStatus.length) * 100 : 0}%` }} />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{fitWithRestriction}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-text-secondary">Temporarily Unfit</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-warning" style={{ width: `${workHealthStatus.length > 0 ? (temporarilyUnfit / workHealthStatus.length) * 100 : 0}%` }} />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{temporarilyUnfit}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-text-secondary">Unfit</span>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-32 rounded-full bg-muted">
-                    <div className="h-2 rounded-full bg-danger-500" style={{ width: `${workHealthStatus.length > 0 ? (unfit / workHealthStatus.length) * 100 : 0}%` }} />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{unfit}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {loading && !error && (
+            <p className="text-sm text-muted-foreground" role="status">
+              Memuat ringkasan Anda…
+            </p>
+          )}
 
-        {showDiagnosisMetrics && (
+          {!loading && !ownStatus && !error && (
+            <EmptyState
+              icon={HeartPulse}
+              title="Belum ada ringkasan kesehatan"
+              description="Ringkasan akan tampil setelah dokter menetapkan status Fitness to Work pada MCU Anda."
+            />
+          )}
+
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="size-5 text-info-600" />
-                Top 10 Diagnosis
-              </CardTitle>
+              <CardTitle>Dokumen saya</CardTitle>
             </CardHeader>
-            <CardContent>
-              {topRows.length === 0 ? (
-                <EmptyState
-                  icon={TrendingUp}
-                  title="Belum ada data diagnosis"
-                  description="Data akan muncul setelah ada kunjungan dengan diagnosis ICD-10."
-                />
-              ) : (
-                <div className="space-y-2">
-                  {topRows.map((d) => (
-                    <div key={d.key} className="flex items-center justify-between gap-3 text-sm">
-                      <span className="min-w-0 truncate text-text-secondary" title={d.label}>
-                        {d.label}
-                      </span>
-                      <Badge variant="info">{d.count}</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <CardContent className="flex flex-col gap-2 sm:flex-row">
+              <Link
+                href="/my/mcu"
+                className="flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-muted"
+              >
+                <Activity className="size-4" aria-hidden="true" /> Riwayat MCU saya
+              </Link>
+              <Link
+                href="/my/certificates"
+                className="flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-muted"
+              >
+                <BadgeCheck className="size-4" aria-hidden="true" /> Sertifikat saya
+              </Link>
             </CardContent>
           </Card>
-        )}
-      </div>
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {canViewEmployees && (
+              <Card>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                    <Users className="size-6" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold text-foreground">{totalEmployees}</p>
+                    <p className="text-xs text-muted-foreground">Total Pekerja</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {showMcuMetrics && (
+              <Card>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-success-100 text-success-600">
+                    <Activity className="size-6" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold text-foreground">{approvedMCU}</p>
+                    <p className="text-xs text-muted-foreground">MCU Approved</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {showVisitMetrics && (
+              <Card>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-info-100 text-info-600">
+                    <BarChart3 className="size-6" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold text-foreground">{totalVisits}</p>
+                    <p className="text-xs text-muted-foreground">Total Kunjungan</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {showPharmacyMetrics && (
+              <Card>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
+                    <Pill className="size-6" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-semibold text-foreground">{dispensings.length}</p>
+                    <p className="text-xs text-muted-foreground">Dispensing</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-      {showMcuMetrics && (
-        <Card>
-          <CardHeader>
-            <CardTitle>MCU per Tipe</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {mcuByType.map((item) => (
-                <div key={item.type} className="rounded-xl border border-border p-4 text-center">
-                  <p className="text-2xl font-semibold text-foreground">{item.count}</p>
-                  <p className="text-xs text-muted-foreground">{item.type}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Status kesehatan & MCU per tipe memakai grid yang sama agar tepi
+              kartu sejajar (bukan satu kartu penuh di bawah). */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Tanpa izin MCU, kartu status memenuhi lebar grid agar tidak
+                menyisakan ruang kosong besar di kanan. */}
+            <Card className={showMcuMetrics ? undefined : "lg:col-span-2"}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <HeartPulse className="size-5 text-success-600" aria-hidden="true" />
+                  Status Kesehatan Kerja
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {workHealthStatus.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Belum ada status kesehatan kerja dari backend.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    <StatusBar
+                      label="Fit to Work"
+                      count={fitToWork}
+                      total={workHealthStatus.length}
+                      barClass="bg-success-500"
+                    />
+                    <StatusBar
+                      label="Fit with Restriction"
+                      count={fitWithRestriction}
+                      total={workHealthStatus.length}
+                      barClass="bg-warning-500"
+                    />
+                    <StatusBar
+                      label="Temporarily Unfit"
+                      count={temporarilyUnfit}
+                      total={workHealthStatus.length}
+                      barClass="bg-warning"
+                    />
+                    <StatusBar
+                      label="Unfit"
+                      count={unfit}
+                      total={workHealthStatus.length}
+                      barClass="bg-danger-500"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {showMcuMetrics && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>MCU per Tipe</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+                    {mcuByType.map((item) => (
+                      <div key={item.type} className="rounded-xl border border-border p-3 text-center">
+                        <p className="text-2xl font-semibold text-foreground">{item.count}</p>
+                        <p className="text-xs text-muted-foreground">{item.type}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {showDiagnosisMetrics && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="size-5 text-info-600" aria-hidden="true" />
+                    Top 10 Diagnosis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {topRows.length === 0 ? (
+                    <EmptyState
+                      icon={TrendingUp}
+                      title="Belum ada data diagnosis"
+                      description="Data akan muncul setelah ada kunjungan dengan diagnosis ICD-10."
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      {topRows.map((d) => (
+                        <div key={d.key} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="min-w-0 truncate text-text-secondary" title={d.label}>
+                            {d.label}
+                          </span>
+                          <Badge variant="info">{d.count}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

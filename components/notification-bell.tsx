@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, CheckCheck, RefreshCw } from "lucide-react";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { syncNotifications, useSyncedModules } from "@/lib/remote-sync";
+import { useDemoMode } from "@/lib/demo-role";
 import { notificationService } from "@/lib/services/notification.service";
 import {
   formatBadgeCount,
@@ -28,6 +29,8 @@ type FetchState = "idle" | "loading" | "error";
  */
 export function NotificationBell() {
   const user = useCurrentUser();
+  // Pekerja hanya melihat data pribadi: notifikasi sistem tidak ditampilkan.
+  const { role } = useDemoMode();
   const notifications = useStore((s) => s.notifications);
   const markReadStore = useStore((s) => s.markNotificationRead);
   const router = useRouter();
@@ -116,7 +119,7 @@ export function NotificationBell() {
       });
   };
 
-  if (!user) return null;
+  if (!user || role === "pekerja") return null;
 
   return (
     <div className="relative">

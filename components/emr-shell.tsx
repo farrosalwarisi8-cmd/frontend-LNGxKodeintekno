@@ -5,40 +5,37 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
-  MoreHorizontal,
-  WifiOff,
-  ShieldCheck,
-  Users,
-  Settings,
+  ChevronsLeft,
+  ChevronsRight,
   Globe,
-  X,
-  ChevronRight,
   LogOut,
   Menu,
+  MoreHorizontal,
+  Settings,
+  ShieldCheck,
   User,
+  Users,
+  WifiOff,
+  X,
+  ChevronRight,
 } from "lucide-react";
-import { ICON_MAP } from "@/shared/components/icon-map";
 import { Logo } from "@/components/logo";
-import { useDemoMode } from "@/lib/demo-role";
+import { useDemoMode, DEMO_ROLE_LABELS } from "@/lib/demo-role";
 import type { DemoRole } from "@/features/people/api/people.types";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { ROLES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { getBottomNavigation, getNavigation, getOverflowNavigation, isNavActive } from "@/lib/navigation";
+import { dataScopeForRole, DATA_SCOPE_LABELS } from "@/lib/data-scope";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { EnvironmentBanner } from "@/components/environment-banner";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { RouteTitle } from "@/components/route-title";
 import { ScopeSelector } from "@/components/scope-selector";
+import { SidebarNav } from "@/components/sidebar-nav";
+import { ICON_MAP } from "@/shared/components/icon-map";
 import { toastError, toastSuccess } from "@/lib/use-toast";
-
-const ROLE_LABELS: Record<DemoRole, string> = {
-  ADMIN_CLINIC: "Admin Klinik",
-  HR_PIC: "HR/PIC",
-  SYSTEM_ADMIN: "System Administrator",
-  PUBLIC_WORKER: "Worker/Public",
-};
 
 const ROLE_ICONS: Record<DemoRole, typeof ShieldCheck> = {
   ADMIN_CLINIC: ShieldCheck,
@@ -46,19 +43,6 @@ const ROLE_ICONS: Record<DemoRole, typeof ShieldCheck> = {
   SYSTEM_ADMIN: Settings,
   PUBLIC_WORKER: Globe,
 };
-
-const ROLE_COLORS: Record<DemoRole, string> = {
-  // Lencana peran selalu netral (warna disimpan untuk status klinis).
-  ADMIN_CLINIC: "bg-muted text-text-secondary",
-  HR_PIC: "bg-muted text-text-secondary",
-  SYSTEM_ADMIN: "bg-muted text-text-secondary",
-  PUBLIC_WORKER: "bg-muted text-text-secondary",
-};
-
-// Peta nama ikon → komponen lucide dipakai bersama dashboard
-// (`@/shared/components/icon-map`) supaya nama ikon tidak pernah menyimpang.
-
-// Navigasi terpusat di `@/lib/navigation` (label, icon, permission, active route).
 
 export function EmrShell({ children }: { children: React.ReactNode }) {
   const { enabled: demoEnabled, demoRole, role } = useDemoMode();
@@ -70,13 +54,13 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const replayOfflineQueue = useStore((s) => s.replayOfflineQueue);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const user = useCurrentUser();
   const logout = useStore((s) => s.logout);
 
   const prevOnline = useRef(isOnline);
 
-  // Sinkronisasi status online/offline ke store (sumber kebenaran tunggal)
-  // diakses oleh seluruh komponen lewat store.
+  // Sinkronisasi status online/offline ke store (sumber kebenaran tunggal).
   useEffect(() => {
     const sync = () => setOnline(navigator.onLine);
     sync();
@@ -88,8 +72,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
     };
   }, [setOnline]);
 
-  // Saat kembali online dari keadaan offline: proses ulang antrean aksi
-  // lokal dan beri tahu pengguna melalui toast.
+  // Saat kembali online dari keadaan offline: proses ulang antrean aksi lokal.
   useEffect(() => {
     const wasOffline = !prevOnline.current && isOnline;
     prevOnline.current = isOnline;
@@ -104,16 +87,18 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
     });
   }, [isOnline, replayOfflineQueue]);
 
-  // Badge profil mengikuti role efektif: demo role saat demo mode aktif,
-  // selain itu role session.
+  // Identitas di header mengikuti ROLE EFEKTIF (demo role saat demo aktif),
+  // bukan selamanya akun sesi — supaya banner, menu, dan header tidak
+  // saling bertentangan saat berganti role demo.
   const RoleIcon = demoEnabled ? ROLE_ICONS[demoRole] : ShieldCheck;
   const roleLabel = demoEnabled
-    ? ROLE_LABELS[demoRole]
+    ? DEMO_ROLE_LABELS[demoRole]
     : user?.title || (role ? ROLES[role]?.label : "") || "—";
-  const badgeClass = demoEnabled ? ROLE_COLORS[demoRole] : "bg-muted text-text-secondary";
+  const displayName = demoEnabled ? DEMO_ROLE_LABELS[demoRole] : (user?.name ?? "—");
+  const displayTitle = demoEnabled ? "Demo role aktif" : (user?.title ?? "");
+  const scope = dataScopeForRole(role);
+  const scopeLabel = scope ? DATA_SCOPE_LABELS[scope] : null;
 
-  // Satu sumber navigasi: difilter per permission role efektif
-  // (lihat @/lib/navigation). Sidebar dan bottom navigation memakai filter yang sama.
   const nav = getNavigation(role);
   const bottomNav = getBottomNavigation(role);
   const hasMoreNav = getOverflowNavigation(role).length > 0;
@@ -124,7 +109,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-muted">
+    <div className="flex h-screen flex-col overflow-hidden bg-muted">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
@@ -132,89 +117,105 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
         Lewati ke konten utama
       </a>
       <RouteTitle />
-      <EnvironmentBanner />
+      {/* Banner berada di alur normal DI ATAS header dan tidak sticky, sehingga
+          tidak pernah menimpa header; area konten mengisi sisa viewport. */}
+      <div className="shrink-0">
+        <EnvironmentBanner />
+      </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-card lg:flex" aria-label="Navigasi utama">
-          <div className="flex h-14 items-center gap-2.5 border-b border-border px-5">
-            {/* Lambang LNG + nama sistem (sidebar selalu lebar, tidak diciutkan). */}
+      <div className="flex min-h-0 flex-1">
+        <aside
+          className={cn(
+            "hidden h-full shrink-0 flex-col border-r border-border bg-card transition-[width] duration-150 lg:flex",
+            collapsed ? "w-[76px]" : "w-64"
+          )}
+          aria-label="Navigasi utama"
+        >
+          <div
+            className={cn(
+              "flex h-14 shrink-0 items-center gap-2.5 border-b border-border",
+              collapsed ? "justify-center px-2" : "px-5"
+            )}
+          >
             <Logo size="md" />
-            <div>
-              <p className="text-sm font-semibold text-foreground">Kodein Klinik</p>
-              {/* Subjudul netral disengaja: E2E alur mutasi memakai teks data
-                  "PT Layar Nusantara Gas" dengan pencocokan ketat — nama
-                  perusahaan tampil penuh di login, halaman publik, 404/error. */}
-              <p className="text-[10px] text-muted-foreground">EMR Okupasi</p>
-            </div>
-          </div>
-
-          <div className="border-b border-border px-4 py-3">
-            <div className={cn("flex items-center gap-2 rounded-xl p-2.5", badgeClass)}>
-              <RoleIcon className="size-4 shrink-0" aria-hidden="true" />
+            {!collapsed && (
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold">{roleLabel}</p>
-                <p className="text-[10px]">{demoEnabled ? "Demo role aktif" : "Peran sesi"}</p>
+                <p className="truncate text-sm font-semibold text-foreground">Kodein Klinik</p>
+                <p className="text-[10px] text-muted-foreground">EMR Okupasi</p>
               </div>
-              <Link
-                href="/demo"
-                className="ml-auto -my-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:bg-foreground/5 hover:opacity-100"
-                aria-label="Ubah demo role"
-              >
-                <ChevronRight className="size-4" aria-hidden="true" />
-              </Link>
+            )}
+          </div>
+
+          <div className="shrink-0 border-b border-border px-3 py-3">
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-xl bg-muted p-2.5 text-text-secondary",
+                collapsed && "justify-center p-2"
+              )}
+            >
+              <RoleIcon className="size-4 shrink-0" aria-hidden="true" />
+              {!collapsed && (
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold">{roleLabel}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {demoEnabled ? "Demo role aktif" : "Peran sesi"}
+                    {scopeLabel ? ` · ${scopeLabel}` : ""}
+                  </p>
+                </div>
+              )}
+              {!collapsed && (
+                <Link
+                  href="/demo"
+                  className="ml-auto -my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:bg-foreground/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Ubah demo role"
+                  title="Ubah demo role"
+                >
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
+              )}
             </div>
           </div>
 
-          <nav className="scrollbar-subtle flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Navigasi utama">
-            {nav.map((item) => {
-              const Icon = ICON_MAP[item.icon] ?? Activity;
-              const active = isNavActive(pathname, item.href, item.end);
-              if (item.disabled) {
-                return (
-                  <span
-                    key={item.href}
-                    aria-disabled="true"
-                    className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground"
-                    title="Segera hadir"
-                  >
-                    <Icon className="size-4 shrink-0" aria-hidden="true" />
-                    <span className="min-w-0 truncate">{item.label}</span>
-                    <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-normal text-muted-foreground">
-                      Segera
-                    </span>
-                  </span>
-                );
-              }
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-primary-50 text-primary-700"
-                      : "text-text-secondary hover:bg-muted hover:text-foreground"
-                  )}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <Icon className="size-4 shrink-0" aria-hidden="true" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          <SidebarNav
+            items={nav}
+            pathname={pathname}
+            collapsed={collapsed}
+            className="min-h-0 flex-1"
+          />
 
-          <div className="border-t border-border px-4 py-3">
-            {/* Teks footer disengaja netral (lihat komentar subjudul di atas). */}
-            <p className="text-[10px] text-muted-foreground">Kodein Klinik · EMR Okupasi</p>
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border px-3 py-2">
+            {!collapsed && (
+              <p className="truncate text-[10px] text-muted-foreground">Kodein Klinik · EMR Okupasi</p>
+            )}
+            <button
+              type="button"
+              onClick={() => setCollapsed((v) => !v)}
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={collapsed ? "Perbesar sidebar" : "Ciutkan sidebar"}
+              title={collapsed ? "Perbesar sidebar" : "Ciutkan sidebar"}
+              aria-pressed={!collapsed}
+            >
+              {collapsed ? (
+                <ChevronsRight className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronsLeft className="size-4" aria-hidden="true" />
+              )}
+            </button>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
-            <div className="flex items-center gap-2.5">
+          <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
+            <div className="flex min-w-0 items-center gap-2.5">
               <Logo size="sm" />
-              <span className="text-sm font-semibold text-foreground">Kodein Klinik</span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold leading-tight text-foreground">
+                  Kodein Klinik
+                </span>
+                <span className="block truncate text-[10px] leading-tight text-muted-foreground">
+                  {roleLabel}
+                </span>
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
@@ -230,59 +231,34 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* Breadcrumb compact di mobile */}
-          <div className="border-b border-border bg-card px-4 py-2 lg:hidden">
+          <div className="shrink-0 border-b border-border bg-card px-4 py-2 lg:hidden">
             <Breadcrumb />
           </div>
 
           {mobileMenuOpen && (
             <div className="fixed inset-0 z-40 lg:hidden">
               <div className="fixed inset-0 bg-foreground/40" onClick={() => setMobileMenuOpen(false)} />
-              <div className="scrollbar-subtle fixed right-0 top-0 h-full w-72 overflow-y-auto bg-card p-4 shadow-xl">
+              <div className="scrollbar-subtle fixed right-0 top-0 flex h-full w-72 flex-col overflow-y-auto bg-card p-4 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
                   <span className="font-semibold text-foreground">Menu</span>
-                  <button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-1 text-muted-foreground hover:bg-muted">
+                  <button
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+                    aria-label="Tutup menu"
+                  >
                     <X className="size-5" />
                   </button>
                 </div>
-                {/* Fase 4 — scope site juga tersedia di menu mobile */}
                 <div className="mb-3">
                   <ScopeSelector />
                 </div>
-                <nav className="space-y-1" aria-label="Navigasi mobile">
-                  {nav.map((item) => {
-                    const Icon = ICON_MAP[item.icon] ?? Activity;
-                    const active = isNavActive(pathname, item.href, item.end);
-                    if (item.disabled) {
-                      return (
-                        <span
-                          key={item.href}
-                          aria-disabled="true"
-                          className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground"
-                        >
-                          <Icon className="size-4" />
-                          {item.label}
-                          <span className="ml-auto text-[10px] text-muted-foreground">Segera hadir</span>
-                        </span>
-                      );
-                    }
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                          active ? "bg-primary-50 text-primary-700" : "text-text-secondary hover:bg-muted"
-                        )}
-                        aria-current={active ? "page" : undefined}
-                      >
-                        <Icon className="size-4" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-                {/* Pengalih tema di menu mobile (topbar desktop punya sendiri). */}
+                <SidebarNav
+                  items={nav}
+                  pathname={pathname}
+                  onNavigate={() => setMobileMenuOpen(false)}
+                  ariaLabel="Navigasi mobile"
+                  className="p-0"
+                />
                 <div className="mt-4 border-t border-border pt-4">
                   <p className="mb-2 text-xs font-medium text-muted-foreground">Tema tampilan</p>
                   <ThemeToggle />
@@ -291,10 +267,13 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          {/* Topbar desktop: breadcrumb + offline + notifikasi + user menu */}
-          <header className="sticky top-0 z-30 hidden h-14 items-center justify-between gap-4 border-b border-border bg-card px-6 lg:flex">
+          {/* Topbar desktop: breadcrumb + role efektif + offline + notifikasi + user menu */}
+          <header className="sticky top-0 z-30 hidden h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6 lg:flex">
             <Breadcrumb />
             <div className="flex items-center gap-2">
+              <span className="hidden max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-text-secondary xl:inline">
+                {roleLabel}
+              </span>
               <ThemeToggle />
               {!isOnline && (
                 <div
@@ -305,7 +284,6 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   <span>Offline</span>
                 </div>
               )}
-              {/* Fase 4 — pemilih scope site (hanya role multi-site) */}
               <ScopeSelector />
               <NotificationBell />
               <div className="relative">
@@ -316,12 +294,16 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setUserMenuOpen((v) => !v)}
                   className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted"
                 >
-                  <span className="flex size-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
-                    {(user?.name ?? "?").charAt(0).toUpperCase()}
+                  <span className="flex size-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold uppercase text-primary-700">
+                    {displayName.charAt(0)}
                   </span>
                   <span className="hidden text-left xl:block">
-                    <span className="block text-xs font-semibold leading-tight text-foreground">{user?.name}</span>
-                    <span className="block text-[10px] leading-tight text-muted-foreground">{user?.title}</span>
+                    <span className="block max-w-40 truncate text-xs font-semibold leading-tight text-foreground">
+                      {displayName}
+                    </span>
+                    <span className="block max-w-40 truncate text-[10px] leading-tight text-muted-foreground">
+                      {displayTitle}
+                    </span>
                   </span>
                   <ChevronRight className="size-3.5 rotate-90 text-muted-foreground" aria-hidden="true" />
                 </button>
@@ -354,16 +336,16 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
 
           {/* Indikator offline (persisten di semua breakpoint) */}
           {!isOnline && (
-            <div className="border-b border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700" role="status">
+            <div className="shrink-0 border-b border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700" role="status">
               <div className="flex items-center gap-2">
                 <WifiOff className="size-4 shrink-0" aria-hidden="true" />
                 <span>Offline — aksi disimpan secara lokal</span>
                 {offlineQueueLength > 0 && (
-                  <span className="ml-auto shrink-0 flex items-center gap-1 rounded bg-warning-200 px-2 py-0.5 text-[10px] font-medium">
+                  <span className="ml-auto flex shrink-0 items-center gap-1 rounded bg-warning-200 px-2 py-0.5 text-[10px] font-medium">
                     {offlineQueueLength} antrean
                   </span>
                 )}
-                <span className="text-warning-500">Akan disinkronkan saat tersambung kembali</span>
+                <span className="text-warning-600">Akan disinkronkan saat tersambung kembali</span>
               </div>
             </div>
           )}
@@ -371,11 +353,9 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           <main
             id="main-content"
             tabIndex={-1}
-            className="scrollbar-subtle flex-1 overflow-y-auto px-4 py-5 pb-24 focus:outline-none md:px-6 lg:pb-6"
+            className="scrollbar-subtle min-h-0 flex-1 overflow-y-auto px-4 py-5 pb-24 focus:outline-none md:px-6 lg:pb-8"
           >
-            <div className="mx-auto max-w-6xl">
-              {children}
-            </div>
+            <div className="mx-auto w-full max-w-6xl">{children}</div>
           </main>
         </div>
       </div>
@@ -392,7 +372,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors",
+                "flex min-h-11 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium transition-colors",
                 active ? "text-primary-600" : "text-muted-foreground hover:text-text-secondary"
               )}
               aria-current={active ? "page" : undefined}
@@ -405,7 +385,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
         {hasMoreNav && (
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-muted-foreground hover:text-text-secondary"
+            className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-muted-foreground hover:text-text-secondary"
             aria-label="Menu lainnya"
           >
             <MoreHorizontal className="size-5" aria-hidden="true" />

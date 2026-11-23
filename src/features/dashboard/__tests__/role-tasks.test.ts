@@ -25,6 +25,10 @@ const TILE_KEYS: DashboardTileKey[] = [
   "pendingPrescriptions",
   "myFitStatus",
   "myNextMcu",
+  "myValidCerts",
+  "myPendingMcu",
+  "labOrdersPending",
+  "labResultsAvailable",
 ];
 
 describe("ROLE_TASK_PROFILES", () => {

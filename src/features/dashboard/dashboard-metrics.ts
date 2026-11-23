@@ -78,6 +78,14 @@ export function computeDashboardMetrics(
     return med ? b.quantity < med.minStock : false;
   }).length;
 
+  // Kartu "milik saya" hanya memakai record milik pekerja yang login.
+  const myMcu = currentEmployeeId
+    ? mcus.filter((m) => m.employeeId === currentEmployeeId)
+    : [];
+  const myCertificates = currentEmployeeId
+    ? certificates.filter((c) => c.employeeId === currentEmployeeId)
+    : [];
+
   return {
     employees: employees.length,
     pendingMcu,
@@ -93,6 +101,11 @@ export function computeDashboardMetrics(
     pendingPrescriptions: 0,
     myFitStatus: myStatus ? myStatus.status : "—",
     myNextMcu: myStatus?.validUntil ? myStatus.validUntil.slice(0, 10) : "—",
+    myValidCerts: myCertificates.filter((c) => c.status === "valid").length,
+    myPendingMcu: myMcu.filter((m) => m.status === "Submitted" || m.status === "Resubmitted").length,
+    // Diisi dari backend lewat `mergeExternalMetric` (bukan angka karangan).
+    labOrdersPending: 0,
+    labResultsAvailable: 0,
   };
 }
 
@@ -101,7 +114,16 @@ export function mergePendingPrescriptions(
   metrics: Record<DashboardTileKey, DashboardTileValue>,
   count: number | null
 ): Record<DashboardTileKey, DashboardTileValue> {
-  return { ...metrics, pendingPrescriptions: count ?? "—" };
+  return mergeExternalMetric(metrics, "pendingPrescriptions", count);
+}
+
+/** Sisipkan angka yang diambil langsung dari backend (null → "—"). */
+export function mergeExternalMetric(
+  metrics: Record<DashboardTileKey, DashboardTileValue>,
+  key: DashboardTileKey,
+  count: number | null
+): Record<DashboardTileKey, DashboardTileValue> {
+  return { ...metrics, [key]: count ?? "—" };
 }
 
 export interface TileMeta {
@@ -147,6 +169,30 @@ export const TILE_META: Record<DashboardTileKey, TileMeta> = {
   },
   myFitStatus: { label: "Status FTW saya", icon: "heart-pulse", tone: "success", href: "/my/mcu" },
   myNextMcu: { label: "Berlaku sampai", icon: "calendar-check", tone: "info", href: "/my/mcu" },
+  myValidCerts: {
+    label: "Sertifikat saya",
+    icon: "badge-check",
+    tone: "success",
+    href: "/my/certificates",
+  },
+  myPendingMcu: {
+    label: "MCU saya menunggu",
+    icon: "clock",
+    tone: "warning",
+    href: "/my/mcu",
+  },
+  labOrdersPending: {
+    label: "Order lab menunggu",
+    icon: "flask",
+    tone: "info",
+    href: "/lab",
+  },
+  labResultsAvailable: {
+    label: "Hasil lab tersedia",
+    icon: "clipboard-list",
+    tone: "success",
+    href: "/lab",
+  },
 };
 
 export interface DashboardTile extends TileMeta {

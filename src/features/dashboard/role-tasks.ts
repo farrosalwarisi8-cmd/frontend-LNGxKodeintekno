@@ -27,7 +27,11 @@ export type DashboardTileKey =
   | "lowStock"
   | "pendingPrescriptions"
   | "myFitStatus"
-  | "myNextMcu";
+  | "myNextMcu"
+  | "myValidCerts"
+  | "myPendingMcu"
+  | "labOrdersPending"
+  | "labResultsAvailable";
 
 export interface RoleTask {
   /** Label tombol — memakai kata kerja yang jelas (bukan "Kelola"). */
@@ -358,7 +362,8 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
         permission: "view-health-status",
       },
     ],
-    tiles: ["pendingMcu", "mcuDueSoon", "visitsToday", "employees"],
+    // Lab hanya melihat pekerjaan penunjangnya sendiri: order & hasil lab.
+    tiles: ["labOrdersPending", "labResultsAvailable"],
   },
   admin: {
     focus: "Jaga data induk dan akses pengguna tetap rapi.",
@@ -404,7 +409,8 @@ export const ROLE_TASK_PROFILES: Record<Role, RoleDashboardProfile> = {
   pekerja: {
     focus: "Lihat status kesehatan dan dokumen Anda.",
     tasks: WORKER_TASKS,
-    tiles: ["myFitStatus", "myNextMcu", "validCerts", "pendingMcu"],
+    // HANYA data milik sendiri — tidak ada agregat perusahaan/pekerja lain.
+    tiles: ["myFitStatus", "myNextMcu", "myValidCerts", "myPendingMcu"],
     compact: true,
   },
 };
