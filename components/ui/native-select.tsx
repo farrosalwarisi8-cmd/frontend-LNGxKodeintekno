@@ -50,6 +50,7 @@ export function NativeSelect({
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
         aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${selectId}-error` : undefined}
         className={cn(
           "flex h-11 w-full rounded-xl border bg-card px-3.5 text-base text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted",
           error ? "border-danger-500" : "border-input",
@@ -67,7 +68,11 @@ export function NativeSelect({
           </option>
         ))}
       </select>
-      {error && <p className="text-sm text-danger-600">{error}</p>}
+      {error && (
+        <p id={`${selectId}-error`} className="text-sm text-danger-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

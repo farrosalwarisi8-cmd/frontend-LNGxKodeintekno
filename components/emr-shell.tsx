@@ -32,6 +32,7 @@ import { EnvironmentBanner } from "@/components/environment-banner";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { RouteTitle } from "@/components/route-title";
+import { RouteFocus } from "@/components/route-focus";
 import { ScopeSelector } from "@/components/scope-selector";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { ICON_MAP } from "@/shared/components/icon-map";
@@ -117,6 +118,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
         Lewati ke konten utama
       </a>
       <RouteTitle />
+      <RouteFocus />
       {/* Banner berada di alur normal DI ATAS header dan tidak sticky, sehingga
           tidak pernah menimpa header; area konten mengisi sisa viewport. */}
       <div className="shrink-0">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserRound,
@@ -58,6 +58,29 @@ const STEPS = [
   { id: 5, label: "Consent & Review", icon: FileCheck2 },
 ];
 
+/**
+ * Judul panel langkah — dapat menerima fokus secara terprogram (`tabIndex=-1`)
+ * sehingga perpindahan langkah memindahkan fokus ke konteks baru, bukan
+ * membiarkannya tertinggal di tombol "Lanjut". Tidak masuk tab order.
+ */
+function StepHeading({
+  headingRef,
+  children,
+}: {
+  headingRef: React.Ref<HTMLHeadingElement>;
+  children: React.ReactNode;
+}) {
+  return (
+    <h2
+      ref={headingRef}
+      tabIndex={-1}
+      className="text-lg font-semibold text-foreground focus:outline-none"
+    >
+      {children}
+    </h2>
+  );
+}
+
 interface WizardFormProps {
   initialDraft: CreatePersonDraft | null;
   initialStep: number;
@@ -101,6 +124,35 @@ function WizardForm({
   const [consentSent, setConsentSent] = useState(false);
   const [consentError, setConsentError] = useState("");
   const [resending, setResending] = useState(false);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+
+  /** Heading langkah aktif — tujuan fokus saat berpindah langkah (a11y). */
+  const stepHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const firstStepRender = useRef(true);
+  /** Diminta oleh validateStep: fokuskan field error pertama setelah render. */
+  const focusFirstErrorRef = useRef(false);
+  /** Promise cek duplikat yang sedang berjalan + hasil terakhir (tanpa stale closure). */
+  const duplicateCheckRef = useRef<Promise<void> | null>(null);
+  const duplicateResultRef = useRef<DuplicateCheckResult | null>(null);
+
+  // Pindah langkah = pindah konteks: fokus ikut ke heading langkah baru supaya
+  // pengguna keyboard/screen reader tidak tertinggal di tombol "Lanjut".
+  // Render pertama dilewati agar tidak merebut fokus saat halaman baru dibuka
+  // (fokus awal halaman diatur oleh focus management antar-route di EmrShell).
+  useEffect(() => {
+    if (firstStepRender.current) {
+      firstStepRender.current = false;
+      return;
+    }
+    stepHeadingRef.current?.focus();
+  }, [currentStep]);
+
+  // Validasi gagal: fokus ke field error pertama (setelah DOM error ter-render).
+  useEffect(() => {
+    if (!focusFirstErrorRef.current) return;
+    focusFirstErrorRef.current = false;
+    document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [errors]);
 
   const updateField = useCallback(<K extends keyof CreatePersonDraft>(key: K, value: CreatePersonDraft[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -149,28 +201,46 @@ function WizardForm({
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const valid = Object.keys(newErrors).length === 0;
+    if (!valid) focusFirstErrorRef.current = true;
+    return valid;
   };
 
   const checkDuplicate = async () => {
     if (!formData.identifierValue) return;
-    try {
-      const result = await patientService.duplicateCheck({
-        identifierType: formData.identifierType,
-        identifierValue: formData.identifierValue,
-        fullName: formData.fullName,
-      });
-      setDuplicateResult(result);
-      if (result.severity === "BLOCK") {
-        setShowDuplicateModal(true);
+    setCheckingDuplicate(true);
+    const task = (async () => {
+      try {
+        const result = await patientService.duplicateCheck({
+          identifierType: formData.identifierType,
+          identifierValue: formData.identifierValue,
+          fullName: formData.fullName,
+        });
+        duplicateResultRef.current = result;
+        setDuplicateResult(result);
+        if (result.severity === "BLOCK") {
+          setShowDuplicateModal(true);
+        }
+      } catch {
+        // silently fail
+      } finally {
+        setCheckingDuplicate(false);
+        duplicateCheckRef.current = null;
       }
-    } catch {
-      // silently fail
-    }
+    })();
+    duplicateCheckRef.current = task;
+    await task;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!validateStep(currentStep)) return;
+    // Cek duplikat (async) mungkin masih berjalan saat pengguna menekan Lanjut.
+    // Tunggu selesai alih-alih maju dengan hasil yang belum diketahui.
+    if (duplicateCheckRef.current) await duplicateCheckRef.current;
+    if (duplicateResultRef.current?.severity === "BLOCK") {
+      setShowDuplicateModal(true);
+      return;
+    }
     const nextStep = Math.min(currentStep + 1, 5);
     setCurrentStep(nextStep);
     save(formData, nextStep);
@@ -359,6 +429,9 @@ function WizardForm({
     );
   }
 
+  // Ringkasan error untuk role="alert" (duplikat pesan dibuang, urutan stabil).
+  const errorSummary = Array.from(new Set(Object.values(errors).filter(Boolean)));
+
   const filteredOrgUnits = ORG_UNITS.filter(
     (ou) => !formData.organizationId || ou.organizationId === formData.organizationId
   );
@@ -385,13 +458,19 @@ function WizardForm({
             const leftActive = currentStep >= s.id;
             const rightActive = currentStep > s.id;
             return (
-              <li key={s.id} className="flex min-w-0 flex-1 flex-col items-center">
+              <li
+                key={s.id}
+                className="flex min-w-0 flex-1 flex-col items-center"
+                data-step={s.id}
+                aria-current={isActive ? "step" : undefined}
+              >
                 <div className="flex w-full items-center">
                   <span
                     aria-hidden="true"
                     className={`h-0.5 flex-1 ${index === 0 ? "bg-transparent" : leftActive ? "bg-primary-600" : "bg-border"}`}
                   />
                   <span
+                    data-step={s.id}
                     className={`mx-1 flex size-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors sm:mx-2 sm:size-10 ${
                       isCompleted
                         ? "border-primary-600 bg-primary-600 text-primary-foreground"
@@ -399,7 +478,6 @@ function WizardForm({
                           ? "border-primary-600 bg-card text-primary-600"
                           : "border-border bg-card text-muted-foreground"
                     }`}
-                    aria-current={isActive ? "step" : undefined}
                   >
                     {isCompleted ? <Check className="size-4" aria-hidden="true" /> : <Icon className="size-4" aria-hidden="true" />}
                   </span>
@@ -419,7 +497,15 @@ function WizardForm({
             );
           })}
         </ol>
-        <p className="mt-2 text-center text-xs text-muted-foreground sm:hidden" aria-live="polite">
+        {/* Counter langkah tersedia untuk SEMUA breakpoint: terlihat di mobile,
+            sr-only di desktop (tetap dibaca screen reader & diumumkan saat
+            langkah berpindah). Sebelumnya `sm:hidden` membuatnya hilang sama
+            sekali dari accessibility tree desktop. */}
+        <p
+          className="mt-2 text-center text-xs text-muted-foreground sm:sr-only"
+          aria-live="polite"
+          data-step-counter={`${currentStep}/${STEPS.length}`}
+        >
           Langkah {currentStep} dari {STEPS.length}:{" "}
           <span className="font-medium text-primary-700">
             {STEPS.find((s) => s.id === currentStep)?.label}
@@ -435,9 +521,27 @@ function WizardForm({
       )}
 
       <Card className="p-6">
+        {/* Ringkasan error validasi: satu titik pengumuman (role="alert") supaya
+            screen reader langsung tahu ada yang harus diperbaiki, sementara
+            fokus dipindahkan ke field error pertama oleh effect di atas. */}
+        {errorSummary.length > 0 && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl bg-danger-50 p-3 text-sm text-danger-700"
+          >
+            <p className="font-medium">
+              {errorSummary.length} isian belum valid. Perbaiki sebelum melanjutkan:
+            </p>
+            <ul className="mt-1 list-inside list-disc space-y-0.5">
+              {errorSummary.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {currentStep === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Identitas Pekerja</h2>
+            <StepHeading headingRef={stepHeadingRef}>Identitas Pekerja</StepHeading>
             <Input
               label="Nama Lengkap"
               value={formData.fullName}
@@ -514,7 +618,7 @@ function WizardForm({
 
         {currentStep === 2 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Penempatan Pekerja</h2>
+            <StepHeading headingRef={stepHeadingRef}>Penempatan Pekerja</StepHeading>
             <NativeSelect
               label="Organization"
               value={formData.organizationId}
@@ -568,7 +672,7 @@ function WizardForm({
 
         {currentStep === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Kontak Pekerja</h2>
+            <StepHeading headingRef={stepHeadingRef}>Kontak Pekerja</StepHeading>
             <Input
               label="Email Pekerja"
               type="email"
@@ -620,7 +724,7 @@ function WizardForm({
         {currentStep === 4 && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Dokumen Pendukung</h2>
+              <StepHeading headingRef={stepHeadingRef}>Dokumen Pendukung</StepHeading>
               <p className="mt-1 text-sm text-muted-foreground">
                 Opsional — berkas pendukung (mis. KTP, ijazah, hasil MCU) dapat ditambahkan sekarang.
                 Anda tetap dapat melanjutkan tanpa dokumen.
@@ -718,7 +822,7 @@ function WizardForm({
 
         {currentStep === 5 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Consent & Review</h2>
+            <StepHeading headingRef={stepHeadingRef}>Consent & Review</StepHeading>
 
             <div className="rounded-xl border border-border bg-muted p-4">
               <h3 className="mb-3 text-sm font-medium text-text-secondary">Ringkasan Data</h3>
@@ -758,13 +862,15 @@ function WizardForm({
                 checked={acknowledged}
                 onChange={(e) => setAcknowledged(e.target.checked)}
                 className="mt-0.5 size-4 rounded border-input text-primary-600 focus:ring-ring"
+                aria-invalid={errors.acknowledged ? true : undefined}
+                aria-describedby={errors.acknowledged ? "acknowledge-error" : undefined}
               />
               <label htmlFor="acknowledge" className="text-sm text-text-secondary">
                 Saya sudah memeriksa data dan memahami bahwa consent link akan dikirim ke email pekerja.
               </label>
             </div>
             {errors.acknowledged && (
-              <p className="text-sm text-danger-600">{errors.acknowledged}</p>
+              <p id="acknowledge-error" className="text-sm text-danger-600">{errors.acknowledged}</p>
             )}
 
             {errors.submit && (
@@ -790,7 +896,12 @@ function WizardForm({
               Simpan draft
             </Button>
             {currentStep < 5 ? (
-              <Button onClick={handleNext} className="w-full justify-center sm:w-auto">
+              <Button
+                onClick={() => void handleNext()}
+                loading={checkingDuplicate}
+                aria-busy={checkingDuplicate || undefined}
+                className="w-full justify-center sm:w-auto"
+              >
                 Lanjut
                 <ChevronRight className="size-4" />
               </Button>

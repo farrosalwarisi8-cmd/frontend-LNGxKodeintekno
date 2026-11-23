@@ -8,13 +8,13 @@
  * encounter mengembalikan sukses.
  *
  * AKUN UJI & ROLE — baca sebelum mengubah permission di `lib/rbac.ts`:
- *   - Sesi 1 `dr.klinik` (DOCTOR_CLINIC → role `dokter-klinik`), KB-01..KB-13:
+ *   - Sesi 1 `dr.klinik` (DOCTOR_CLINIC → role `dokter-klinik`), KB-01..KB-13 + KB-21:
  *     menu "Rekam Medis" disyaratkan `view-clinical-notes`
  *     (`src/lib/navigation.ts`) dan route `/medical-records` dijaga permission
  *     yang sama (`components/route-guard.tsx`). Hanya role klinis yang
  *     memegangnya; SYSTEM_ADMIN sengaja TIDAK dipakai karena A1 mencabut akses
  *     data klinis dari admin — menu itu memang tidak boleh tampil untuknya.
- *   - Sesi 2 `hr.pic` (HR_ADMIN → role `hr`), KB-14..KB-20: tabel `/people` dan
+ *   - Sesi 2 `hr.pic` (HR_ADMIN → role `hr`), KB-14..KB-20 + KB-22..KB-23: tabel `/people` dan
  *     wizard `/people/new` membutuhkan `manage-employees`, yang tidak dimiliki
  *     role klinis. Tidak ada satu role pun yang memegang kedua izin itu, jadi
  *     alur dipecah per sesi sesuai peta permission (ROLE_MAPPING.md).
@@ -296,6 +296,24 @@ async function loginWithKeyboard(page, account) {
   return false;
 }
 
+/**
+ * Kembalikan titik awal urutan fokus ke awal dokumen (stop pertama = skip link).
+ *
+ * Fokus terprogram pada elemen lain (mis. <h1> halaman tujuan setelah navigasi
+ * client-side) membuat Tab berikutnya melanjutkan dari elemen tersebut. Body
+ * diberi tabindex sementara agar benar-benar dapat menerima fokus, lalu dilepas
+ * lagi supaya tidak menambah stop Tab buatan.
+ */
+async function resetFocusToDocumentStart(page) {
+  await page.evaluate(() => {
+    const el = document.activeElement;
+    if (el && el !== document.body && typeof el.blur === "function") el.blur();
+    document.body.setAttribute("tabindex", "-1");
+    document.body.focus();
+    document.body.removeAttribute("tabindex");
+  });
+}
+
 const active = (page) =>
   page.evaluate(() => {
     const el = document.activeElement;
@@ -327,7 +345,7 @@ async function main() {
 async function run(browser) {
   const pageErrors = [];
   console.log(
-    `Akun uji: ${ACCOUNTS.klinis.label} (KB-01..KB-13), ${ACCOUNTS.registrasi.label} (KB-14..KB-20)`
+    `Akun uji: ${ACCOUNTS.klinis.label} (KB-01..KB-13 + KB-21), ${ACCOUNTS.registrasi.label} (KB-14..KB-20 + KB-22..KB-23)`
   );
 
   // ==========================================================================
@@ -395,7 +413,12 @@ async function run(browser) {
     if (!navReady) throw new Error("Shell internal dengan navigasi utama tidak tampil setelah login.");
 
     // ---- 2) Skip link ----
-    await page.evaluate(() => document.body.focus?.());
+    // Reset titik awal fokus ke awal dokumen. `document.body.focus()` saja tidak
+    // cukup bila elemen lain sedang terfokus (mis. <h1> tujuan setelah navigasi
+    // client-side — lihat components/route-focus.tsx): body tanpa tabindex tidak
+    // dapat menerima fokus, sehingga Tab berikutnya melanjutkan dari elemen itu,
+    // bukan dari stop pertama dokumen.
+    await resetFocusToDocumentStart(page);
     await page.keyboard.press("Tab");
     const firstStop = await active(page);
     check(
@@ -453,7 +476,7 @@ async function run(browser) {
       "KB-06",
       "Fokus ke link 'Rekam Medis' + Enter membuka halaman dan konten tujuan tampil",
       rekamMedisVisible && linkFocused && navigated && destinationReady,
-      `link=${rekamMedisVisible} fokus=${linkFocused} url=${page.url()} konten=${destinationReady} fokusDiMain=${focusInMain} (belum ada focus management antar-route — dicatat terpisah, bukan kegagalan langkah ini)`
+      `link=${rekamMedisVisible} fokus=${linkFocused} url=${page.url()} konten=${destinationReady} fokusDiMain=${focusInMain} (focus management antar-route diperiksa terpisah di KB-21)`
     );
     if (!rekamMedisVisible) {
       throw new Error(
@@ -461,6 +484,38 @@ async function run(browser) {
           "(role akun uji tidak berhak `view-clinical-notes`, atau konfigurasi navigasi berubah)."
       );
     }
+
+    // ---- 3b) Focus management antar-route (components/route-focus.tsx) ----
+    // Setelah navigasi client-side, fokus harus berada di konten tujuan
+    // (<h1> halaman atau <main id="main-content">), bukan tertinggal di link
+    // sidebar yang sudah tidak relevan.
+    const routeFocusOk = await page
+      .waitForFunction(
+        () => {
+          const main = document.getElementById("main-content");
+          const el = document.activeElement;
+          if (!main || !el || !main.contains(el)) return false;
+          return el.id === "main-content" || el.tagName === "H1";
+        },
+        undefined,
+        { timeout: 5000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    const routeFocusDetail = await page.evaluate(() => {
+      const el = document.activeElement;
+      return {
+        tag: el?.tagName ?? null,
+        id: el?.id || null,
+        text: (el?.textContent || "").trim().slice(0, 60),
+      };
+    });
+    check(
+      "KB-21",
+      "Navigasi antar-route memindahkan fokus ke konten tujuan (<h1> atau <main>)",
+      routeFocusOk,
+      `focus=${routeFocusDetail.tag}#${routeFocusDetail.id ?? "-"} "${routeFocusDetail.text}" url=${page.url()}`
+    );
 
     // ---- 4) Buka modal SOAP dengan keyboard ----
     await page.waitForTimeout(1000);
@@ -639,6 +694,124 @@ async function run(browser) {
       label: 'field "Employee ID" pada wizard registrasi',
       hint: "Route /people/* dijaga permission manage-employees (components/route-guard.tsx); pastikan akun uji sesi 2 memang berhak.",
     });
+    // Penanda langkah dibaca dari SEMANTIK stepper, bukan dari kelas CSS atau
+    // teks yang keberadaannya bergantung breakpoint:
+    //   <li data-step="N" aria-current="step"> di dalam
+    //   <ol aria-label="Langkah registrasi">.
+    // (Versi lama mencari `div.rounded-full.border-2` — elemennya <span>, dan
+    // counter "Langkah X dari Y" dulu `sm:hidden` sehingga tidak ada di desktop.
+    // Akibatnya step selalu "" walau wizard benar-benar maju.)
+    const readStep = () =>
+      page2.evaluate(() => {
+        const steps = Array.from(
+          document.querySelectorAll('ol[aria-label="Langkah registrasi"] > li[data-step]')
+        );
+        if (steps.length === 0) return "";
+        const active = steps.find((el) => el.getAttribute("aria-current") === "step");
+        if (!active) return "";
+        const number = active.getAttribute("data-step");
+        const label = active.querySelector(":scope > span")?.textContent?.trim() ?? "";
+        return `step ${number}/${steps.length}${label ? ` — ${label}` : ""}`;
+      });
+
+    /** Tunggu sampai stepper menandai langkah `n` aktif (bukan sleep tetap). */
+    const waitForStep = (n, timeout = 5000) =>
+      page2
+        .waitForFunction(
+          (expected) =>
+            document
+              .querySelector(`ol[aria-label="Langkah registrasi"] > li[data-step="${expected}"]`)
+              ?.getAttribute("aria-current") === "step",
+          n,
+          { timeout }
+        )
+        .then(() => true)
+        .catch(() => false);
+
+    /** Artefak diagnosis wizard: screenshot + HTML stepper + state fokus/error. */
+    const dumpWizard = async (tag) => {
+      const dir = path.join(ARTIFACT_DIR, "kb19");
+      const png = path.join(dir, `${tag}.png`);
+      await page2.screenshot({ path: png, fullPage: true }).catch(() => {});
+      const state = await page2
+        .evaluate(() => ({
+          stepperHtml:
+            document.querySelector('ol[aria-label="Langkah registrasi"]')?.outerHTML ?? null,
+          counter: document.querySelector("[data-step-counter]")?.getAttribute("data-step-counter") ?? null,
+          panelHeading: document.querySelector("h2")?.textContent?.trim() ?? null,
+          invalidFields: document.querySelectorAll('[aria-invalid="true"]').length,
+          alerts: Array.from(document.querySelectorAll('[role="alert"]')).map((el) =>
+            (el.textContent || "").trim().slice(0, 160)
+          ),
+          focusTag: document.activeElement?.tagName ?? null,
+          focusText: (document.activeElement?.textContent || "").trim().slice(0, 60),
+        }))
+        .catch(() => ({}));
+      writeArtifact(path.join(dir, `${tag}.json`), JSON.stringify(state, null, 2));
+      console.log(`  [wizard:${tag}] ${JSON.stringify(state)}`);
+      return state;
+    };
+
+    const stepStart = await readStep();
+
+    // ---- 7a) Jalur gagal validasi: error harus TERLIHAT & TERFOKUS ----
+    // Langkah 1 masih kosong: menekan "Lanjut" tidak boleh berpindah langkah
+    // tanpa penjelasan. App menampilkan ringkasan role="alert", menandai field
+    // dengan aria-invalid/aria-describedby, dan memfokuskan field error pertama.
+    const emptyNext = page2.getByRole("button", { name: /^Lanjut$/ }).first();
+    await emptyNext.waitFor({ state: "visible", timeout: 10000 }).catch(() => {});
+    await emptyNext.press("Enter").catch(() => {});
+    const validationShown = await page2
+      .waitForFunction(() => document.querySelectorAll('[aria-invalid="true"]').length > 0, undefined, {
+        timeout: 5000,
+      })
+      .then(() => true)
+      .catch(() => false);
+    const validationState = await page2.evaluate(() => {
+      // Field wajib langkah 1 yang benar-benar kosong pada draft baru.
+      // ("Jenis Kelamin" sudah punya nilai default MALE di EMPTY_DRAFT.)
+      const expected = ["Nama Lengkap", "Nomor Identifier", "Tanggal Lahir", "Employee ID"];
+      const fields = expected.map((id) => {
+        const el = document.getElementById(id);
+        const describedby = el?.getAttribute("aria-describedby") ?? null;
+        return {
+          id,
+          invalid: el?.getAttribute("aria-invalid") === "true",
+          describedby,
+          describedbyExists: Boolean(describedby && document.getElementById(describedby)),
+        };
+      });
+      const firstInvalid = document.querySelector('[aria-invalid="true"]');
+      const alert = document.querySelector('[role="alert"]');
+      return {
+        alertText: (alert?.textContent || "").trim().slice(0, 200),
+        fields,
+        allExpectedInvalid: fields.every((f) => f.invalid && f.describedbyExists),
+        invalidCount: document.querySelectorAll('[aria-invalid="true"]').length,
+        firstInvalidId: firstInvalid?.id ?? null,
+        focusIsFirstInvalid: Boolean(firstInvalid && document.activeElement === firstInvalid),
+        focusId: document.activeElement?.id ?? null,
+      };
+    });
+    const stepAfterInvalid = await readStep();
+    check(
+      "KB-23",
+      "Wizard: Lanjut dengan isian kosong menampilkan error (role=alert) & fokus ke field error pertama",
+      validationShown &&
+        Boolean(validationState.alertText) &&
+        validationState.allExpectedInvalid &&
+        validationState.firstInvalidId === "Nama Lengkap" &&
+        validationState.focusIsFirstInvalid &&
+        stepAfterInvalid === stepStart,
+      `alert="${validationState.alertText}" invalid=${validationState.invalidCount} ` +
+        `fokus=${validationState.focusId} fieldError=${validationState.fields
+          .map((f) => `${f.id}:${f.invalid ? "invalid" : "OK"}${f.describedbyExists ? "+desc" : ""}`)
+          .join(", ")} step="${stepAfterInvalid}"`
+    );
+    if (!validationState.focusIsFirstInvalid || !validationState.alertText) {
+      await dumpWizard("kb23-validation-failed");
+    }
+
     await empId.focus().catch(() => {});
     await page2.keyboard.type("EMP-9999");
     const empValue = await empId.inputValue().catch(() => "<err>");
@@ -648,21 +821,6 @@ async function run(browser) {
       empVisible && empValue === "EMP-9999",
       `visible=${empVisible} value="${empValue}"`
     );
-
-    // Penanda langkah: teks "Langkah X dari Y" hanya tampil di mobile
-    // (`sm:hidden`), jadi yang dibaca di sini adalah indikator langkah aktif
-    // (`aria-current="step"`) + judul panel langkah yang sedang tampil.
-    const readStep = () =>
-      page2.evaluate(() => {
-        const counter = document.body.innerText.match(/Langkah\s+(\d+)\s+dari\s+(\d+)/)?.[0]?.trim();
-        if (counter) return counter;
-        const circles = Array.from(document.querySelectorAll("div.rounded-full.border-2"));
-        const idx = circles.findIndex((el) => el.getAttribute("aria-current") === "step");
-        // Teks label langkah ada di sibling berikutnya dari lingkaran indikator.
-        const heading = circles[idx]?.nextElementSibling?.textContent?.trim() ?? "";
-        return idx >= 0 ? `step ${idx + 1}/${circles.length}${heading ? ` — ${heading}` : ""}` : "";
-      });
-    const stepStart = await readStep();
 
     // Lengkapi seluruh field wajib langkah 1 HANYA dengan keyboard:
     // ketik teks/angka, pindah dengan Tab, ubah <select> native dengan ArrowDown.
@@ -713,26 +871,61 @@ async function run(browser) {
       }));
       console.log(`  (tombol Lanjut tidak terlihat — dialog="${blocking.dialog}" alert="${blocking.alerts}")`);
     }
-    if (nextVisible) await nextBtn.press("Enter");
-    await page2.waitForTimeout(900);
+    // Tombol disabled + aria-busy selama cek duplikat berjalan; tunggu siap
+    // dulu supaya Enter tidak ditelan tombol yang sedang memproses.
+    const nextReady = await page2
+      .waitForFunction(
+        () => {
+          const btn = Array.from(document.querySelectorAll("button")).find((b) =>
+            /^Lanjut$/.test((b.textContent || "").trim())
+          );
+          return Boolean(btn && !btn.disabled && btn.getAttribute("aria-busy") !== "true");
+        },
+        undefined,
+        { timeout: 10000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (nextVisible && nextReady) await nextBtn.press("Enter");
+    // Tunggu perpindahan langkah NYATA (5s > delay cek duplikat), bukan sleep.
+    const advanced = await waitForStep(2, 5000);
     const stepAfter = await readStep();
     const wizardState = await page2.evaluate(() => ({
       alerts: document.querySelectorAll('[role="alert"]').length,
       invalidFields: document.querySelectorAll('[aria-invalid="true"]').length,
       focusTag: document.activeElement?.tagName ?? null,
+      focusText: (document.activeElement?.textContent || "").trim().slice(0, 60),
+      counter: document.querySelector("[data-step-counter]")?.getAttribute("data-step-counter") ?? null,
+      liveRegion: document.querySelector("[data-step-counter]")?.getAttribute("aria-live") ?? null,
+      panelHeading: document.querySelector("h2")?.textContent?.trim() ?? null,
     }));
 
     check(
       "KB-19",
       "Wizard: Enter pada 'Lanjut' memajukan ke langkah berikutnya",
-      nextVisible && stepAfter !== stepFilled && /^step 2\//.test(stepAfter),
-      `step="${stepFilled}"->"${stepAfter}" (mulai "${stepStart}") invalid=${wizardState.invalidFields} alerts=${wizardState.alerts}`
+      nextVisible && nextReady && advanced && stepAfter !== stepFilled && /^step 2\//.test(stepAfter),
+      `step="${stepFilled}"->"${stepAfter}" (mulai "${stepStart}") siap=${nextReady} invalid=${wizardState.invalidFields} alerts=${wizardState.alerts}`
     );
+    if (!advanced || !/^step 2\//.test(stepAfter)) {
+      await dumpWizard("kb19-step-did-not-advance");
+    }
     check(
       "KB-20",
       "Wizard: fokus tetap di dalam dokumen (tidak ada keyboard trap)",
       wizardState.focusTag !== "BODY" && wizardState.focusTag !== "HTML",
       `focus=${wizardState.focusTag}`
+    );
+    // Langkah baru = konteks baru: fokus ke heading langkah, dan counter
+    // "Langkah X dari 5" tersedia sebagai live region di semua breakpoint.
+    check(
+      "KB-22",
+      "Wizard: fokus pindah ke heading langkah baru & langkah diumumkan (aria-live)",
+      wizardState.focusTag === "H2" &&
+        wizardState.focusText === wizardState.panelHeading &&
+        wizardState.counter === "2/5" &&
+        wizardState.liveRegion === "polite",
+      `focus=${wizardState.focusTag} "${wizardState.focusText}" heading="${wizardState.panelHeading}" ` +
+        `counter=${wizardState.counter} live=${wizardState.liveRegion}`
     );
   } catch (e) {
     console.error(`Sesi ${ACCOUNTS.registrasi.label} berhenti:`, e?.message ?? e);
