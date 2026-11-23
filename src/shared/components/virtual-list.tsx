@@ -29,6 +29,32 @@ interface VirtualListProps<Item> {
   "aria-label"?: string;
 }
 
+/**
+ * Hitung rentang item yang perlu dirender.
+ *
+ * Fungsi murni supaya batas jendela bisa diuji tanpa DOM; komponen memakai
+ * fungsi yang sama sehingga test tidak menguji logika yang berbeda.
+ */
+export function getVisibleRange({
+  scrollTop,
+  containerHeight,
+  itemHeight,
+  itemCount,
+  overscan = 3,
+}: {
+  scrollTop: number;
+  containerHeight: number;
+  itemHeight: number;
+  itemCount: number;
+  overscan?: number;
+}): { start: number; end: number } {
+  if (itemCount <= 0 || itemHeight <= 0) return { start: 0, end: 0 };
+  const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+  const visibleCount = Math.ceil(containerHeight / itemHeight) + 2 * overscan;
+  const end = Math.min(itemCount, start + Math.max(visibleCount, 1));
+  return { start, end };
+}
+
 export function VirtualList<Item>({
   items,
   itemHeight = 48,
@@ -42,11 +68,18 @@ export function VirtualList<Item>({
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
   const rafRef = useRef<number | null>(null);
+  // Nilai scroll terakhir dibaca SINKRON dari event. Callback rAF tidak boleh
+  // menyentuh `e.currentTarget` karena React mengosongkan event (null) setelah
+  // handler selesai — itulah penyebab "Cannot read properties of null".
+  const latestScrollTopRef = useRef(0);
 
   const onScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    latestScrollTopRef.current = e.currentTarget.scrollTop;
+    // Satu rAF aktif saja: frame berikutnya membaca nilai terbaru.
+    if (rafRef.current !== null) return;
     rafRef.current = requestAnimationFrame(() => {
-      setScrollTop(e.currentTarget.scrollTop);
+      rafRef.current = null;
+      setScrollTop(latestScrollTopRef.current);
     });
   }, []);
 
@@ -58,8 +91,18 @@ export function VirtualList<Item>({
     const onResize = () => measure();
     window.addEventListener("resize", onResize);
     return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  // Batalkan frame yang masih tertunda saat unmount agar tidak ada setState
+  // setelah komponen dilepas. Juga saat daftar berganti.
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, []);
 
@@ -69,12 +112,17 @@ export function VirtualList<Item>({
   useEffect(() => {
     const el = containerRef.current;
     if (el) el.scrollTop = 0;
+    latestScrollTopRef.current = 0;
   }, [items]);
 
   const totalHeight = items.length * itemHeight;
-  const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
-  const visibleCount = Math.ceil(containerHeight / itemHeight) + 2 * overscan;
-  const end = Math.min(items.length, start + visibleCount);
+  const { start, end } = getVisibleRange({
+    scrollTop,
+    containerHeight,
+    itemHeight,
+    itemCount: items.length,
+    overscan,
+  });
 
   const containerStyle: CSSProperties = {
     position: "relative",
@@ -105,7 +153,7 @@ export function VirtualList<Item>({
             boxSizing: "border-box",
           };
           return (
-            <div key={String(index)} style={itemStyle}>
+            <div key={index} style={itemStyle}>
               {renderItem(item, index, itemStyle)}
             </div>
           );

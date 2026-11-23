@@ -31,7 +31,8 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
-    include: ["src/**/__tests__/**/*.test.ts"],
+    // `.test.tsx` dipakai untuk komponen yang butuh DOM (mis. VirtualList).
+    include: ["src/**/__tests__/**/*.test.{ts,tsx}"],
     env: {
       NEXT_PUBLIC_API_URL: TEST_API_URL,
       NODE_ENV: "test",
