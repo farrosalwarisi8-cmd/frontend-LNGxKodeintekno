@@ -18,7 +18,12 @@ import {
   WifiOff,
 } from "lucide-react";
 import type { CreatePersonDraft, IdentifierType, Sex, CreatedPersonResult, DuplicateCheckResult } from "@/features/people/api/people.types";
-import { apiUrl } from "@/lib/env";
+import {
+  MAX_DOCUMENT_BYTES,
+  formatDocumentSize,
+  uploadPersonDocument,
+  type UploadedPersonDocument,
+} from "@/features/people/api/document-upload";
 import { patientService } from "@/lib/services/patient.service";
 import { useDraft, EMPTY_DRAFT } from "@/features/people/hooks/use-draft";
 import { useOnlineStatus } from "@/features/people/hooks/use-online-status";
@@ -27,6 +32,7 @@ import { toastError } from "@/lib/use-toast";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { ORGANIZATIONS, ORG_UNITS, SITES, JOB_TASKS } from "@/features/people/fixtures/people.fixtures";
@@ -42,7 +48,6 @@ import {
   validateConsentType,
   validateConsentVersion,
 } from "@/shared/utils/validation";
-import { formatDate } from "@/shared/utils/date";
 import { EmailPreview } from "@/features/people/components/email-preview";
 
 const STEPS = [
@@ -53,18 +58,42 @@ const STEPS = [
   { id: 5, label: "Consent & Review", icon: FileCheck2 },
 ];
 
-export function RegistrationWizard() {
+interface WizardFormProps {
+  initialDraft: CreatePersonDraft | null;
+  initialStep: number;
+  savedAt: string | null;
+  hasSavedDraft: boolean;
+  save: (data: CreatePersonDraft, step: number) => void;
+  clear: () => void;
+}
+
+/**
+ * Form wizard — menerima nilai awal draft sebagai prop sehingga state form
+ * sudah benar sejak render pertama (tidak perlu setState di dalam effect).
+ */
+function WizardForm({
+  initialDraft,
+  initialStep,
+  savedAt,
+  hasSavedDraft,
+  save,
+  clear,
+}: WizardFormProps) {
   const router = useRouter();
   const isOnline = useOnlineStatus();
-  const { draft, step, savedAt, hasSavedDraft, save, clear } = useDraft();
 
-  const [currentStep, setCurrentStep] = useState(step);
-  const [formData, setFormData] = useState<CreatePersonDraft>(() => draft ?? EMPTY_DRAFT);
+  const [currentStep, setCurrentStep] = useState(() =>
+    Math.min(Math.max(initialStep, 1), STEPS.length)
+  );
+  const [formData, setFormData] = useState<CreatePersonDraft>(() => initialDraft ?? EMPTY_DRAFT);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [duplicateResult, setDuplicateResult] = useState<DuplicateCheckResult | null>(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ id: string; name: string; size: number; tamperCheck: string }[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedPersonDocument[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
+  const [dragActive, setDragActive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<CreatedPersonResult | null>(null);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
@@ -209,29 +238,46 @@ export function RegistrationWizard() {
     setResending(false);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+  /** Unggah satu atau beberapa berkas; setiap kegagalan dilaporkan spesifik. */
+  const uploadFiles = async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    setUploadError("");
     setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const token = localStorage.getItem("kodein_token");
-        const res = await fetch(apiUrl("/documents/upload"), {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          body: formData,
+    setUploadProgress({ done: 0, total: list.length });
+
+    const failures: string[] = [];
+    for (const file of list) {
+      try {
+        const uploaded = await uploadPersonDocument(file);
+        setUploadedFiles((prev) => {
+          const duplicate = prev.some(
+            (f) => f.name === uploaded.name && f.size === uploaded.size && f.storage === uploaded.storage
+          );
+          return duplicate ? prev : [...prev, uploaded];
         });
-        if (!res.ok) throw new Error("Upload dokumen gagal.");
-        const result = await res.json();
-        setUploadedFiles((prev) => [...prev, { id: result.documentId, name: result.name, size: result.size, tamperCheck: result.tamperCheck }]);
+      } catch (err) {
+        failures.push(err instanceof Error ? err.message : `"${file.name}" gagal diunggah.`);
+      } finally {
+        setUploadProgress((prev) => ({ ...prev, done: prev.done + 1 }));
       }
-    } catch (err) {
-      setErrors({ upload: err instanceof Error ? err.message : "Upload gagal." });
-    } finally {
-      setUploading(false);
     }
+
+    if (failures.length > 0) setUploadError(failures.join(" "));
+    setUploading(false);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) void uploadFiles(e.target.files);
+    // Reset agar berkas yang sama dapat dipilih ulang setelah dihapus.
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragActive(false);
+    if (uploading || !isOnline) return;
+    if (e.dataTransfer.files?.length) void uploadFiles(e.dataTransfer.files);
   };
 
   const removeFile = (id: string) => {
@@ -328,16 +374,25 @@ export function RegistrationWizard() {
       </div>
 
       <div className="mb-6">
-        <div className="flex items-start justify-between">
+        {/* Grid 5 kolom: garis penghubung selalu sejajar dengan pusat lingkaran,
+            label punya lebar penuh sendiri sehingga "Consent & Review" tidak
+            mendorong garis atau memotong label langkah lain. */}
+        <ol className="flex items-start" aria-label="Langkah registrasi">
           {STEPS.map((s, index) => {
             const Icon = s.icon;
             const isActive = currentStep === s.id;
             const isCompleted = currentStep > s.id;
+            const leftActive = currentStep >= s.id;
+            const rightActive = currentStep > s.id;
             return (
-              <div key={s.id} className="flex min-w-0 flex-1 items-start">
-                <div className="flex min-w-0 flex-col items-center">
-                  <div
-                    className={`flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors sm:size-10 ${
+              <li key={s.id} className="flex min-w-0 flex-1 flex-col items-center">
+                <div className="flex w-full items-center">
+                  <span
+                    aria-hidden="true"
+                    className={`h-0.5 flex-1 ${index === 0 ? "bg-transparent" : leftActive ? "bg-primary-600" : "bg-border"}`}
+                  />
+                  <span
+                    className={`mx-1 flex size-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors sm:mx-2 sm:size-10 ${
                       isCompleted
                         ? "border-primary-600 bg-primary-600 text-primary-foreground"
                         : isActive
@@ -346,30 +401,29 @@ export function RegistrationWizard() {
                     }`}
                     aria-current={isActive ? "step" : undefined}
                   >
-                    {isCompleted ? <Check className="size-4" /> : <Icon className="size-4" />}
-                  </div>
-                  <span
-                    className={`mt-1 hidden max-w-24 text-center text-xs font-medium leading-tight sm:block ${
-                      isActive ? "text-primary-600" : "text-muted-foreground"
-                    }`}
-                  >
-                    {s.label}
+                    {isCompleted ? <Check className="size-4" aria-hidden="true" /> : <Icon className="size-4" aria-hidden="true" />}
                   </span>
-                </div>
-                {index < STEPS.length - 1 && (
-                  <div
-                    className={`mx-1.5 mt-4 h-0.5 min-w-2 flex-1 sm:mx-3 sm:mt-5 ${
-                      currentStep > s.id ? "bg-primary-600" : "bg-border"
-                    }`}
+                  <span
+                    aria-hidden="true"
+                    className={`h-0.5 flex-1 ${index === STEPS.length - 1 ? "bg-transparent" : rightActive ? "bg-primary-600" : "bg-border"}`}
                   />
-                )}
-              </div>
+                </div>
+                <span
+                  className={`mt-2 min-h-8 w-full px-0.5 text-center text-[10px] font-medium leading-tight sm:text-xs ${
+                    isActive ? "text-primary-700" : "text-muted-foreground"
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </li>
             );
           })}
-        </div>
-        <p className="mt-2 text-center text-xs font-medium text-muted-foreground sm:hidden">
-          Langkah {currentStep} dari {STEPS.length} ·{" "}
-          <span className="text-primary-700">{STEPS.find((s) => s.id === currentStep)?.label}</span>
+        </ol>
+        <p className="mt-2 text-center text-xs text-muted-foreground sm:hidden" aria-live="polite">
+          Langkah {currentStep} dari {STEPS.length}:{" "}
+          <span className="font-medium text-primary-700">
+            {STEPS.find((s) => s.id === currentStep)?.label}
+          </span>
         </p>
       </div>
 
@@ -565,11 +619,32 @@ export function RegistrationWizard() {
 
         {currentStep === 4 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Dokumen Pendukung</h2>
-            <div className="rounded-xl border-2 border-dashed border-border bg-muted/50 p-8 text-center">
-              <Upload className="mx-auto mb-3 size-8 text-muted-foreground" />
-              <p className="text-sm font-medium text-text-secondary">Upload dokumen pendukung</p>
-              <p className="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG · Maksimum 5 MB per file</p>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Dokumen Pendukung</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Opsional — berkas pendukung (mis. KTP, ijazah, hasil MCU) dapat ditambahkan sekarang.
+                Anda tetap dapat melanjutkan tanpa dokumen.
+              </p>
+            </div>
+
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!uploading && isOnline) setDragActive(true);
+              }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={handleDrop}
+              className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors sm:p-8 ${
+                dragActive ? "border-primary-600 bg-primary-50" : "border-border bg-muted/50"
+              }`}
+            >
+              <Upload className="mx-auto mb-3 size-8 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm font-medium text-text-secondary">
+                Tarik &amp; lepas berkas di sini, atau pilih dari perangkat
+              </p>
+              <p id="upload-help" className="mt-1 text-xs text-muted-foreground">
+                PDF, JPG, atau PNG · maksimum {MAX_DOCUMENT_BYTES / (1024 * 1024)} MB per berkas
+              </p>
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
@@ -578,35 +653,61 @@ export function RegistrationWizard() {
                 className="hidden"
                 id="file-upload"
                 disabled={uploading || !isOnline}
+                aria-describedby="upload-help upload-error"
               />
               <label
                 htmlFor="file-upload"
-                className={`mt-3 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-muted ${(uploading || !isOnline) ? "pointer-events-none opacity-50" : ""}`}
+                className={`mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-muted focus-within:ring-2 focus-within:ring-ring ${
+                  uploading || !isOnline ? "pointer-events-none opacity-50" : ""
+                }`}
               >
-                {uploading ? "Mengupload..." : "Pilih File"}
+                {uploading ? "Mengunggah…" : "Pilih File"}
               </label>
+              {uploading && (
+                <p role="status" aria-live="polite" className="mt-3 text-xs text-muted-foreground">
+                  Mengunggah {uploadProgress.done} dari {uploadProgress.total} berkas…
+                </p>
+              )}
+              {uploadError && (
+                <p
+                  id="upload-error"
+                  role="alert"
+                  className="mt-3 rounded-lg bg-danger-50 px-3 py-2 text-left text-sm text-danger-700"
+                >
+                  {uploadError}
+                </p>
+              )}
             </div>
-            {errors.upload && (
-              <p className="text-sm text-danger-600">{errors.upload}</p>
-            )}
-            {uploadedFiles.length > 0 && (
+
+            {uploadedFiles.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Belum ada dokumen diunggah.</p>
+            ) : (
               <div className="space-y-2">
+                <p className="text-sm font-medium text-text-secondary">
+                  {uploadedFiles.length} berkas terunggah
+                </p>
                 {uploadedFiles.map((file) => (
                   <div key={file.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <FileText className="size-5 shrink-0 text-muted-foreground" />
+                    <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-text-secondary">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                      <p className="text-xs text-muted-foreground">{formatDocumentSize(file.size)}</p>
                     </div>
+                    {file.storage === "LOCAL_DEMO" && (
+                      <Badge variant="outline" title="Backend belum menyediakan endpoint unggah; berkas hanya tercatat di sesi ini.">
+                        Lokal (demo)
+                      </Badge>
+                    )}
                     <Badge variant={file.tamperCheck === "PASSED" ? "success" : "warning"}>
                       {file.tamperCheck}
                     </Badge>
                     <button
+                      type="button"
                       onClick={() => removeFile(file.id)}
-                      className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-text-secondary"
-                      aria-label="Hapus file"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`Hapus ${file.name}`}
                     >
-                      <X className="size-4" />
+                      <X className="size-4" aria-hidden="true" />
                     </button>
                   </div>
                 ))}
@@ -709,8 +810,16 @@ export function RegistrationWizard() {
       </Card>
 
       {hasSavedDraft && savedAt && (
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Draft tersimpan otomatis · {formatDate(savedAt)}
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-3 text-center text-xs text-muted-foreground"
+        >
+          Draft tersimpan ·{" "}
+          {new Date(savedAt).toLocaleString("id-ID", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
         </p>
       )}
 
@@ -739,6 +848,36 @@ export function RegistrationWizard() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+/**
+ * Menunggu draft selesai dibaca dari localStorage, baru merender form dengan
+ * nilai awal draft tersebut. Ini memperbaiki bug "draft tersimpan tetapi form
+ * kembali ke langkah 1" tanpa setState di dalam effect.
+ */
+export function RegistrationWizard() {
+  const draftState = useDraft();
+
+  if (!draftState.ready) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-3" aria-busy="true">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <WizardForm
+      initialDraft={draftState.draft}
+      initialStep={draftState.step}
+      savedAt={draftState.savedAt}
+      hasSavedDraft={draftState.hasSavedDraft}
+      save={draftState.save}
+      clear={draftState.clear}
+    />
   );
 }
 

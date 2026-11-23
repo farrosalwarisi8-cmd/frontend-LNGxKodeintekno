@@ -10,6 +10,8 @@ interface UseDraftResult {
   step: number;
   savedAt: string | null;
   hasSavedDraft: boolean;
+  /** True setelah pembacaan localStorage selesai (draft siap dipakai). */
+  ready: boolean;
   save: (data: CreatePersonDraft, step: number) => void;
   clear: () => void;
 }
@@ -42,6 +44,7 @@ export function useDraft(): UseDraftResult {
   const [step, setStep] = useState(1);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const stored = loadDraft();
@@ -51,6 +54,7 @@ export function useDraft(): UseDraftResult {
       setSavedAt(stored.savedAt);
       setHasSavedDraft(true);
     }
+    setReady(true);
   }, []);
 
   const save = useCallback((data: CreatePersonDraft, currentStep: number) => {
@@ -69,7 +73,7 @@ export function useDraft(): UseDraftResult {
     setHasSavedDraft(false);
   }, []);
 
-  return { draft, step, savedAt, hasSavedDraft, save, clear };
+  return { draft, step, savedAt, hasSavedDraft, ready, save, clear };
 }
 
 export { EMPTY_DRAFT };
