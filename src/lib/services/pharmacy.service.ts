@@ -93,9 +93,50 @@ export interface FefoRecommendation {
  *   - `commit()` : resep selesai didispensasi (selamanya terkunci sesi ini).
  *   - `rollback()`：batal saat gagal, sehingga bisa dicoba ulang.
  */
+/**
+ * Snapshot dispensing yang BERHASIL di sesi ini. Dipakai halaman retur untuk
+ * merekonstruksi riwayat lengkap (pasien, batch, id dispensing backend) ketika
+ * `GET /pharmacy/dispensing/history` belum tersedia.
+ */
+export interface DispenseRecord {
+  /** ID dispensing dari respons backend — dipakai apa adanya saat retur. */
+  dispensingId?: string;
+  dispensedAt: string;
+  prescription?: {
+    id: string;
+    encounter_id?: string | null;
+    status?: string;
+    encounter?: {
+      id?: string;
+      patient_id?: string;
+      patient?: { id?: string; full_name?: string; medical_record_no?: string };
+    } | null;
+    items?: Array<{
+      id: string;
+      medication_id?: string;
+      quantity?: number;
+      medication?: { id?: string; code?: string; generic_name?: string };
+    }>;
+  } | null;
+  dispensingItems: Array<{
+    id: string;
+    stock_batch_id?: string;
+    quantity?: number;
+    stock_batch?: {
+      id?: string;
+      inventory_item_id?: string;
+      batch_no?: string;
+      expiry_date?: string;
+      quantity_available?: number;
+    } | null;
+  }>;
+  medicationReturns: NonNullable<DispensingHistoryItem["medication_returns"]>;
+}
+
 export class DispensingGuard {
   private readonly inFlight = new Set<string>();
   private readonly completed = new Set<string>();
+  private readonly records = new Map<string, DispenseRecord>();
 
   /** Mulai dispensing. false = ditolak (sudah pernah/m sedang berjalan). */
   begin(prescriptionId: string): boolean {
@@ -107,9 +148,30 @@ export class DispensingGuard {
     return true;
   }
 
-  commit(prescriptionId: string): void {
+  commit(prescriptionId: string, record?: DispenseRecord): void {
     this.inFlight.delete(prescriptionId);
-    if (prescriptionId) this.completed.add(prescriptionId);
+    if (prescriptionId) {
+      this.completed.add(prescriptionId);
+      if (record) this.records.set(prescriptionId, record);
+    }
+  }
+
+  /** Snapshot dispensing sukses untuk resep ini (bila ada). */
+  recordFor(prescriptionId: string): DispenseRecord | undefined {
+    return this.records.get(prescriptionId);
+  }
+
+  /** Catat retur yang berhasil pada snapshot dispensing terkait. */
+  addReturn(
+    dispensingId: string,
+    entry: NonNullable<DispensingHistoryItem["medication_returns"]>[number]
+  ): void {
+    for (const record of this.records.values()) {
+      if (record.dispensingId === dispensingId) {
+        record.medicationReturns.push(entry);
+        return;
+      }
+    }
   }
 
   rollback(prescriptionId: string): void {
@@ -133,6 +195,7 @@ export class DispensingGuard {
   reset(): void {
     this.inFlight.clear();
     this.completed.clear();
+    this.records.clear();
   }
 }
 
@@ -420,7 +483,7 @@ export const pharmacyService = {
     quantity: number,
     reason: string,
     siteContext?: PharmacySiteContext
-  ): Promise<unknown> {
+  ): Promise<void> {
     const scope = await resolvePharmacySiteScope();
     // User site-scoped WAJIB menyertakan konteks site (fail-closed).
     if (!scope.unrestricted && !siteContext) {
@@ -432,11 +495,21 @@ export const pharmacyService = {
     if (siteContext) {
       assertPharmacySite(scope, siteContext);
     }
-    return apiClient.post("/pharmacy/returns", {
+    await apiClient.post("/pharmacy/returns", {
       dispensingId,
       stockBatchId,
       quantity,
       reason,
+    });
+    // Retur sukses tercatat di snapshot sesi agar halaman retur langsung
+    // menampilkan badge tanpa menunggu endpoint history backend.
+    dispensingGuard.addReturn(dispensingId, {
+      id: `return-${Date.now()}`,
+      dispensing_id: dispensingId,
+      stock_batch_id: stockBatchId,
+      quantity,
+      reason,
+      returned_at: new Date().toISOString(),
     });
   },
 
@@ -455,6 +528,20 @@ export const pharmacyService = {
       .catch(() => [] as BackendPrescription[]);
     const byId = new Map(pending.map((p) => [p.id, p]));
     return ids.map((id) => {
+      // Snapshot saat dispense sukses lebih lengkap: resep sudah hilang dari
+      // daftar pending, sehingga batch/pasien hanya dapat diambil di sini.
+      const record = dispensingGuard.recordFor(id);
+      if (record) {
+        return {
+          id: record.dispensingId ?? `dispensing-${id}`,
+          prescription_id: id,
+          status: "DISPENSED",
+          dispensed_at: record.dispensedAt,
+          prescription: record.prescription ?? null,
+          dispensing_items: record.dispensingItems,
+          medication_returns: record.medicationReturns,
+        };
+      }
       const p = byId.get(id);
       return {
         id: `dispensing-${id}`,

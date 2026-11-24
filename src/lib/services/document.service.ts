@@ -185,7 +185,8 @@ export const documentService = {
         id: sig.id ?? "",
         document_id: doc.id,
         signature_type: sig.signature_type,
-        status: (sig.status ?? "PENDING") as SignatureStatus,
+        // Status tidak diisi default palsu; fallback UI = "tidak dikenali".
+        status: (sig.status ?? "") as SignatureStatus,
         provider_code: sig.provider_code ?? undefined,
         certificate_serial: sig.certificate_serial ?? null,
         signed_hash: undefined,
@@ -217,7 +218,7 @@ export const documentService = {
           id: sig.id ?? "",
           document_id: doc.id,
           signature_type: sig.signature_type,
-          status: (sig.status ?? "PENDING") as SignatureStatus,
+          status: (sig.status ?? "") as SignatureStatus,
           provider_code: sig.provider_code ?? undefined,
           certificate_serial: sig.certificate_serial ?? null,
           signed_at: sig.completed_at ?? null,
@@ -236,9 +237,12 @@ export const documentService = {
     if (!current.document_id) {
       throw new Error("Retry tidak dimungkinkan: dokumen asal tidak diketahui.");
     }
+    if (!isBackendSignatureType(current.signature_type)) {
+      throw new Error("Retry tidak dimungkinkan: jenis tanda tangan tidak diketahui.");
+    }
     return documentService.requestSignature(
       current.document_id,
-      current.signature_type ?? "CERTIFIED_PSRE",
+      current.signature_type,
       current.provider_code ?? undefined
     );
   },
@@ -301,7 +305,21 @@ export const documentService = {
     };
   },
 
+  /**
+   * GET /public/verify/:qrToken.
+   *
+   * Token berasal dari path `/verify/[token]` dan sudah di-decode satu kali.
+   * Nilai di-encode ulang saat membentuk path API agar karakter seperti `/`,
+   * `?`, atau `#` tidak dapat mengubah endpoint (path traversal/query
+   * injection). Token mentah tidak pernah dicatat atau disimpan.
+   */
   async verifyPublic(qrToken: string): Promise<PublicVerifyResult> {
-    return apiClient.get<PublicVerifyResult>(`/public/verify/${qrToken}`);
+    const token = typeof qrToken === "string" ? qrToken.trim() : "";
+    if (!token) {
+      throw new Error("Token verifikasi tidak tersedia.");
+    }
+    return apiClient.get<PublicVerifyResult>(
+      `/public/verify/${encodeURIComponent(token)}`
+    );
   },
 };

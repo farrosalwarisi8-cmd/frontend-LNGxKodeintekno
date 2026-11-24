@@ -115,6 +115,7 @@ function WizardForm({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPersonDocument[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [uploadNotice, setUploadNotice] = useState("");
   const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
   const [dragActive, setDragActive] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -134,6 +135,11 @@ function WizardForm({
   /** Promise cek duplikat yang sedang berjalan + hasil terakhir (tanpa stale closure). */
   const duplicateCheckRef = useRef<Promise<void> | null>(null);
   const duplicateResultRef = useRef<DuplicateCheckResult | null>(null);
+  /** Satu klik submit/resend = maksimal satu request (anti double-submit). */
+  const submitInFlightRef = useRef(false);
+  const resendInFlightRef = useRef(false);
+  /** Region hasil unggah — fokus dipindahkan setelah unggahan selesai. */
+  const uploadNoticeRef = useRef<HTMLParagraphElement | null>(null);
 
   // Pindah langkah = pindah konteks: fokus ikut ke heading langkah baru supaya
   // pengguna keyboard/screen reader tidak tertinggal di tombol "Lanjut".
@@ -254,6 +260,7 @@ function WizardForm({
 
   const handleSubmit = async () => {
     if (!validateStep(5)) return;
+    if (submitInFlightRef.current) return;
     if (!isOnline) {
       toastError(
         "Offline",
@@ -262,6 +269,7 @@ function WizardForm({
       return;
     }
 
+    submitInFlightRef.current = true;
     setSubmitting(true);
     try {
       const result = await patientService.create({
@@ -276,6 +284,7 @@ function WizardForm({
       setErrors({ submit: e instanceof Error ? e.message : "Terjadi kesalahan." });
     } finally {
       setSubmitting(false);
+      submitInFlightRef.current = false;
     }
   };
 
@@ -284,28 +293,36 @@ function WizardForm({
   };
 
   const handleResendConsent = async () => {
-    if (!submitResult) return;
+    if (!submitResult || resendInFlightRef.current) return;
+    resendInFlightRef.current = true;
     setResending(true);
     setConsentError("");
-    const res = await patientService.sendConsent(
-      submitResult.patientId,
-      formData.consentType || "DATA_PROCESSING"
-    );
-    if (res.success) {
-      setSubmitResult({
-        ...submitResult,
-        consentId: res.consentId ?? submitResult.consentId,
-        consentStatus: "PENDING",
-        consentLink: res.consentLink ?? submitResult.consentLink,
-        deliveryStatus: "SIMULATED_SENT",
-        deliveryError: undefined,
-      });
-      setConsentSent(true);
-    } else {
+    try {
+      const res = await patientService.sendConsent(
+        submitResult.patientId,
+        formData.consentType || "DATA_PROCESSING"
+      );
+      if (res.success) {
+        setSubmitResult({
+          ...submitResult,
+          consentId: res.consentId ?? submitResult.consentId,
+          consentStatus: "PENDING",
+          consentLink: res.consentLink ?? submitResult.consentLink,
+          deliveryStatus: "SIMULATED_SENT",
+          deliveryError: undefined,
+        });
+        setConsentSent(true);
+      } else {
+        setConsentSent(false);
+        setConsentError(res.deliveryError ?? "Permintaan consent gagal dikirim.");
+      }
+    } catch {
       setConsentSent(false);
-      setConsentError(res.deliveryError ?? "Permintaan consent gagal dikirim.");
+      setConsentError("Permintaan consent gagal dikirim. Periksa koneksi lalu coba lagi.");
+    } finally {
+      setResending(false);
+      resendInFlightRef.current = false;
     }
-    setResending(false);
   };
 
   /** Unggah satu atau beberapa berkas; setiap kegagalan dilaporkan spesifik. */
@@ -313,10 +330,12 @@ function WizardForm({
     const list = Array.from(files);
     if (list.length === 0) return;
     setUploadError("");
+    setUploadNotice("");
     setUploading(true);
     setUploadProgress({ done: 0, total: list.length });
 
     const failures: string[] = [];
+    let successCount = 0;
     for (const file of list) {
       try {
         const uploaded = await uploadPersonDocument(file);
@@ -326,6 +345,7 @@ function WizardForm({
           );
           return duplicate ? prev : [...prev, uploaded];
         });
+        successCount += 1;
       } catch (err) {
         failures.push(err instanceof Error ? err.message : `"${file.name}" gagal diunggah.`);
       } finally {
@@ -334,6 +354,14 @@ function WizardForm({
     }
 
     if (failures.length > 0) setUploadError(failures.join(" "));
+    if (successCount > 0) {
+      setUploadNotice(
+        `${successCount} berkas berhasil diproses untuk registrasi ini.`
+      );
+      // Pindahkan fokus ke region hasil agar screen reader mengumumkan hasil
+      // unggahan, bukan meninggalkan fokus pada tombol/input berkas.
+      setTimeout(() => uploadNoticeRef.current?.focus(), 0);
+    }
     setUploading(false);
   };
 
@@ -430,7 +458,10 @@ function WizardForm({
   }
 
   // Ringkasan error untuk role="alert" (duplikat pesan dibuang, urutan stabil).
-  const errorSummary = Array.from(new Set(Object.values(errors).filter(Boolean)));
+  // `submit` BUKAN error validasi field: kegagalan request ditampilkan sekali
+  // di kotak error tersendiri agar tidak dihitung sebagai "isian belum valid".
+  const { submit: submitError, ...fieldErrors } = errors;
+  const errorSummary = Array.from(new Set(Object.values(fieldErrors).filter(Boolean)));
 
   const filteredOrgUnits = ORG_UNITS.filter(
     (ou) => !formData.organizationId || ou.organizationId === formData.organizationId
@@ -783,6 +814,18 @@ function WizardForm({
               )}
             </div>
 
+            {uploadNotice && (
+              <p
+                ref={uploadNoticeRef}
+                tabIndex={-1}
+                role="status"
+                aria-live="polite"
+                className="rounded-lg bg-success-50 px-3 py-2 text-sm text-success-700 focus:outline-none"
+              >
+                {uploadNotice}
+              </p>
+            )}
+
             {uploadedFiles.length === 0 ? (
               <p className="text-xs text-muted-foreground">Belum ada dokumen diunggah.</p>
             ) : (
@@ -873,9 +916,9 @@ function WizardForm({
               <p id="acknowledge-error" className="text-sm text-danger-600">{errors.acknowledged}</p>
             )}
 
-            {errors.submit && (
-              <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
-                {errors.submit}
+            {submitError && (
+              <div role="alert" className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
+                {submitError}
               </div>
             )}
           </div>

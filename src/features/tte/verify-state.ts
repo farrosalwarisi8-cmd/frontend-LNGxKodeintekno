@@ -115,7 +115,12 @@ export function classifyVerifyResult(
   const view = (state: VerifyUiState): VerifyViewState => ({ state, ...VIEWS[state], statusLabel });
 
   const isValid = result.isValid === true;
-  if (status === "VERIFIED") return view(isValid ? "valid" : "invalid");
+  // Validitas WAJIB berasal dari backend (`isValid === true`) DAN status sukses
+  // yang eksplisit. "SIGNED"/"VALID" diterima defensif bila backend kelak
+  // memakai penamaan itu; keduanya tidak pernah dinyatakan valid tanpa flag.
+  if (status === "VERIFIED" || status === "VALID" || status === "SIGNED") {
+    return view(isValid ? "valid" : "invalid");
+  }
   if (status === "NOT_SIGNED") return view("found-unsigned");
   if (status === "EXPIRED") return view("expired");
   if (status === "REVOKED" || status === "VOID" || status === "CANCELLED") return view("revoked");

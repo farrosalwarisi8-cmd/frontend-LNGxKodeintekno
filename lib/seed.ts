@@ -366,7 +366,6 @@ function buildCertificates(): HealthCertificate[] {
       doctorName: "dr. Siti Rahayu",
       issuedAt: w.decisionDate,
       validUntil: w.validUntil,
-      qrToken: `kodein-cert-${w.mcuId}-${i + 1}`,
       status: i === 4 ? "revoked" : "valid",
     }
   })

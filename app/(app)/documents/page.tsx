@@ -42,6 +42,7 @@ import { RequestSignatureDialog, type SignatureDocumentMeta } from "@/features/t
 import { RetrySignatureDialog } from "@/features/tte/components/retry-signature-dialog";
 import { SignedPdfButton } from "@/features/tte/components/signed-pdf-button";
 import { mapSignatureStatus } from "@/features/tte/signature-status";
+import { maskId } from "@/features/tte/mask";
 import { formatErrorMessage, TTE_MESSAGES } from "@/features/tte/messages";
 import type { BackendSignatureType } from "@/features/tte/validation";
 
@@ -89,7 +90,9 @@ function mapBackendDocument(doc: BackendDocument): DocumentRecord {
       ? {
           id: sig.id ?? "",
           document_id: doc.id,
-          status: sig.status ?? "PENDING",
+          // Status kosong TIDAK diisi "PENDING": backend belum mengirim status,
+          // sehingga UI menampilkan fallback "tidak dikenali" (bukan status palsu).
+          status: sig.status ?? "",
           signature_type: sig.signature_type,
           provider_code: sig.provider_code ?? undefined,
           signed_at: sig.completed_at ?? null,
@@ -372,7 +375,7 @@ export default function DocumentsPage() {
       >
         {statusMessage ?? ""}
         {retryRelation
-          ? ` Request lama ${retryRelation.oldId} digantikan request baru ${retryRelation.newId}.`
+          ? ` Request lama ${maskId(retryRelation.oldId)} digantikan request baru ${maskId(retryRelation.newId)}.`
           : ""}
       </div>
 

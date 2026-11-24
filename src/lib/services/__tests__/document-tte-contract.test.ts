@@ -139,4 +139,42 @@ describe("document.service — kontrak TTE", () => {
     expect(res.status).toBe("NOT_SIGNED");
     expect(JSON.stringify(res)).not.toMatch(/diagnos|soap|medication/i);
   });
+
+  it("verify publik meng-encode token agar tidak mengubah path/query API", async () => {
+    const calls = mockFetch(() => ({ body: envelope({ isValid: false, status: "INVALID" }) }));
+    const { documentService } = await import("@/lib/services/document.service");
+    await documentService.verifyPublic("abc/def?x=1#frag");
+
+    expect(pathOf(calls[0].url)).toBe("/api/v1/public/verify/abc%2Fdef%3Fx%3D1%23frag");
+    expect(calls[0].url).not.toContain("#");
+  });
+
+  it("verify publik menolak token kosong tanpa memanggil backend", async () => {
+    const calls = mockFetch(() => ({ body: envelope({ isValid: false }) }));
+    const { documentService } = await import("@/lib/services/document.service");
+    await expect(documentService.verifyPublic("   ")).rejects.toThrow(/Token verifikasi/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("status signature kosong TIDAK diisi PENDING (fallback UI harus 'tidak dikenali')", async () => {
+    mockFetch(() => ({
+      body: envelope([
+        { id: "doc-1", signature_reqs: [{ id: "sig-1", signature_type: "CERTIFIED_PSRE" }] },
+      ]),
+    }));
+    const { documentService } = await import("@/lib/services/document.service");
+    const res = await documentService.getSignatures();
+    expect(res.data[0].status).toBe("");
+  });
+
+  it("retry menolak jenis tanda tangan yang tidak diketahui tanpa POST", async () => {
+    const calls = mockFetch(() => ({
+      body: envelope([
+        { id: "doc-1", signature_reqs: [{ id: "sig-old", status: "FAILED" }] },
+      ]),
+    }));
+    const { documentService } = await import("@/lib/services/document.service");
+    await expect(documentService.retrySignature("sig-old")).rejects.toThrow(/jenis tanda tangan/);
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
 });

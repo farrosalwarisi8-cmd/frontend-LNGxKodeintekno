@@ -401,7 +401,6 @@ export async function syncCertificates(
       doctorName: whs.doctorName,
       issuedAt: whs.decisionDate,
       validUntil: whs.validUntil,
-      qrToken: doc?.qr_token?.token_hash ?? "",
       status: revoked ? "revoked" : expired ? "expired" : "valid",
     });
   }

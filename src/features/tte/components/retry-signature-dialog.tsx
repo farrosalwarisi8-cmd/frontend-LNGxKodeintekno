@@ -3,6 +3,7 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Modal } from "@/shared/components/design-system/modal";
 import { Button } from "@/shared/components/design-system/button";
+import { maskId } from "@/features/tte/mask";
 
 /**
  * Konfirmasi retry. Retry backend tidak punya endpoint khusus — ia membuat
@@ -38,7 +39,9 @@ export function RetrySignatureDialog({
         <dl className="space-y-2 rounded-xl border border-border p-3 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Request lama</dt>
-            <dd className="font-mono text-foreground">{oldRequestId || "—"}</dd>
+            <dd className="font-mono text-foreground" title="ID disamarkan">
+              {maskId(oldRequestId)}
+            </dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Status lama</dt>
@@ -49,6 +52,11 @@ export function RetrySignatureDialog({
             <dd className="font-medium text-foreground">Akan dibuat setelah konfirmasi</dd>
           </div>
         </dl>
+
+        <p className="text-xs text-muted-foreground">
+          ID request ditampilkan dalam bentuk tersamarkan; ID lengkap tetap
+          tersedia pada audit trail backend.
+        </p>
 
         <div className="flex gap-2 rounded-xl bg-warning-50 p-3 text-sm text-warning-700">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />

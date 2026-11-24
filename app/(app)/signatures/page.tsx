@@ -30,6 +30,7 @@ import { SignatureStatusBadge } from "@/features/tte/components/signature-status
 import { RetrySignatureDialog } from "@/features/tte/components/retry-signature-dialog";
 import { SignedPdfButton } from "@/features/tte/components/signed-pdf-button";
 import { mapSignatureStatus } from "@/features/tte/signature-status";
+import { maskId } from "@/features/tte/mask";
 import { formatErrorMessage, TTE_MESSAGES } from "@/features/tte/messages";
 
 const SIGNATURE_TYPE_LABEL: Record<string, string> = {
@@ -73,11 +74,18 @@ export default function SignaturesPage() {
 
   // Polling aman: hanya PENDING/PROCESSING, backoff, tab hidden/offline stop,
   // satu interval aktif, cleanup saat unmount/route change/filter change.
+  // Filter status yang sedang aktif HARUS ikut diterapkan; sebelumnya refresh
+  // otomatis mengembalikan seluruh status dan diam-diam mereset filter pengguna.
   const refreshStatuses = useCallback(async () => {
-    const res = await documentService.getSignatures({ page: 1, limit: 100 });
+    const params: { page?: number; limit?: number; status?: string } = {
+      page: 1,
+      limit: 100,
+    };
+    if (statusFilter) params.status = statusFilter;
+    const res = await documentService.getSignatures(params);
     setSignatures(res.data ?? []);
     setError(null);
-  }, []);
+  }, [statusFilter]);
 
   const signatureStatuses = useMemo(() => signatures.map((s) => s.status), [signatures]);
   const polling = useSignaturePolling(signatureStatuses, refreshStatuses);
@@ -120,12 +128,15 @@ export default function SignaturesPage() {
   });
 
   const pendingCount = signatures.filter(
-    (s) => s.status === "PENDING" || s.status === "PROCESSING"
+    (s) => mapSignatureStatus(s.status).isActive
   ).length;
-  const signedCount = signatures.filter((s) => s.status === "SIGNED").length;
-  const failedCount = signatures.filter(
-    (s) => s.status === "FAILED" || s.status === "EXPIRED"
+  const signedCount = signatures.filter(
+    (s) => mapSignatureStatus(s.status).isSigned
   ).length;
+  const failedCount = signatures.filter((s) => {
+    const view = mapSignatureStatus(s.status);
+    return view.isTerminal && !view.isSigned && view.known;
+  }).length;
 
   return (
     <div className="space-y-4">
@@ -185,12 +196,14 @@ export default function SignaturesPage() {
       >
         {msg ?? ""}
         {retryRelation
-          ? ` Request lama ${retryRelation.oldId} digantikan request baru ${retryRelation.newId}.`
+          ? ` Request lama ${maskId(retryRelation.oldId)} digantikan request baru ${maskId(retryRelation.newId)}.`
           : ""}
       </div>
 
       {msg && (
-        <div className="rounded-xl bg-success-50 p-3 text-sm text-success-700">{msg}</div>
+        <div className="rounded-xl bg-success-50 p-3 text-sm text-success-700" role="status">
+          {msg}
+        </div>
       )}
       {retryError && (
         <div className="rounded-xl border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700" role="alert">

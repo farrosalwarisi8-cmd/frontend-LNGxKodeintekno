@@ -896,7 +896,6 @@ export const useStore = create<AppState>()(
           doctorName: resolveUser(get())?.name ?? "dr. Siti Rahayu",
           issuedAt: today(),
           validUntil: mcu.validUntil ?? "2027-09-22",
-          qrToken: `kodein-cert-${mcuId}`,
           status: "valid",
         }
         set((s) => ({
@@ -928,6 +927,22 @@ export const useStore = create<AppState>()(
     {
       name: "kodein-klinik-store",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      // Token QR mentah pernah (pada build lama) ikut tersimpan di sertifikat.
+      // Migrasi v2 membuang field itu dari localStorage pengguna lama.
+      migrate: (persistedState, version) => {
+        const state = persistedState as Record<string, unknown>;
+        if (version < 2 && Array.isArray(state?.certificates)) {
+          state.certificates = (state.certificates as Array<Record<string, unknown>>).map(
+            (cert) => {
+              const copy = { ...cert };
+              delete copy.qrToken;
+              return copy;
+            }
+          );
+        }
+        return persistedState as never;
+      },
       partialize: (s) => ({
         currentUserId: s.currentUserId,
         offlineQueue: s.offlineQueue,
@@ -948,7 +963,13 @@ export const useStore = create<AppState>()(
         workHealthStatus: s.workHealthStatus,
         visits: s.visits,
         dispensings: s.dispensings,
-        certificates: s.certificates,
+        // Token QR tidak pernah dipersist: nilai mentah hanya ada di memori
+        // komponen setelah POST /documents/render-pdf.
+        certificates: s.certificates.map((cert) => {
+          const copy = { ...cert };
+          delete copy.qrToken;
+          return copy;
+        }),
         notifications: s.notifications,
         auditLogs: s.auditLogs,
       }),

@@ -5,13 +5,12 @@ import { syncCertificates, syncMcu, syncPatients, useSyncedModules } from "@/lib
 import { findMyEmployee } from "@/lib/services/auth.service";
 import { CERT_STATUS } from "@/lib/constants";
 import { Card } from "@/shared/components/design-system/card";
-import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { ErrorState } from "@/shared/components/design-system/error-state";
 import { Skeleton } from "@/shared/components/design-system/skeleton";
 import { formatDate } from "@/lib/format";
-import { BadgeCheck, QrCode } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -110,14 +109,6 @@ export default function MyCertificatesPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <StatusBadge meta={statusMeta} />
-                    {cert.qrToken && (
-                      <Link href={`/verify/${encodeURIComponent(cert.qrToken)}`} target="_blank">
-                        <Badge variant="info" className="cursor-pointer">
-                          <QrCode className="size-3" />
-                          QR
-                        </Badge>
-                      </Link>
-                    )}
                   </div>
                 </div>
               </Card>

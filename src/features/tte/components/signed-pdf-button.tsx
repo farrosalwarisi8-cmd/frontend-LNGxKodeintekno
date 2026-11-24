@@ -27,6 +27,7 @@ export function SignedPdfButton({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<TteErrorView | null>(null);
+  const [readyUrl, setReadyUrl] = useState<string | null>(null);
   const aliveRef = useRef(true);
 
   useEffect(() => {
@@ -44,9 +45,18 @@ export function SignedPdfButton({
     try {
       const { url } = await documentService.downloadDocument(documentId, title);
       if (!aliveRef.current) return;
-      // URL sudah diverifikasi adapter service (https, tanpa credential,
-      // berasal dari response backend). Tidak ada console.log pada URL/token.
-      window.open(url, "_blank", "noopener,noreferrer");
+      // URL sudah divalidasi adapter service (https, tanpa credential, berasal
+      // dari response backend). Navigasi memakai anchor agar tetap dapat
+      // dilakukan meski browser memblokir window.open setelah await.
+      setReadyUrl(url);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
     } catch (e) {
       if (aliveRef.current) setError(mapTteError(e));
     } finally {
@@ -85,7 +95,21 @@ export function SignedPdfButton({
           )}
         </div>
       )}
-      {!error && (
+      {!loading && readyUrl && !error && (
+        <p className="text-xs text-muted-foreground" role="status">
+          Berkas dibuka di tab baru.{" "}
+          <a
+            href={readyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary-600 underline underline-offset-2"
+          >
+            Buka manual bila tab tidak muncul
+          </a>
+          .
+        </p>
+      )}
+      {!error && !readyUrl && (
         <p className="flex items-center gap-1 text-xs text-success-700" role="status">
           <ShieldCheck className="size-3.5" aria-hidden="true" />
           Berkas tersedia setelah backend menandatangani PDF.

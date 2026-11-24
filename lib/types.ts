@@ -282,7 +282,12 @@ export interface HealthCertificate {
   doctorName: string
   issuedAt: string
   validUntil: string
-  qrToken: string
+  /**
+   * @deprecated Token QR mentah hanya dikembalikan sekali oleh
+   * POST /documents/render-pdf dan TIDAK boleh dipersist. Field dipertahankan
+   * opsional hanya untuk kompatibilitas data lama; UI tidak membacanya.
+   */
+  qrToken?: string
   status: CertificateStatus
 }
 

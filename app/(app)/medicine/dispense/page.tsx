@@ -139,6 +139,10 @@ export default function DispensePage() {
       };
       await resolvePharmacySiteScope(); // pastikan cakupan terverifikasi
       const byBatch = new Map<string, number>();
+      const batchInfo = new Map<
+        string,
+        { batchNo?: string; expiryDate?: string; inventoryItemId?: string }
+      >();
 
       for (const item of selectedRx.items) {
         const medicationId = item.medication_id;
@@ -159,6 +163,13 @@ export default function DispensePage() {
         }
         for (const batch of rec.recommendedBatches) {
           byBatch.set(batch.batchId, (byBatch.get(batch.batchId) ?? 0) + batch.allocated);
+          batchInfo.set(batch.batchId, {
+            batchNo: batch.batchNo,
+            expiryDate: batch.expiryDate,
+            // Batch berasal dari obat ini; inventory item id mengikuti id obat
+            // yang dikirim backend pada rekomendasi FEFO.
+            inventoryItemId: medicationId,
+          });
         }
       }
 
@@ -171,9 +182,47 @@ export default function DispensePage() {
         quantity,
       }));
 
-      await pharmacyService.dispense(selectedRx.id, allocations, siteContext);
-      // Resep resmi selesai didispensasi — terkunci untuk sesi ini.
-      dispensingGuard.commit(selectedRx.id);
+      const dispensed = await pharmacyService.dispense(
+        selectedRx.id,
+        allocations,
+        siteContext
+      );
+      // Resep resmi selesai didispensasi — terkunci untuk sesi ini. Snapshot
+      // lengkap disimpan agar halaman retur dapat memilih batch tanpa endpoint
+      // history backend (yang belum tersedia).
+      dispensingGuard.commit(selectedRx.id, {
+        dispensingId: dispensed?.id,
+        dispensedAt: new Date().toISOString(),
+        prescription: {
+          id: selectedRx.id,
+          status: "DISPENSED",
+          encounter: {
+            patient: {
+              full_name: selectedRx.patientName,
+              medical_record_no: selectedRx.mrn,
+            },
+          },
+          items: selectedRx.items.map((item) => ({
+            id: item.id,
+            medication_id: item.medication_id,
+            quantity: item.quantity,
+            medication: item.medication,
+          })),
+        },
+        dispensingItems: allocations.map((allocation, index) => ({
+          id: `disp-item-${index + 1}`,
+          stock_batch_id: allocation.stockBatchId,
+          quantity: allocation.quantity,
+          stock_batch: {
+            id: allocation.stockBatchId,
+            inventory_item_id: batchInfo.get(allocation.stockBatchId)?.inventoryItemId,
+            batch_no: batchInfo.get(allocation.stockBatchId)?.batchNo,
+            expiry_date: batchInfo.get(allocation.stockBatchId)?.expiryDate,
+            quantity_available: 0,
+          },
+        })),
+        medicationReturns: [],
+      });
 
       // Fase 5 — hitung selisih stok (DISPENSING) dari snapshot sebelum/sesudah
       const siteId = useStore.getState().activeSiteId ?? undefined;

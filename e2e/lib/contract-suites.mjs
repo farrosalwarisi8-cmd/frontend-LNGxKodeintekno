@@ -214,13 +214,15 @@ export async function runContractPeople(ctx) {
       `queries=${JSON.stringify(state.patientsQueries.slice(0, 3))}`
     );
 
-    const selects = await page.locator("select").count();
+    // Scope selector global (header/shell) adalah kontrol sah untuk role
+    // ORG/GLOBAL; yang diuji di sini adalah filter di KONTEN halaman daftar.
+    const selects = await page.locator("main select").count();
     record(
       "F2D-04",
       "frontend-contract-test",
-      "tidak ada kontrol filter palsu (select site/unit/status) pada halaman daftar",
+      "tidak ada kontrol filter palsu (select site/unit/status) pada konten halaman daftar",
       selects === 0 ? "PASS" : "FAIL",
-      `selects=${selects}`
+      `selects(main)=${selects}`
     );
 
     const limitation = await bodyText(page);

@@ -350,12 +350,15 @@ export async function runTteContract(ctx) {
       // Hitung request SETELAH menunggu UI, agar request yang masih in-flight
       // tidak terlewat (fetch tercatat saat route dijawab).
       const post = state.calls.filter((c) => c.path.endsWith("/signatures/request"));
+      // ID request ditampilkan TERMASKING (tidak ada UUID/ID mentah di UI).
+      const maskedRelation =
+        /…/.test(statusText) && !/sig-old/.test(statusText) && !/sig-new-1/.test(statusText);
       record(
         "TTE-11",
         "frontend-contract-test",
-        "retry mengirim satu request baru & menampilkan relasi old→new",
-        post.length === 1 && /sig-old/.test(text) && /sig-new-1/.test(text) ? "PASS" : "FAIL",
-        `posts=${post.length} calls=${state.calls.map((c) => `${c.method}:${c.path}`).join(",")} snippet="${text.replace(/\s+/g, " ").slice(-180)}"`
+        "retry mengirim satu request baru & menampilkan relasi old→new termasking",
+        post.length === 1 && maskedRelation ? "PASS" : "FAIL",
+        `posts=${post.length} masked=${maskedRelation} calls=${state.calls.map((c) => `${c.method}:${c.path}`).join(",")} snippet="${text.replace(/\s+/g, " ").slice(-180)}"`
       );
     } finally {
       await context.close();
@@ -435,13 +438,15 @@ export async function runTteContract(ctx) {
       await waitIdle(page);
       await page.getByRole("button", { name: /Unduh PDF bertanda tangan/ }).click();
       await waitIdle(page);
+      // Tunggu pesan error aman benar-benar ter-render (state React async).
+      await page.getByText(/tidak aman/i).first().waitFor({ timeout: 8000 }).catch(() => undefined);
       const text = await bodyText(page);
       record(
         "TTE-13",
         "frontend-contract-test",
         "URL unduhan tidak aman dari backend ditolak dengan pesan aman",
         /tidak aman/i.test(text) ? "PASS" : "FAIL",
-        "unsafe URL rejected"
+        `snippet="${text.replace(/\s+/g, " ").slice(-160)}"`
       );
     } finally {
       await context.close();

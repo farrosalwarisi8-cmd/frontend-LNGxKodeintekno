@@ -207,6 +207,9 @@ describe("TTE — unduhan aman", () => {
 describe("TTE — verifikasi publik", () => {
   it("membedakan valid, belum signed, invalid, expired, revoked", () => {
     expect(classifyVerifyResult({ isValid: true, status: "VERIFIED" }).state).toBe("valid");
+    expect(classifyVerifyResult({ isValid: true, status: "SIGNED" }).state).toBe("valid");
+    expect(classifyVerifyResult({ isValid: true, status: "VALID" }).state).toBe("valid");
+    expect(classifyVerifyResult({ isValid: false, status: "SIGNED" }).state).toBe("invalid");
     expect(classifyVerifyResult({ isValid: false, status: "NOT_SIGNED" }).state).toBe("found-unsigned");
     expect(classifyVerifyResult({ isValid: false, status: "INVALID" }).state).toBe("invalid");
     expect(classifyVerifyResult({ isValid: false, status: "EXPIRED" }).state).toBe("expired");

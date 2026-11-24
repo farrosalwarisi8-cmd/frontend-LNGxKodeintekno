@@ -378,6 +378,40 @@ export async function installMockBackend(page: Page, backend: MockBackend): Prom
         })
       );
     }
+    // Pemeriksaan duplikat dilakukan backend atas identifier mentah. Mock
+    // menirukan kontrak `POST /patients/check-duplicate` yang dipakai
+    // patient.service — bukan menebak dari daftar pasien di browser.
+    if (method === "POST" && path === "/patients/check-duplicate") {
+      const input = (body ?? {}) as { identifierValue?: string };
+      const existing = backend.patients.find(
+        (p) => p.nationalId && p.nationalId === input.identifierValue
+      );
+      if (!existing) {
+        return json(
+          route,
+          200,
+          envelope({ isDuplicate: false, severity: "NONE", message: "Tidak ada duplikasi." })
+        );
+      }
+      return json(
+        route,
+        200,
+        envelope({
+          isDuplicate: true,
+          severity: "BLOCK",
+          message: "Identifier ini sudah terdaftar sebagai pekerja aktif.",
+          existingPerson: {
+            id: existing.id,
+            fullName: existing.fullName,
+            mrn: existing.mrn,
+            employeeNo: existing.employeeNo,
+            maskedIdentifier: existing.maskedIdentifier,
+            siteName: existing.site,
+            employmentStatus: existing.employmentStatus,
+          },
+        })
+      );
+    }
     if (method === "POST" && path === "/consents/send") {
       return json(
         route,
