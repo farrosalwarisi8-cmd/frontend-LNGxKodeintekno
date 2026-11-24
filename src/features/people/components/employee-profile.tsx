@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { usePerson } from "../hooks/use-person";
 import { Can, useCan } from "@/components/can";
+import { can as hasPermission } from "@/lib/rbac";
+import { useDemoMode } from "@/lib/demo-role";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, ConsentStatusBadge, EmploymentStatusBadge } from "@/components/ui/badge";
@@ -22,15 +24,17 @@ import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { ConsentTimeline } from "./consent-timeline";
+import { HealthTimeline } from "./health-timeline";
 import { EmailPreview } from "./email-preview";
 import { maskIdentifier, maskEmail, maskPhone } from "@/shared/utils/masking";
 import { formatDate, formatDateTime } from "@/shared/utils/date";
 
-type Tab = "overview" | "identity" | "consent" | "documents" | "activity";
+type Tab = "overview" | "identity" | "health" | "consent" | "documents" | "activity";
 
 export function EmployeeProfile({ patientId }: { patientId: string }) {
   const { data: person, loading, error, refetch } = usePerson(patientId);
   const can = useCan();
+  const { role: effectiveRole } = useDemoMode();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showEmailPreview, setShowEmailPreview] = useState(false);
 
@@ -92,9 +96,20 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
     return <ErrorState onRetry={refetch} />;
   }
 
+  // EI-05 — riwayat MCU, kunjungan, status kerja, dan sertifikat. Tab hanya
+  // tampil bila peran punya setidaknya satu sumber riwayat tersebut.
+  const canViewHealthTimeline = Boolean(
+    effectiveRole &&
+      (hasPermission(effectiveRole, "view-health-status") ||
+        hasPermission(effectiveRole, "view-mcu") ||
+        hasPermission(effectiveRole, "view-visits") ||
+        hasPermission(effectiveRole, "issue-certificate"))
+  );
+
   const tabs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "identity", label: "Identity & Employment" },
+    ...(canViewHealthTimeline ? [{ id: "health" as Tab, label: "Riwayat Kesehatan" }] : []),
     { id: "consent", label: "Consent" },
     { id: "documents", label: "Documents" },
     ...(can("people.edit") ? [{ id: "activity" as Tab, label: "Activity" }] : []),
@@ -249,6 +264,8 @@ export function EmployeeProfile({ patientId }: { patientId: string }) {
           </Card>
         </div>
       )}
+
+      {activeTab === "health" && <HealthTimeline patientId={patientId} />}
 
       {activeTab === "identity" && (
         <Card>

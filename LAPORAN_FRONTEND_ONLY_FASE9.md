@@ -58,7 +58,32 @@ staging-ready** karena verifikasi backend/provider nyata belum dilakukan.
 | `app/(app)/my/certificates/page.tsx` | Tautan verifikasi dari `token_hash` dihapus. |
 | `lib/store.ts`, `lib/types.ts`, `lib/seed.ts`, `lib/remote-sync.ts` | `qrToken` tidak dibuat/dipersist; migrasi store v2 membuang `qrToken` lama dari localStorage. |
 
-### 2.3 Perbaikan alur retur farmasi (ditemukan saat quality gate)
+### 2.3 Penutupan gap PRD demo awal (frontend)
+
+Audit `prd/PRD_DemoAwal.md` menemukan beberapa acceptance criteria yang belum
+tersentuh. Yang dapat diselesaikan tanpa endpoint baru dikerjakan pada fase ini:
+
+| PRD | Sebelum | Sesudah |
+|-----|---------|---------|
+| **EI-05** riwayat MCU/kunjungan/sertifikat/status di profil pekerja | Tidak ada | Tab **Riwayat Kesehatan** di `/people/[patientId]` dengan data hasil sinkronisasi backend, dibatasi izin (`view-mcu`, `view-visits`, `view-health-status`, `issue-certificate`); detail klinis hanya untuk `view-clinical-notes` |
+| **RA-02** filter laporan | Hanya scope site | Filter **perusahaan, departemen, lokasi, dan periode** (30/90/365 hari) di `/reports`; angka, grafik, dan periode ekspor mengikuti filter |
+| **19.1** session timeout simulasi | Tidak ada | Hook `useIdleTimeout` (30 menit, pause saat tab hidden, reset saat aktivitas) + pesan "Sesi berakhir" di `/login?reason=timeout` |
+
+File yang berubah: `src/features/people/components/health-timeline.tsx` (baru),
+`employee-profile.tsx`, `app/(app)/reports/page.tsx`,
+`src/features/auth/use-idle-timeout.ts` + test (baru), `components/emr-shell.tsx`,
+`app/login/login-page-content.tsx`.
+
+Gap PRD yang **tidak** dikerjakan karena membutuhkan kontrak backend baru
+(tidak dikarang di frontend):
+
+- **CV-06** rujuk/tutup kunjungan — belum ada endpoint referral/close visit.
+- **EI-04/EI-06** edit data & ubah status pekerja — belum ada endpoint update patient.
+- **MCU-02** upload dokumen MCU & waiver — belum ada endpoint dokumen MCU.
+- **CV-05** ringkasan obat per kunjungan — belum ada endpoint resep per kunjungan.
+- **Foto pekerja opsional** — belum ada field/endpoint foto profil.
+
+### 2.4 Perbaikan alur retur farmasi (ditemukan saat quality gate)
 
 `npm run test:e2e:playwright` gagal 2 skenario **yang sudah gagal pada baseline**
 (riwayat retur dikonstruksi dari sesi, sedangkan spec lama menyuntik data ke
@@ -105,7 +130,7 @@ Dijalankan pada working tree final (Next.js 16.4.6, build produksi di port 3311)
 |----------|-------|
 | `npm run typecheck` | **PASS** (0 error) |
 | `npm run lint` | **PASS** (exit 0, tanpa output) |
-| `npm run test` | **PASS** — 59 file, **753 test lulus**, 21 skip |
+| `npm run test` | **PASS** — 60 file, **756 test lulus**, 21 skip |
 | `npm run build` | **PASS** — semua route ter-render |
 | `npm audit --omit=dev` | **PASS** — 0 vulnerabilities |
 | `npm run test:contrast` | **PASS** — 136/136 pasangan wajib WCAG AA |

@@ -2,7 +2,7 @@
 
 import { Can, useCan } from "@/components/can";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useStore, useCurrentUser } from "@/lib/store";
 import { useDemoMode } from "@/lib/demo-role";
@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { formatDate } from "@/lib/format";
 import {
   BarChart3,
@@ -77,6 +78,18 @@ export default function ReportsPage() {
   const diagnoses = useStore((s) => s.diagnoses);
   const user = useCurrentUser();
   const { role } = useDemoMode();
+
+  // RA-02 — filter laporan: perusahaan, departemen, lokasi, dan periode.
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [periodDays, setPeriodDays] = useState("all");
+  // Referensi waktu diambil sekali saat halaman dibuka agar render tetap murni.
+  const [referenceNow] = useState(() => Date.now());
+
+  const companies = useStore((s) => s.companies);
+  const departments = useStore((s) => s.departments);
+  const locations = useStore((s) => s.locations);
 
   // Pekerja hanya melihat ringkasan pribadi — tanpa agregat perusahaan.
   const isWorker = role === "pekerja";
@@ -142,8 +155,12 @@ export default function ReportsPage() {
     try {
       const def = definitions[0];
       if (!def) throw new Error("Tidak ada definisi laporan di backend.");
+      const days = periodDays === "all" ? null : Number(periodDays);
+      const startDate = days
+        ? new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10)
+        : `${new Date().getFullYear()}-01-01`;
       const run = await reportingService.runReport(def.id, "PDF", {
-        startDate: `${new Date().getFullYear()}-01-01`,
+        startDate,
         endDate: new Date().toISOString().slice(0, 10),
       });
       const download = await reportingService.downloadExport(run.exportId);
@@ -158,14 +175,68 @@ export default function ReportsPage() {
     }
   };
 
-  const totalEmployees = employees.length;
-  const approvedMCU = mcus.filter((m) => m.status === "Approved" || m.status === "Closed").length;
-  const totalVisits = visits.length;
+  // --- RA-02: terapkan filter ke seluruh angka laporan -------------------
+  const employeeFilterActive = Boolean(companyFilter || departmentFilter || locationFilter);
+  const scopedEmployees = useMemo(() => {
+    if (!employeeFilterActive) return employees;
+    return employees.filter(
+      (e) =>
+        (!companyFilter || e.companyId === companyFilter) &&
+        (!departmentFilter || e.departmentId === departmentFilter) &&
+        (!locationFilter || e.locationId === locationFilter)
+    );
+  }, [employees, employeeFilterActive, companyFilter, departmentFilter, locationFilter]);
+  const scopedEmployeeIds = useMemo(
+    () => (employeeFilterActive ? new Set(scopedEmployees.map((e) => e.id)) : null),
+    [employeeFilterActive, scopedEmployees]
+  );
+  const cutoffMs = periodDays === "all" ? null : referenceNow - Number(periodDays) * 86_400_000;
+  const inPeriod = (value?: string) => {
+    if (!cutoffMs) return true;
+    if (!value) return false;
+    const at = new Date(value).getTime();
+    return Number.isFinite(at) && at >= cutoffMs;
+  };
+  const filterActive = employeeFilterActive || periodDays !== "all";
 
-  const fitToWork = workHealthStatus.filter((w) => w.status === "Fit to Work").length;
-  const fitWithRestriction = workHealthStatus.filter((w) => w.status === "Fit with Restriction").length;
-  const temporarilyUnfit = workHealthStatus.filter((w) => w.status === "Temporarily Unfit").length;
-  const unfit = workHealthStatus.filter((w) => w.status === "Unfit").length;
+  const scopedMcus = useMemo(
+    () =>
+      mcus.filter(
+        (m) => (!scopedEmployeeIds || scopedEmployeeIds.has(m.employeeId)) && inPeriod(m.examDate)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mcus, scopedEmployeeIds, cutoffMs]
+  );
+  const scopedVisits = useMemo(
+    () =>
+      visits.filter(
+        (v) => (!scopedEmployeeIds || scopedEmployeeIds.has(v.employeeId)) && inPeriod(v.date)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visits, scopedEmployeeIds, cutoffMs]
+  );
+  const scopedStatus = useMemo(
+    () =>
+      workHealthStatus.filter(
+        (w) =>
+          (!scopedEmployeeIds || scopedEmployeeIds.has(w.employeeId)) && inPeriod(w.decisionDate)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [workHealthStatus, scopedEmployeeIds, cutoffMs]
+  );
+  const scopedVisitIds = useMemo(() => new Set(scopedVisits.map((v) => v.id)), [scopedVisits]);
+  const scopedDispensings = filterActive
+    ? dispensings.filter((d) => !d.visitId || scopedVisitIds.has(d.visitId))
+    : dispensings;
+
+  const totalEmployees = scopedEmployees.length;
+  const approvedMCU = scopedMcus.filter((m) => m.status === "Approved" || m.status === "Closed").length;
+  const totalVisits = scopedVisits.length;
+
+  const fitToWork = scopedStatus.filter((w) => w.status === "Fit to Work").length;
+  const fitWithRestriction = scopedStatus.filter((w) => w.status === "Fit with Restriction").length;
+  const temporarilyUnfit = scopedStatus.filter((w) => w.status === "Temporarily Unfit").length;
+  const unfit = scopedStatus.filter((w) => w.status === "Unfit").length;
 
   const ownStatus =
     isWorker && user?.employeeId
@@ -174,13 +245,16 @@ export default function ReportsPage() {
 
   const diagnosisCounts = diagnoses.map((d) => ({
     ...d,
-    count: visits.filter((v) => v.diagnosisIds?.includes(d.id)).length,
+    count: scopedVisits.filter((v) => v.diagnosisIds?.includes(d.id)).length,
   })).sort((a, b) => b.count - a.count).slice(0, 10);
 
   // Backend bisa mengirim entri analitik tanpa kode/nama (mis. agregat kosong).
   // Baris tanpa label dibuang agar tabel tidak menampilkan "- —" dengan angka 0.
+  // Analitik backend tidak menerima filter klien; saat filter aktif, angka
+  // diturunkan dari kunjungan yang sudah difilter agar konsisten.
+  const useBackendAnalytics = !filterActive && topDiseases.length > 0;
   const topRows = (
-    topDiseases.length > 0
+    useBackendAnalytics
       ? topDiseases.map((t, i) => {
           const code = (t.icd10Code ?? "").trim();
           const name = (t.diseaseName ?? "").trim();
@@ -195,7 +269,7 @@ export default function ReportsPage() {
 
   const mcuByType = ["Pre-Employment", "Periodic", "Return to Work", "Special"].map((type) => ({
     type,
-    count: mcus.filter((m) => m.type === type).length,
+    count: scopedMcus.filter((m) => m.type === type).length,
   }));
 
   return (
@@ -217,6 +291,87 @@ export default function ReportsPage() {
           </Button>
         </Can>
       </div>
+
+      {!isWorker && (
+        <Card>
+          <CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            {canViewEmployees && (
+              <Select
+                label="Perusahaan"
+                value={companyFilter}
+                onChange={(e) => {
+                  setCompanyFilter(e.target.value);
+                  setDepartmentFilter("");
+                  setLocationFilter("");
+                }}
+                options={[
+                  { value: "", label: "Semua perusahaan" },
+                  ...companies.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+              />
+            )}
+            {canViewEmployees && (
+              <Select
+                label="Departemen"
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                options={[
+                  { value: "", label: "Semua departemen" },
+                  ...departments
+                    .filter((d) => !companyFilter || d.companyId === companyFilter)
+                    .map((d) => ({ value: d.id, label: d.name })),
+                ]}
+              />
+            )}
+            {canViewEmployees && (
+              <Select
+                label="Lokasi"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                options={[
+                  { value: "", label: "Semua lokasi" },
+                  ...locations
+                    .filter((l) => !companyFilter || l.companyId === companyFilter)
+                    .map((l) => ({ value: l.id, label: l.name })),
+                ]}
+              />
+            )}
+            <Select
+              label="Periode"
+              value={periodDays}
+              onChange={(e) => setPeriodDays(e.target.value)}
+              options={[
+                { value: "all", label: "Semua periode" },
+                { value: "30", label: "30 hari terakhir" },
+                { value: "90", label: "90 hari terakhir" },
+                { value: "365", label: "1 tahun terakhir" },
+              ]}
+            />
+            {filterActive && (
+              <div className="flex items-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setCompanyFilter("");
+                    setDepartmentFilter("");
+                    setLocationFilter("");
+                    setPeriodDays("all");
+                  }}
+                >
+                  Reset filter
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {filterActive && (
+        <p role="status" className="text-xs text-muted-foreground">
+          Angka di bawah mengikuti filter aktif; ekspor PDF mengikuti periode yang dipilih.
+        </p>
+      )}
 
       {exportMsg && (
         <div role="status" className="rounded-xl bg-muted p-3 text-sm text-text-secondary">
@@ -359,7 +514,7 @@ export default function ReportsPage() {
                     <Pill className="size-6" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-2xl font-semibold text-foreground">{dispensings.length}</p>
+                    <p className="text-2xl font-semibold text-foreground">{scopedDispensings.length}</p>
                     <p className="text-xs text-muted-foreground">Dispensing</p>
                   </div>
                 </CardContent>
@@ -380,7 +535,7 @@ export default function ReportsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {workHealthStatus.length === 0 ? (
+                {scopedStatus.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     Belum ada status kesehatan kerja dari backend.
                   </p>
@@ -389,25 +544,25 @@ export default function ReportsPage() {
                     <StatusBar
                       label="Fit to Work"
                       count={fitToWork}
-                      total={workHealthStatus.length}
+                      total={scopedStatus.length}
                       barClass="bg-success-500"
                     />
                     <StatusBar
                       label="Fit with Restriction"
                       count={fitWithRestriction}
-                      total={workHealthStatus.length}
+                      total={scopedStatus.length}
                       barClass="bg-warning-500"
                     />
                     <StatusBar
                       label="Temporarily Unfit"
                       count={temporarilyUnfit}
-                      total={workHealthStatus.length}
+                      total={scopedStatus.length}
                       barClass="bg-warning"
                     />
                     <StatusBar
                       label="Unfit"
                       count={unfit}
-                      total={workHealthStatus.length}
+                      total={scopedStatus.length}
                       barClass="bg-danger-500"
                     />
                   </div>

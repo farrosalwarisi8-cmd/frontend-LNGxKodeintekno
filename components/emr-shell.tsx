@@ -33,6 +33,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { RouteTitle } from "@/components/route-title";
 import { RouteFocus } from "@/components/route-focus";
+import { useIdleTimeout } from "@/features/auth/use-idle-timeout";
 import { ScopeSelector } from "@/components/scope-selector";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { ICON_MAP } from "@/shared/components/icon-map";
@@ -108,6 +109,16 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
     logout();
     router.push("/login");
   };
+
+  // PRD 19.1 — timeout sesi simulasi. Hanya berjalan saat ada sesi nyata;
+  // demo role (tanpa sesi) tidak boleh di-logout di tengah presentasi.
+  useIdleTimeout({
+    enabled: Boolean(user),
+    onTimeout: () => {
+      logout();
+      router.push("/login?reason=timeout");
+    },
+  });
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-muted">

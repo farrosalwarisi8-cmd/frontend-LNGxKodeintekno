@@ -241,6 +241,11 @@ export default function LoginPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {searchParams.get("reason") === "timeout" && (
+              <div role="status" className="rounded-xl bg-warning-50 p-3 text-sm text-warning-700">
+                Sesi berakhir karena tidak ada aktivitas. Silakan masuk kembali.
+              </div>
+            )}
             <Input
               label="Username"
               value={username}
