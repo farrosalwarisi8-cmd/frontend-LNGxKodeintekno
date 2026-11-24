@@ -3,7 +3,7 @@
 **Repo:** `frontend-LNGxKodeintekno` (`farrosalwarisi8-cmd/frontend-LNGxKodeintekno`)
 **Branch:** `main`
 **Baseline commit:** `173834e6dddf8a3a44336995838a7b867767e8af` — `fix(a11y): stepper wizard dapat dibaca & fokus mengikuti langkah/route`
-**Final code commit:** `__FINAL_CODE_COMMIT__`
+**Final code commit:** `6fdfc05` — `feat(tte): lengkapi hardening TTE Fase 9 dan perbaiki riwayat retur farmasi`
 **Tanggal:** 24 November 2026
 **Lingkup:** 100% frontend — tidak ada file backend, Prisma, migration, provider PSP,
 HMAC callback, queue, storage, Docker, atau infrastruktur yang dibuka/diubah.
