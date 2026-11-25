@@ -104,6 +104,8 @@ Permission route diambil dari `components/route-guard.tsx` (`ROUTE_PERMISSIONS`)
 | `/visits` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
 | `/visits/new` | `register-patient` | — | — | — | ✓ | — | — | ✓ | — | — | — | — |
 | `/visits/queue` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
+| `/visits/outside-treatment` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
+| `/visits/referrals` | `view-visits` | — | ✓ | ✓ | ✓ | — | — | ✓ | — | — | — | — |
 | `/medical-records` | `view-clinical-notes` | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — |
 | `/medicine` | `manage-stock` | — | — | — | — | ✓ | — | — | — | — | — | — |
 | `/medicine/dispense` | `dispense-medicine` | — | — | — | — | ✓ | — | — | — | — | — | — |
