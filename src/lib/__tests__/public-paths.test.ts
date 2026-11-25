@@ -3,7 +3,9 @@ import { PUBLIC_PATHS, isPublicPath, normalizePath } from "../../../lib/public-p
 
 describe("PUBLIC_PATHS", () => {
   it("berisi hanya route publik yang disepakati", () => {
-    expect([...PUBLIC_PATHS]).toEqual(["/login", "/public", "/verify"]);
+    // `/offline` wajib publik: fallback service worker tidak boleh di-redirect
+    // ke /login yang belum tentu pernah di-cache saat perangkat tanpa jaringan.
+    expect([...PUBLIC_PATHS]).toEqual(["/login", "/public", "/verify", "/offline"]);
   });
 
   it("/demo bukan route publik (keputusan Tahap 2: internal, butuh login)", () => {

@@ -1,133 +1,208 @@
 "use client";
 
-import { Can } from "@/components/can";
+/**
+ * Emergency Mode — antrean offline operasional (SoW 3.9.5).
+ *
+ * Data disimpan di IndexedDB (`src/lib/offline/offline-db.ts`), bukan state
+ * memori/data contoh. Saat koneksi pulih, `flushOfflineQueue` mengirim batch
+ * ke `POST /api/v1/sync/push` dan hanya menandai record yang dikonfirmasi
+ * backend. Konflik/gagal dicatat sebagai Incident Report di audit log.
+ */
 
-import { useState } from "react";
-import { apiClient } from "@/lib/api-client";
+import { useCallback, useEffect, useState } from "react";
+import { Can } from "@/components/can";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/design-system/card";
 import { Badge } from "@/shared/components/design-system/badge";
 import { Button } from "@/shared/components/design-system/button";
 import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Modal } from "@/shared/components/design-system/modal";
+import { EmptyState } from "@/shared/components/design-system/empty-state";
+import { useOnlineStatus } from "@/features/people/hooks/use-online-status";
+import {
+  enqueueOfflineRecord,
+  listOfflineRecords,
+  updateOfflineRecord,
+  type OfflineEntityType,
+  type OfflineRecord,
+} from "@/lib/offline/offline-db";
+import {
+  flushOfflineQueue,
+  getOfflineQueueSummary,
+  OFFLINE_SYNC_EVENT,
+  type OfflineQueueSummary,
+} from "@/lib/offline/sync-engine";
 import { formatDate } from "@/lib/format";
-import { WifiOff, Wifi, AlertTriangle, CheckCircle, Clock, RefreshCw, ShieldAlert } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Plus,
+  RefreshCw,
+  ShieldAlert,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 
-interface EmergencyRecord {
-  id: string;
-  type: "registration" | "visit" | "mcu" | "prescription";
-  description: string;
-  createdAt: string;
-  synced: boolean;
-}
-
-const INITIAL_QUEUE: EmergencyRecord[] = [
-  { id: "eq1", type: "registration", description: "Registrasi pekerja baru: John Doe", createdAt: "2026-09-20T10:00:00", synced: false },
-  { id: "eq2", type: "visit", description: "Kunjungan klinik: Jane Smith - Demam", createdAt: "2026-09-20T10:30:00", synced: false },
-  { id: "eq3", type: "prescription", description: "E-resep: Paracetamol 500mg", createdAt: "2026-09-20T11:00:00", synced: true },
+/** Tipe catatan darurat yang bisa direkam tanpa koneksi. */
+const EMERGENCY_TYPES: Array<{ value: OfflineEntityType; label: string }> = [
+  { value: "EMERGENCY_NOTE", label: "Catatan Darurat" },
+  { value: "VITAL_SIGN", label: "Tanda Vital" },
+  { value: "SOAP_DRAFT", label: "Draft SOAP" },
+  { value: "DISPENSING", label: "Dispensing Obat" },
 ];
 
-const DEVICE_FP_KEY = "kodein_emergency_device_fp";
+const STATUS_BADGE: Record<
+  OfflineRecord["status"],
+  { label: string; variant: "warning" | "success" | "danger" | "default" }
+> = {
+  pending: { label: "Menunggu", variant: "warning" },
+  syncing: { label: "Mengirim…", variant: "default" },
+  synced: { label: "Tersinkron", variant: "success" },
+  conflict: { label: "Konflik", variant: "danger" },
+  failed: { label: "Gagal", variant: "danger" },
+};
 
-function deviceFingerprint(): string {
-  let fp = "";
-  try {
-    fp = localStorage.getItem(DEVICE_FP_KEY) ?? "";
-  } catch {
-    /* storage tidak tersedia */
-  }
-  if (!fp) {
-    fp = `edge-${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
-    try {
-      localStorage.setItem(DEVICE_FP_KEY, fp);
-    } catch {
-      /* ignore */
-    }
-  }
-  // Backend menyimpan hash fingerprint perangkat
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < fp.length; i++) {
-    hash ^= fp.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return `fp-${(hash >>> 0).toString(16)}-${fp.length}`;
+function readDescription(record: OfflineRecord): string {
+  const description = record.payload.description;
+  if (typeof description === "string" && description.trim()) return description;
+  const note = record.payload.note;
+  if (typeof note === "string" && note.trim()) return note;
+  return record.entityType;
 }
 
 export default function EmergencyPage() {
-  const [isOnline, setIsOnline] = useState(true);
-  const [queue, setQueue] = useState<EmergencyRecord[]>(INITIAL_QUEUE);
+  const isOnline = useOnlineStatus();
+  const [records, setRecords] = useState<OfflineRecord[]>([]);
+  const [summary, setSummary] = useState<OfflineQueueSummary>({
+    total: 0,
+    pending: 0,
+    synced: 0,
+    conflict: 0,
+    failed: 0,
+    lastSyncAt: null,
+  });
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState<{ type: EmergencyRecord["type"]; description: string }>({ type: "registration", description: "" });
+  const [formData, setFormData] = useState<{
+    type: OfflineEntityType;
+    description: string;
+  }>({ type: "EMERGENCY_NOTE", description: "" });
+  const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
-  const pendingCount = queue.filter((q) => !q.synced).length;
+  const refresh = useCallback(async () => {
+    try {
+      const [rows, counts] = await Promise.all([
+        listOfflineRecords(),
+        getOfflineQueueSummary(),
+      ]);
+      setRecords(rows);
+      setSummary(counts);
+    } catch (e) {
+      setMessage({
+        type: "error",
+        text:
+          e instanceof Error
+            ? `Penyimpanan offline tidak dapat dibuka: ${e.message}`
+            : "Penyimpanan offline tidak dapat dibuka.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handleSubmit = () => {
-    const newRecord: EmergencyRecord = {
-      id: `eq${Date.now()}`,
-      ...formData,
-      createdAt: new Date().toISOString(),
-      synced: false,
-    };
-    setQueue((prev) => [newRecord, ...prev]);
-    setShowModal(false);
-    setFormData({ type: "registration", description: "" });
-  };
+  useEffect(() => {
+    // Ditunda satu tick agar setState tidak sinkron di dalam effect.
+    const timer = setTimeout(() => void refresh(), 0);
+    return () => clearTimeout(timer);
+  }, [refresh]);
+
+  useEffect(() => {
+    const onSync = () => void refresh();
+    window.addEventListener(OFFLINE_SYNC_EVENT, onSync);
+    return () => window.removeEventListener(OFFLINE_SYNC_EVENT, onSync);
+  }, [refresh]);
 
   /**
-   * Sinkronisasi NYATA ke backend (Domain 11):
-   *  1. POST /api/v1/sync/register-device (idempotent per fingerprint)
-   *  2. POST /api/v1/sync/push (idempotency key = deviceId + localRecordId)
-   * Jika backend gagal, antrian tetap pending — tidak ada fake success.
+   * Simpan catatan ke IndexedDB terlebih dahulu. Bila online, langsung coba
+   * kirim; bila gagal, record tetap tersimpan dan akan dikirim otomatis.
    */
-  const handleSync = async () => {
-    const pending = queue.filter((q) => !q.synced);
-    if (pending.length === 0) return;
-    setSyncing(true);
-    setSyncMessage(null);
+  const handleSubmit = async () => {
+    if (!formData.description.trim()) {
+      setMessage({ type: "error", text: "Deskripsi catatan wajib diisi." });
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
     try {
-      const device = await apiClient.post<{ id: string }>("/sync/register-device", {
-        deviceFingerprintHash: deviceFingerprint(),
-        siteCode: "SITE-HO-JKT",
+      await enqueueOfflineRecord(formData.type, {
+        type: formData.type,
+        description: formData.description.trim(),
+        recordedAt: new Date().toISOString(),
       });
-      const result = await apiClient.post<{
-        results: Array<{ localRecordId: string; status: string; message: string }>;
-      }>("/sync/push", {
-        deviceId: device.id,
-        items: pending.map((q) => ({
-          localRecordId: q.id,
-          entityType: "EMERGENCY_NOTE",
-          payload: { type: q.type, description: q.description, createdAt: q.createdAt },
-        })),
-      });
-
-      const statusById = new Map(result.results.map((r) => [r.localRecordId, r.status]));
-      setQueue((prev) =>
-        prev.map((q) =>
-          !q.synced && statusById.get(q.id) === "SYNCED" ? { ...q, synced: true } : q
-        )
-      );
-      const syncedCount = result.results.filter((r) => r.status === "SYNCED").length;
-      const skipped = result.results.filter((r) => r.status === "IDEMPOTENT_SKIPPED").length;
-      const conflicts = result.results.filter((r) => r.status === "CONFLICT").length;
-      setSyncMessage({
+      setShowModal(false);
+      setFormData({ type: "EMERGENCY_NOTE", description: "" });
+      await refresh();
+      setMessage({
         type: "ok",
-        text: `Sinkronisasi backend: ${syncedCount} synced${skipped ? `, ${skipped} sudah pernah terkirim (idempoten)` : ""}${conflicts ? `, ${conflicts} konflik perlu resolusi manual` : ""}.`,
+        text: isOnline
+          ? "Catatan tersimpan di perangkat dan sedang dikirim ke server."
+          : "Catatan tersimpan aman di perangkat (IndexedDB).",
       });
-      setIsOnline(true);
+      if (isOnline) {
+        void flushOfflineQueue().then(() => refresh());
+      }
     } catch (e) {
-      setSyncMessage({
+      setMessage({
         type: "error",
-        text: e instanceof Error ? e.message : "Sinkronisasi ke backend gagal. Antrian tetap pending.",
+        text: e instanceof Error ? e.message : "Gagal menyimpan catatan offline.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setMessage(null);
+    try {
+      const result = await flushOfflineQueue();
+      if (result.skipped === "offline") {
+        setMessage({ type: "error", text: "Perangkat masih offline. Antrean tetap tersimpan." });
+      } else if (result.skipped === "nothing-pending") {
+        setMessage({ type: "ok", text: "Tidak ada catatan yang menunggu dikirim." });
+      } else if (result.skipped === "device-unregistered") {
+        setMessage({
+          type: "error",
+          text: result.message ?? "Perangkat belum terdaftar di backend.",
+        });
+      } else {
+        setMessage({
+          type: "ok",
+          text:
+            `Terkirim: ${result.synced} dari ${result.attempted} catatan.` +
+            (result.conflicts ? ` ${result.conflicts} konflik perlu diselesaikan.` : "") +
+            (result.failed ? ` ${result.failed} gagal dan akan dicoba ulang.` : ""),
+        });
+      }
+      await refresh();
+    } catch (e) {
+      setMessage({
+        type: "error",
+        text: e instanceof Error ? e.message : "Sinkronisasi gagal. Antrean tetap tersimpan.",
       });
     } finally {
       setSyncing(false);
     }
   };
 
-  const toggleOnline = () => {
-    setIsOnline((prev) => !prev);
+  /** Coba ulang record yang sudah menyerah (attempts = batas maksimum). */
+  const handleRetry = async (record: OfflineRecord) => {
+    await updateOfflineRecord(record.id, { status: "pending", attempts: 0, lastError: undefined });
+    await refresh();
+    if (isOnline) void handleSync();
   };
 
   return (
@@ -135,13 +210,15 @@ export default function EmergencyPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Emergency Mode</h1>
-          <p className="text-sm text-muted-foreground">Mode darurat offline dengan upgrade queue</p>
+          <p className="text-sm text-muted-foreground">
+            Pencatatan offline dengan antrean IndexedDB dan sinkronisasi otomatis
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant={isOnline ? "outline" : "danger"} onClick={toggleOnline}>
-            {isOnline ? <Wifi className="size-4" /> : <WifiOff className="size-4" />}
+          <Badge variant={isOnline ? "success" : "warning"} data-testid="emergency-connectivity">
+            {isOnline ? <Wifi className="mr-1 size-3.5" /> : <WifiOff className="mr-1 size-3.5" />}
             {isOnline ? "Online" : "Offline"}
-          </Button>
+          </Badge>
           <Can action="emergency.create">
             <Button onClick={() => setShowModal(true)}>
               <Plus className="size-4" />
@@ -158,22 +235,36 @@ export default function EmergencyPage() {
             <div>
               <p className="font-medium text-warning-700">Mode Darurat Aktif</p>
               <p className="text-sm text-warning-600">
-                Sistem sedang offline. Semua data akan disimpan di upgrade queue dan disinkronkan otomatis saat koneksi pulih.
+                Catatan disimpan di IndexedDB perangkat dan dikirim otomatis saat koneksi
+                pulih. Jangan membersihkan data situs sebelum antrean kosong.
               </p>
             </div>
           </div>
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      {message && (
+        <div
+          className={`rounded-xl p-3 text-sm ${
+            message.type === "ok"
+              ? "bg-success-50 text-success-700"
+              : "bg-danger-50 text-danger-700"
+          }`}
+          role="status"
+        >
+          {message.text}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex size-10 items-center justify-center rounded-xl bg-warning-100 text-warning-600">
               <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-foreground">{pendingCount}</p>
-              <p className="text-xs text-muted-foreground">Pending Sync</p>
+              <p className="text-xl font-semibold text-foreground">{summary.pending}</p>
+              <p className="text-xs text-muted-foreground">Menunggu Sinkron</p>
             </div>
           </CardContent>
         </Card>
@@ -183,61 +274,95 @@ export default function EmergencyPage() {
               <CheckCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-foreground">{queue.filter((q) => q.synced).length}</p>
-              <p className="text-xs text-muted-foreground">Synced</p>
+              <p className="text-xl font-semibold text-foreground">{summary.synced}</p>
+              <p className="text-xs text-muted-foreground">Tersinkron</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-danger-100 text-danger-600">
+              <ShieldAlert className="size-5" />
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-foreground">
+                {summary.conflict + summary.failed}
+              </p>
+              <p className="text-xs text-muted-foreground">Konflik / Gagal</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex size-10 items-center justify-center rounded-xl bg-info-100 text-info-600">
-              <ShieldAlert className="size-5" />
+              <RefreshCw className="size-5" />
             </div>
             <div>
-              <p className="text-xl font-semibold text-foreground">{queue.length}</p>
-              <p className="text-xs text-muted-foreground">Total Records</p>
+              <p className="text-sm font-medium text-foreground">
+                {summary.lastSyncAt ? formatDate(summary.lastSyncAt) : "Belum pernah"}
+              </p>
+              <p className="text-xs text-muted-foreground">Sinkron Terakhir</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {syncMessage && (
-        <div
-          className={`rounded-xl p-3 text-sm ${
-            syncMessage.type === "ok" ? "bg-success-50 text-success-700" : "bg-danger-50 text-danger-700"
-          }`}
-        >
-          {syncMessage.text}
-        </div>
-      )}
-
-      {pendingCount > 0 && (
-        <Button onClick={handleSync} loading={syncing} disabled={syncing} className="w-full">
-          <RefreshCw className="size-4" />
-          Sinkronkan {pendingCount} Record ke Backend
+      {summary.pending > 0 && (
+        <Button onClick={handleSync} disabled={syncing || !isOnline} className="w-full">
+          <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "Mengirim…" : `Sinkronkan ${summary.pending} Catatan ke Backend`}
         </Button>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Upgrade Queue</CardTitle>
+          <CardTitle>Upgrade Queue (IndexedDB)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {queue.map((record) => (
-              <div key={record.id} className="flex items-center justify-between rounded-xl border border-border p-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{record.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {record.type} · {formatDate(record.createdAt)}
-                  </p>
-                </div>
-                <Badge variant={record.synced ? "success" : "warning"}>
-                  {record.synced ? "Synced" : "Pending"}
-                </Badge>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Memuat antrean…</p>
+          ) : records.length === 0 ? (
+            <EmptyState
+              title="Antrean kosong"
+              description="Catatan yang dibuat saat offline akan muncul di sini dan dikirim otomatis."
+              icon={CheckCircle}
+            />
+          ) : (
+            <div className="space-y-2">
+              {records.map((record) => {
+                const badge = STATUS_BADGE[record.status];
+                return (
+                  <div
+                    key={record.id}
+                    className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {readDescription(record)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {record.entityType} · {formatDate(record.createdAt)} · percobaan{" "}
+                        {record.attempts}
+                      </p>
+                      {(record.lastError || record.conflictReason) && (
+                        <p className="mt-1 text-xs text-danger-600">
+                          {record.conflictReason ?? record.lastError}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                      {record.status === "failed" && (
+                        <Button variant="outline" onClick={() => void handleRetry(record)}>
+                          Coba Lagi
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -251,36 +376,33 @@ export default function EmergencyPage() {
           <Select
             label="Tipe"
             value={formData.type}
-            onChange={(e) => setFormData((f) => ({ ...f, type: e.target.value as EmergencyRecord["type"] }))}
-            options={[
-              { value: "registration", label: "Registrasi" },
-              { value: "visit", label: "Kunjungan" },
-              { value: "mcu", label: "MCU" },
-              { value: "prescription", label: "Resep" },
-            ]}
+            onChange={(e) =>
+              setFormData((f) => ({ ...f, type: e.target.value as OfflineEntityType }))
+            }
+            options={EMERGENCY_TYPES}
           />
           <Input
             label="Deskripsi"
             value={formData.description}
             onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Deskripsi catatan darurat..."
+            placeholder="Catatan tindakan darurat…"
           />
+          <p className="text-xs text-muted-foreground">
+            Data disimpan di perangkat (bukan hanya di memori tab) sehingga tetap aman bila
+            aplikasi tertutup.
+          </p>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setShowModal(false)}>Batal</Button>
+            <Button variant="ghost" onClick={() => setShowModal(false)}>
+              Batal
+            </Button>
             <Can action="emergency.create">
-              <Button onClick={handleSubmit}>Simpan</Button>
+              <Button onClick={() => void handleSubmit()} disabled={saving}>
+                {saving ? "Menyimpan…" : "Simpan"}
+              </Button>
             </Can>
           </div>
         </div>
       </Modal>
     </div>
-  );
-}
-
-function Plus({ className }: { className?: string }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14" /><path d="M12 5v14" />
-    </svg>
   );
 }

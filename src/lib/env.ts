@@ -237,6 +237,33 @@ export function getDemoPassword(
   return typeof raw === "string" ? raw.trim() : "";
 }
 
+/**
+ * Kode site default untuk `POST /sync/register-device` (Emergency Mode).
+ * Wajib diisi lewat env pada deployment nyata; fallback hanya penanda agar
+ * perangkat tetap bisa didaftarkan dan admin melihat site belum dikonfigurasi.
+ */
+export function getDefaultSiteCode(
+  raw: string | undefined = process.env.NEXT_PUBLIC_SITE_CODE
+): string {
+  const value = typeof raw === "string" ? raw.trim() : "";
+  return value || "SITE-DEFAULT";
+}
+
+/**
+ * Registrasi service worker PWA.
+ * Default aktif hanya pada build production; dapat dipaksa dengan
+ * `NEXT_PUBLIC_ENABLE_SW=true` untuk pengujian offline di `next dev`.
+ */
+export function isServiceWorkerEnabled(
+  raw: string | undefined = process.env.NEXT_PUBLIC_ENABLE_SW,
+  nodeEnv: string | undefined = process.env.NODE_ENV
+): boolean {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (value === "false" || value === "0" || value === "no") return false;
+  if (value === "true" || value === "1" || value === "yes") return true;
+  return nodeEnv === "production";
+}
+
 /** Helper aman untuk membentuk URL absolut ke API (tanpa fallback diam-diam). */
 export function apiUrl(path: string): string {
   const base = requireApiBaseUrl();

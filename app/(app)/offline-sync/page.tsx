@@ -29,9 +29,15 @@ import { formatDate } from "@/lib/format";
 import {
   syncService,
   type SyncConflict,
-  type SyncPushItem,
   type SyncResolutionAction,
 } from "@/lib/services/sync.service";
+import {
+  flushOfflineQueue,
+  getOfflineQueueSummary,
+  purgeSyncedRecords,
+  OFFLINE_SYNC_EVENT,
+  type OfflineQueueSummary,
+} from "@/lib/offline/sync-engine";
 import { deviceFingerprintHash } from "@/shared/utils/device-fingerprint";
 import {
   RefreshCw,
@@ -69,10 +75,18 @@ export default function OfflineSyncPage() {
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [resolveMsg, setResolveMsg] = useState<string | null>(null);
 
-  // Batch push dari antrean offline lokal.
+  // Batch push dari antrean offline lokal (IndexedDB).
   const [pushing, setPushing] = useState(false);
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const [pushError, setPushError] = useState<string | null>(null);
+  const [queueSummary, setQueueSummary] = useState<OfflineQueueSummary>({
+    total: 0,
+    pending: 0,
+    synced: 0,
+    conflict: 0,
+    failed: 0,
+    lastSyncAt: null,
+  });
 
   const loadConflicts = useCallback(async () => {
     setLoadingConflicts(true);
@@ -87,12 +101,28 @@ export default function OfflineSyncPage() {
     }
   }, [deviceId]);
 
+  const loadSummary = useCallback(async () => {
+    try {
+      setQueueSummary(await getOfflineQueueSummary());
+    } catch {
+      // IndexedDB tidak tersedia (mode privat ketat) — kartu antrean tetap 0.
+    }
+  }, []);
+
   useEffect(() => {
     // Defer agar setState tidak dipanggil sinkron di dalam effect
     // (react-hooks/set-state-in-effect), konsisten dengan halaman lain.
-    const timer = setTimeout(() => void loadConflicts(), 0);
-    return () => clearTimeout(timer);
-  }, [loadConflicts]);
+    const timer = setTimeout(() => {
+      void loadConflicts();
+      void loadSummary();
+    }, 0);
+    const onSync = () => void loadSummary();
+    window.addEventListener(OFFLINE_SYNC_EVENT, onSync);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener(OFFLINE_SYNC_EVENT, onSync);
+    };
+  }, [loadConflicts, loadSummary]);
 
   const handleRegister = async () => {
     setRegistering(true);
@@ -124,43 +154,36 @@ export default function OfflineSyncPage() {
   };
 
   /**
-   * Kirim antrean offline lokal sebagai satu batch push.
-   * Item diantrean lokal dipetakan ke kontrak `SyncPushItem` backend.
+   * Kirim antrean offline (IndexedDB) lewat mesin sinkronisasi.
+   *
+   * Sebelumnya halaman ini mengosongkan seluruh antrean localStorage setelah
+   * push — termasuk item yang ditolak backend (kehilangan data). Sekarang
+   * status per item dari backend yang menentukan: hanya item terkonfirmasi
+   * yang ditandai tersinkron, sisanya tetap di antrean.
    */
   const handlePushQueue = async () => {
     setPushing(true);
     setPushMsg(null);
     setPushError(null);
     try {
-      if (!deviceId) {
-        setPushError("Perangkat belum terdaftar. Daftarkan lebih dulu.");
-        return;
-      }
-      const { loadOfflineQueue, clearOfflineQueue, saveOfflineQueue } = await import(
-        "@/lib/offline-queue"
-      );
-      const queue = loadOfflineQueue();
-      if (queue.length === 0) {
+      const result = await flushOfflineQueue({
+        siteCode: siteCode.trim() || undefined,
+      });
+      if (result.skipped === "offline") {
+        setPushError("Perangkat sedang offline. Antrean tetap tersimpan.");
+      } else if (result.skipped === "nothing-pending") {
         setPushMsg("Tidak ada record offline yang menunggu dikirim.");
-        return;
+      } else if (result.skipped === "device-unregistered") {
+        setPushError(result.message ?? "Perangkat gagal didaftarkan.");
+      } else {
+        setPushMsg(
+          `Batch diproses: ${result.synced} tersinkron dari ${result.attempted} item` +
+            (result.conflicts ? `, ${result.conflicts} konflik` : "") +
+            (result.failed ? `, ${result.failed} gagal (akan dicoba ulang)` : "") +
+            "."
+        );
+        if (result.synced > 0) await loadSummary();
       }
-      const items: SyncPushItem[] = queue.map((entry) => ({
-        localRecordId: entry.id,
-        entityType: String(entry.action).toUpperCase(),
-        payload: { action: entry.action, args: entry.args },
-      }));
-      const res = await syncService.push(deviceId, items);
-      const results = res.results ?? [];
-      const conflictsFound = results.filter(
-        (r) => (r.status ?? "").toUpperCase() === "CONFLICT"
-      ).length;
-      // Batch berhasil: antrean dikosongkan; konflik (bila ada) muncul di daftar
-      // setelah refresh berikutnya.
-      saveOfflineQueue(clearOfflineQueue());
-      setPushMsg(
-        `Batch terkirim: ${res.totalReceived ?? items.length} item` +
-          (conflictsFound > 0 ? `, ${conflictsFound} perlu penyelesaian.` : ".")
-      );
       await loadConflicts();
     } catch (e) {
       setPushError(e instanceof Error ? e.message : "Gagal mengirim batch sinkronisasi.");
@@ -248,23 +271,39 @@ export default function OfflineSyncPage() {
           <div className="space-y-1">
             <h2 className="text-sm font-semibold text-foreground">Kirim Record Offline</h2>
             <p className="text-xs text-muted-foreground">
-              Antrean lokal (aksi yang dilakukan saat offline) dikirim sebagai satu batch.
+              Antrean IndexedDB di perangkat ini: {queueSummary.pending} menunggu ·{" "}
+              {queueSummary.synced} tersinkron · {queueSummary.conflict} konflik ·{" "}
+              {queueSummary.failed} gagal.
             </p>
           </div>
-          <Button variant="outline" onClick={handlePushQueue} disabled={pushing || !deviceId}>
-            {pushing ? (
-              <RefreshCw className="size-4 animate-spin" />
-            ) : (
-              <UploadCloud className="size-4" />
+          <div className="flex flex-wrap gap-2">
+            {queueSummary.synced > 0 && (
+              <Button
+                variant="ghost"
+                onClick={async () => {
+                  await purgeSyncedRecords();
+                  await loadSummary();
+                }}
+              >
+                Bersihkan Tersinkron
+              </Button>
             )}
-            Kirim Batch
-          </Button>
+            <Button variant="outline" onClick={handlePushQueue} disabled={pushing}>
+              {pushing ? (
+                <RefreshCw className="size-4 animate-spin" />
+              ) : (
+                <UploadCloud className="size-4" />
+              )}
+              Kirim Batch
+            </Button>
+          </div>
         </div>
         {pushMsg && <p className="mt-3 text-sm text-success-600">{pushMsg}</p>}
         {pushError && <p className="mt-3 text-sm text-danger-600">{pushError}</p>}
         {!deviceId && (
           <p className="mt-3 text-xs text-muted-foreground">
-            Daftarkan perangkat lebih dulu agar batch push dapat diterima backend.
+            Perangkat didaftarkan otomatis saat batch pertama dikirim. Site code di atas
+            dipakai untuk pendaftaran tersebut.
           </p>
         )}
       </Card>

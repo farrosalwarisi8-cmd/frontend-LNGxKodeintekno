@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { VitalsReporter } from "@/components/vitals-reporter";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/lib/i18n";
+import PwaProvider from "@/components/pwa-provider";
 
 export const metadata: Metadata = {
   applicationName: "Kodein Klinik",
@@ -56,6 +57,9 @@ export default function RootLayout({
         <ThemeProvider>
           <I18nProvider>
             <ErrorBoundary>{children}</ErrorBoundary>
+            {/* Didaftarkan setelah children agar error pada SW/sinkronisasi
+                tidak pernah menggagalkan render halaman. */}
+            <PwaProvider />
           </I18nProvider>
         </ThemeProvider>
         <Toaster />

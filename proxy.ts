@@ -46,5 +46,9 @@ export const config = {
   // request server-ke-server tidak membawa cookie sesi (redirect ke /login
   // lalu optimizer menerima HTML, bukan gambar). Logika auth di atas tidak
   // berubah — hanya matcher statis yang dilewatkan.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|brand|icons|manifest.webmanifest).*)"],
+  // `sw.js` juga dikecualikan: service worker harus diambil apa adanya dari
+  // /public, bukan di-redirect ke /login (registrasi SW akan gagal).
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|brand|icons|manifest.webmanifest|sw.js|offline).*)",
+  ],
 };
