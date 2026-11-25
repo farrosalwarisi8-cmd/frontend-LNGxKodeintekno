@@ -43,14 +43,14 @@ test.describe("Permission matrix", () => {
     for (const label of [
       "MCU & FTW",
       "Rekam Medis",
-      "Dispensing",
+      "Penyerahan Obat",
       "Retur Obat",
-      "Registrasi & Consent",
+      "Registrasi & Persetujuan",
       "Direktori Pekerja",
     ]) {
       await expect(sidebar(page).getByRole("link", { name: label, exact: true })).toHaveCount(0);
     }
-    for (const label of ["User", "Master Data", "Audit Log", "Laporan"]) {
+    for (const label of ["Pengguna", "Data Induk", "Log Audit", "Laporan"]) {
       await expect(sidebar(page).getByRole("link", { name: label, exact: true })).toHaveCount(1);
     }
 
@@ -64,7 +64,7 @@ test.describe("Permission matrix", () => {
   test("admin: menu halaman kontrol sistem tetap tersedia", async ({ page, loginAs }) => {
     await loginAs("admin.sistem");
 
-    for (const label of ["Sistem", "API Key", "TTE Monitoring", "Emergency Mode"]) {
+    for (const label of ["Sistem", "Kunci API", "Pemantauan TTE", "Mode Darurat"]) {
       await expect(sidebar(page).getByRole("link", { name: label, exact: true })).toHaveCount(1);
     }
   });
@@ -76,8 +76,8 @@ test.describe("Permission matrix", () => {
   }) => {
     await loginAs("hr.pic");
 
-    await expect(sidebar(page).getByRole("link", { name: "User", exact: true })).toHaveCount(0);
-    await expect(sidebar(page).getByRole("link", { name: "Master Data", exact: true })).toHaveCount(0);
+    await expect(sidebar(page).getByRole("link", { name: "Pengguna", exact: true })).toHaveCount(0);
+    await expect(sidebar(page).getByRole("link", { name: "Data Induk", exact: true })).toHaveCount(0);
     // Domain HR tetap ada.
     await expect(sidebar(page).getByRole("link", { name: "Direktori Pekerja", exact: true })).toHaveCount(1);
 
@@ -136,14 +136,14 @@ test.describe("Permission matrix", () => {
     for (const label of [
       "Rekam Medis",
       "MCU & FTW",
-      "Dispensing",
+      "Penyerahan Obat",
       "Farmasi",
-      "User",
-      "Master Data",
+      "Pengguna",
+      "Data Induk",
     ]) {
       await expect(sidebar(page).getByRole("link", { name: label, exact: true })).toHaveCount(0);
     }
-    for (const label of ["Kunjungan", "Antrean", "Registrasi & Consent"]) {
+    for (const label of ["Kunjungan", "Antrean", "Registrasi & Persetujuan"]) {
       await expect(sidebar(page).getByRole("link", { name: label, exact: true })).toHaveCount(1);
     }
 

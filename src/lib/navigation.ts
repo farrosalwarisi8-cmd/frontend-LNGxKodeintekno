@@ -42,12 +42,12 @@ export function isNavigationFeatureEnabled(flag: NavigationFeatureFlag | undefin
 }
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "layout-dashboard", end: true },
+  { label: "Dasbor", href: "/dashboard", icon: "layout-dashboard", end: true },
   { label: "Demo", href: "/demo", icon: "flask" },
   // Registrasi & Consent (MPI Modul 01) sengaja dipisah tegas dari
   // Direktori Pekerja (/employees, data master pekerja dari backend) supaya
   // tidak ada dua menu "daftar orang" yang tampak sama.
-  { label: "Registrasi & Consent", href: "/people", icon: "users", permission: "manage-employees" },
+  { label: "Registrasi & Persetujuan", href: "/people", icon: "users", permission: "manage-employees" },
   { label: "Direktori Pekerja", href: "/employees", icon: "users", permission: "manage-employees" },
   { label: "MCU & FTW", href: "/mcu", icon: "activity", permission: "view-mcu" },
   { label: "Review MCU", href: "/mcu/review", icon: "stethoscope", permission: "review-mcu" },
@@ -61,12 +61,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Rujukan Eksternal", href: "/visits/referrals", icon: "stethoscope", permission: "view-visits" },
   { label: "Rekam Medis", href: "/medical-records", icon: "file-text", permission: "view-clinical-notes" },
   { label: "Farmasi", href: "/medicine", icon: "pill", permission: "manage-stock" },
-  { label: "Dispensing", href: "/medicine/dispense", icon: "pill", permission: "dispense-medicine" },
+  { label: "Penyerahan Obat", href: "/medicine/dispense", icon: "pill", permission: "dispense-medicine" },
   { label: "Retur Obat", href: "/medicine/return", icon: "pill", permission: "dispense-medicine" },
   { label: "Sertifikat", href: "/certificates", icon: "badge-check", permission: "issue-certificate" },
   { label: "Laporan", href: "/reports", icon: "bar-chart", permission: "view-reports" },
   { label: "Status Kesehatan", href: "/health-status", icon: "heart-pulse", permission: "view-health-status" },
-  { label: "Waiver", href: "/waiver", icon: "shield-check", permission: "manage-hse" },
+  { label: "Dispensasi", href: "/waiver", icon: "shield-check", permission: "manage-hse" },
   // Sinkronisasi offline (Domain 11): registrasi perangkat, push batch, dan
   // resolusi konflik — backend membatasi resolve ke DOCTOR_OH/DOCTOR_CLINIC/
   // SYSTEM_ADMIN, dipetakan ke permission review-mcu di UI.
@@ -80,15 +80,15 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Restriksi Kerja (OH)", href: "/oh-review/restrictions", icon: "shield-check", permission: "manage-restriction", featureFlag: "oh-review" },
   // Modul D&A terbatas (Dokter OH; HSE hanya bila ditunjuk server).
   { label: "D&A Forensik (OH)", href: "/dna", icon: "flask", permission: "view-dna", featureFlag: "dna" },
-  { label: "Emergency", href: "/emergency", icon: "alert-triangle", permission: "view-emergency" },
+  { label: "Darurat", href: "/emergency", icon: "alert-triangle", permission: "view-emergency" },
   // System Administrator controls
   { label: "Sistem", href: "/system-config", icon: "settings", permission: "manage-system-config" },
-  { label: "API Key", href: "/api-keys", icon: "key", permission: "manage-api-keys" },
-  { label: "TTE Monitoring", href: "/tte", icon: "monitor", permission: "view-tte" },
-  { label: "Emergency Mode", href: "/emergency-detail", icon: "alert-triangle", permission: "monitor-emergency" },
-  { label: "User", href: "/users", icon: "users", permission: "manage-users" },
-  { label: "Master Data", href: "/master-data", icon: "database", permission: "manage-master-data" },
-  { label: "Audit Log", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
+  { label: "Kunci API", href: "/api-keys", icon: "key", permission: "manage-api-keys" },
+  { label: "Pemantauan TTE", href: "/tte", icon: "monitor", permission: "view-tte" },
+  { label: "Mode Darurat", href: "/emergency-detail", icon: "alert-triangle", permission: "monitor-emergency" },
+  { label: "Pengguna", href: "/users", icon: "users", permission: "manage-users" },
+  { label: "Data Induk", href: "/master-data", icon: "database", permission: "manage-master-data" },
+  { label: "Log Audit", href: "/audit-logs", icon: "history", permission: "view-audit-logs" },
   { label: "Lab & Radiologi", href: "/lab", icon: "flask", permission: "input-lab-result" },
   // A2: halaman radiolog terpisah dari alur analis lab. Di balik feature
   // flag `NEXT_PUBLIC_FEATURE_LAB` (default mati → menu tidak tampil).
@@ -99,9 +99,9 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
 
 /** Label bahasa Indonesia untuk tiap route (dipakai breadcrumb). */
 export const ROUTE_LABELS: Record<string, string> = {
-  "/dashboard": "Dashboard",
+  "/dashboard": "Dasbor",
   "/demo": "Demo",
-  "/people": "Registrasi & Consent",
+  "/people": "Registrasi & Persetujuan",
   "/people/new": "Pendaftaran Pekerja",
   "/employees": "Direktori Pekerja",
   "/mcu": "MCU & FTW",
@@ -114,21 +114,24 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/visits/referrals": "Rujukan Eksternal",
   "/medical-records": "Rekam Medis",
   "/medicine": "Farmasi",
-  "/medicine/dispense": "Dispensing",
+  "/medicine/dispense": "Penyerahan Obat",
   "/medicine/return": "Retur Obat",
   "/certificates": "Sertifikat",
   "/reports": "Laporan",
   "/health-status": "Status Kesehatan",
-  "/waiver": "Waiver",
+  "/waiver": "Dispensasi",
   "/offline-sync": "Sinkronisasi Offline",
   "/da": "Drug & Alcohol",
   "/oh-review": "Review MCU Dokter OH",
   "/oh-review/restrictions": "Restriksi Kerja",
   "/dna": "D&A Forensik",
-  "/emergency": "Emergency",
+  "/emergency": "Darurat",
+  "/emergency-detail": "Mode Darurat",
   "/users": "Pengguna",
-  "/master-data": "Master Data",
-  "/audit-logs": "Audit Log",
+  "/api-keys": "Kunci API",
+  "/tte": "Pemantauan TTE",
+  "/master-data": "Data Induk",
+  "/audit-logs": "Log Audit",
   "/lab": "Lab & Radiologi",
   "/lab/import": "Impor Hasil Lab",
   "/radiology": "Radiologi",
@@ -186,7 +189,7 @@ export function getNavigation(role: Role | null | undefined): NavigationItem[] {
  * supaya urutan dan permission tidak pernah menyimpang dari sidebar.
  */
 export const BOTTOM_NAV_ITEMS: NavigationItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: "layout-dashboard", permission: "view-dashboard", end: true },
+  { label: "Dasbor", href: "/dashboard", icon: "layout-dashboard", permission: "view-dashboard", end: true },
   { label: "MCU", href: "/mcu", icon: "activity", permission: "view-mcu" },
   { label: "Kunjungan", href: "/visits", icon: "clipboard-list", permission: "view-visits" },
   { label: "Farmasi", href: "/medicine", icon: "pill", permission: "manage-stock" },
@@ -243,7 +246,7 @@ export interface BreadcrumbItem {
  */
 export function buildBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const clean = pathname.replace(/\/+$/, "") || "/";
-  if (clean === "/") return [{ label: "Dashboard" }];
+  if (clean === "/") return [{ label: "Dasbor" }];
   if (ROUTE_LABELS[clean] && clean.split("/").length === 2) {
     // route satu tingkat: tampil sebagai halaman aktif tanpa link induk
     return [{ label: ROUTE_LABELS[clean] }];

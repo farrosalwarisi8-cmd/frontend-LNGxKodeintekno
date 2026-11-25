@@ -96,7 +96,7 @@ describe("SidebarNav — rendering per role", () => {
     it(`sidebar ${testCase.label} dirender dari konfigurasi + permission`, () => {
       const html = renderSidebar(testCase.role);
       expect(html).toContain('aria-label="Navigasi utama"');
-      expect(html).toContain("Dashboard");
+      expect(html).toContain("Dasbor");
       for (const href of testCase.mustHave) {
         expect(html).toContain(`href="${href}"`);
       }
@@ -110,7 +110,7 @@ describe("SidebarNav — rendering per role", () => {
     const html = renderToStaticMarkup(
       <SidebarNav items={getNavigation("hr")} pathname="/dashboard" collapsed />
     );
-    expect(html).toContain('title="Dashboard"');
+    expect(html).toContain('title="Dasbor"');
     expect(html).toContain('aria-label="Direktori Pekerja"');
   });
 });

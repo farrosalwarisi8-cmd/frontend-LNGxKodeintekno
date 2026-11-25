@@ -67,7 +67,6 @@ async function loadSiteOptions(): Promise<SiteOption[] | null> {
 export function ScopeSelector({ className }: { className?: string }) {
   const { role } = useDemoMode();
   const activeSiteId = useStore((s) => s.activeSiteId);
-  const activeSiteName = useStore((s) => s.activeSiteName);
   const setActiveSite = useStore((s) => s.setActiveSite);
   const [sites, setSites] = useState<SiteOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,9 +113,6 @@ export function ScopeSelector({ className }: { className?: string }) {
           </option>
         ))}
       </select>
-      {activeSiteName && (
-        <span className="hidden text-xs text-muted-foreground xl:inline">Menampilkan: {activeSiteName}</span>
-      )}
     </div>
   );
 }

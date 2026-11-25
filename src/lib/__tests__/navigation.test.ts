@@ -197,9 +197,9 @@ describe("getBottomNavigation() — permission registry yang sama", () => {
 
   it("memakai label ringkas khusus bottom bar (presentasi, bukan permission baru)", () => {
     const labels = getBottomNavigation("apoteker").map((i) => i.label);
-    expect(labels).toEqual(["Dashboard", "MCU", "Farmasi"]);
+    expect(labels).toEqual(["Dasbor", "MCU", "Farmasi"]);
     const perawatLabels = getBottomNavigation("perawat").map((i) => i.label);
-    expect(perawatLabels).toEqual(["Dashboard", "MCU", "Kunjungan"]);
+    expect(perawatLabels).toEqual(["Dasbor", "MCU", "Kunjungan"]);
   });
 
   it("tidak ada link bottom nav yang pasti ditolak route guard", () => {
@@ -272,7 +272,7 @@ describe("buildBreadcrumbs()", () => {
   });
 
   it("route satu tingkat tampil sebagai halaman aktif", () => {
-    expect(buildBreadcrumbs("/dashboard")).toEqual([{ label: "Dashboard" }]);
+    expect(buildBreadcrumbs("/dashboard")).toEqual([{ label: "Dasbor" }]);
   });
 
   it("segmen tak dikenal di-humanize", () => {
