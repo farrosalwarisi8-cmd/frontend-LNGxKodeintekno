@@ -21,10 +21,36 @@ Object.defineProperty(globalThis, "document", { value: { cookie: "" } });
 
 import { useStore } from "../../../lib/store";
 import { referralService } from "@/lib/services/referral.service";
+import type { ClinicVisit } from "../../../lib/types";
+
+/** Fixture LOKAL — tidak lagi memakai data seed global store. */
+function testVisit(id: string, visitNumber: string): ClinicVisit {
+  return {
+    id,
+    visitNumber,
+    queueNumber: 1,
+    employeeId: "e-test-1",
+    locationId: "l-test-1",
+    date: "2026-11-25",
+    time: "09:00",
+    chiefComplaint: "Keluhan uji",
+    initialExam: "",
+    diagnosisIds: [],
+    diagnosisNote: "",
+    treatment: "",
+    doctorNote: "",
+    status: "In Queue",
+    createdAt: "2026-11-25T09:00:00.000Z",
+  };
+}
 
 describe("referralService", () => {
   beforeEach(() => {
-    useStore.setState({ referrals: [], currentUserId: null });
+    useStore.setState({
+      referrals: [],
+      currentUserId: null,
+      visits: [testVisit("v-test-1", "VIS-9001"), testVisit("v-test-2", "VIS-9002")],
+    });
   });
 
   it("mencatat rujukan dan menandai kunjungan sebagai Referred", () => {

@@ -22,10 +22,23 @@ Object.defineProperty(globalThis, "localStorage", { value: localStorageMock, wri
 Object.defineProperty(globalThis, "document", { value: documentMock, writable: true });
 
 import { useStore } from "../../../lib/store";
+import type { User } from "../../../lib/types";
 
 const realFetch = globalThis.fetch;
-// Snapshot pengguna awal: test login/MFA menambahkan user baru ke store.
-const seedUsers = useStore.getState().users;
+
+// Fixture LOKAL — test tidak boleh bergantung pada seed global store.
+const testUsers: User[] = [
+  {
+    id: "u1",
+    username: "admin",
+    password: "",
+    name: "Admin Test",
+    role: "admin",
+    title: "System Administrator",
+    mfaEnabled: false,
+    preferredLanguage: "id",
+  },
+];
 
 interface StubResponse {
   status: number;
@@ -59,7 +72,7 @@ const backendAdmin = {
 beforeEach(() => {
   localStorageMock.clear();
   documentMock.cookie = "";
-  useStore.setState({ currentUserId: null, session: null, _hasHydrated: false, users: seedUsers });
+  useStore.setState({ currentUserId: null, session: null, _hasHydrated: false, users: testUsers });
 });
 
 afterEach(() => {
@@ -168,8 +181,9 @@ describe("store.verifyMfa()", () => {
 
 describe("session restore & logout", () => {
   it("sesi dapat dipulihkan dari state tersimpan (refresh tidak logout)", () => {
-    const seeded = useStore.getState().users[0];
+    const seeded = testUsers[0];
     useStore.setState({
+      users: testUsers,
       currentUserId: seeded.id,
       session: {
         userId: seeded.id,

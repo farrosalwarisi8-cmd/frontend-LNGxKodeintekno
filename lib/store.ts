@@ -43,7 +43,7 @@ import {
   USERS,
   VISITS,
   WORK_HEALTH_STATUS,
-} from "@/lib/seed"
+} from "@/lib/demo-seed"
 import { uid, today } from "@/lib/format"
 import {
   authService,
@@ -53,6 +53,7 @@ import {
   type SessionUser,
 } from "@/lib/services/auth.service"
 import type { OfflineAction, OfflineQueueEntry } from "@/lib/offline-queue"
+import { isDemoModeEnabled } from "@/lib/env"
 import {
   enqueueOfflineQueue,
   isAckOnly,
@@ -62,6 +63,94 @@ import {
 } from "@/lib/offline-queue"
 
 type Diagnosis = (typeof DIAGNOSES)[number]
+
+/**
+ * Data klinis & master hasil seed. HANYA dimuat pada mode demo eksplisit
+ * (`NEXT_PUBLIC_ENABLE_DEMO=true`). Pada production/staging state awal selalu
+ * kosong dan diisi murni dari backend, sehingga tidak ada data fiktif yang
+ * tampil sebelum sinkronisasi. Lihat R-1 pada LAPORAN_KESIAPAN_INTEGRASI_FINAL.md.
+ */
+function createInitialClinicalData() {
+  /**
+   * Gerbang build-time: pada build production/staging (`NODE_ENV=production`)
+   * seed klinis tidak pernah dimuat. Selain itu `next.config.ts` meng-alias
+   * `@/lib/demo-seed` ke stub kosong pada build production, sehingga modul seed
+   * tidak ikut ter-bundle sama sekali (lihat `lib/demo-seed.production.ts`).
+   */
+  if (process.env.NODE_ENV === "production") {
+    return emptyClinicalData()
+  }
+  if (!isDemoModeEnabled()) {
+    return emptyClinicalData()
+  }
+  return {
+    users: USERS,
+    companies: COMPANIES,
+    departments: DEPARTMENTS,
+    locations: LOCATIONS,
+    employees: EMPLOYEES,
+    diagnoses: DIAGNOSES,
+    medicines: MEDICINES,
+    stockBatches: STOCK_BATCHES,
+    stockTransactions: STOCK_TRANSACTIONS,
+    mcus: MCUS,
+    workHealthStatus: WORK_HEALTH_STATUS,
+    visits: VISITS,
+    referrals: REFERRALS,
+    dispensings: DISPENSINGS,
+    certificates: CERTIFICATES,
+    notifications: NOTIFICATIONS,
+    auditLogs: AUDIT_LOGS,
+  }
+}
+
+/** State awal klinis kosong — dipakai production/staging dan demo nonaktif. */
+function emptyClinicalData() {
+  return {
+    users: [] as User[],
+    companies: [] as Company[],
+    departments: [] as Department[],
+    locations: [] as WorkLocation[],
+    employees: [] as Employee[],
+    diagnoses: [] as Diagnosis[],
+    medicines: [] as Medicine[],
+    stockBatches: [] as StockBatch[],
+    stockTransactions: [] as StockTransaction[],
+    mcus: [] as MCU[],
+    workHealthStatus: [] as WorkHealthStatus[],
+    visits: [] as ClinicVisit[],
+    referrals: [] as ExternalReferral[],
+    dispensings: [] as Dispensing[],
+    certificates: [] as HealthCertificate[],
+    notifications: [] as AppNotification[],
+    auditLogs: [] as AuditLog[],
+  }
+}
+
+/**
+ * Kunci data klinis/master yang TIDAK dipersist ke localStorage.
+ * Data ini berasal dari backend dan hanya hidup di memori; penyimpanan
+ * sementara untuk mode offline ditangani IndexedDB (`offline-db.ts`), bukan
+ * localStorage mentah (R-5).
+ */
+const NON_PERSISTED_CLINICAL_KEYS = [
+  "companies",
+  "departments",
+  "locations",
+  "employees",
+  "diagnoses",
+  "medicines",
+  "stockBatches",
+  "stockTransactions",
+  "mcus",
+  "workHealthStatus",
+  "visits",
+  "referrals",
+  "dispensings",
+  "certificates",
+  "notifications",
+  "auditLogs",
+] as const
 
 export interface DispenseItem {
   medicineId: string
@@ -276,23 +365,7 @@ export const useStore = create<AppState>()(
       activeSiteName: null,
       scopeVersion: 0,
 
-      users: USERS,
-      companies: COMPANIES,
-      departments: DEPARTMENTS,
-      locations: LOCATIONS,
-      employees: EMPLOYEES,
-      diagnoses: DIAGNOSES,
-      medicines: MEDICINES,
-      stockBatches: STOCK_BATCHES,
-      stockTransactions: STOCK_TRANSACTIONS,
-      mcus: MCUS,
-      workHealthStatus: WORK_HEALTH_STATUS,
-      visits: VISITS,
-      referrals: REFERRALS,
-      dispensings: DISPENSINGS,
-      certificates: CERTIFICATES,
-      notifications: NOTIFICATIONS,
-      auditLogs: AUDIT_LOGS,
+      ...createInitialClinicalData(),
 
       // ---- Modul 1: Autentikasi (terhubung ke backend POST /api/v1/auth/*) ----
       login: async (username, password) => {
@@ -966,9 +1039,11 @@ export const useStore = create<AppState>()(
     {
       name: "kodein-klinik-store",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
-      // Token QR mentah pernah (pada build lama) ikut tersimpan di sertifikat.
-      // Migrasi v2 membuang field itu dari localStorage pengguna lama.
+      version: 3,
+      // Migrasi data localStorage pengguna lama:
+      //  - v2: token QR mentah pernah ikut tersimpan di sertifikat.
+      //  - v3: data klinis/master tidak lagi dipersist (R-5); entri lama dari
+      //    build sebelumnya dihapus agar tidak ada PHI/data demo yang tersisa.
       migrate: (persistedState, version) => {
         const state = persistedState as Record<string, unknown>;
         if (version < 2 && Array.isArray(state?.certificates)) {
@@ -980,6 +1055,11 @@ export const useStore = create<AppState>()(
             }
           );
         }
+        if (version < 3) {
+          for (const key of NON_PERSISTED_CLINICAL_KEYS) {
+            delete state[key];
+          }
+        }
         return persistedState as never;
       },
       partialize: (s) => ({
@@ -989,29 +1069,11 @@ export const useStore = create<AppState>()(
         orgScope: s.orgScope,
         activeSiteId: s.activeSiteId,
         activeSiteName: s.activeSiteName,
+        // Hanya identitas sesi yang boleh menetap di localStorage. Data
+        // klinis (employees, visits, mcus, SOAP, lab, sertifikat, audit) tidak
+        // pernah ditulis ke localStorage; penyimpanan sementara offline ada
+        // di IndexedDB (src/lib/offline/offline-db.ts).
         users: s.users,
-        companies: s.companies,
-        departments: s.departments,
-        locations: s.locations,
-        employees: s.employees,
-        diagnoses: s.diagnoses,
-        medicines: s.medicines,
-        stockBatches: s.stockBatches,
-        stockTransactions: s.stockTransactions,
-        mcus: s.mcus,
-        workHealthStatus: s.workHealthStatus,
-        visits: s.visits,
-        referrals: s.referrals,
-        dispensings: s.dispensings,
-        // Token QR tidak pernah dipersist: nilai mentah hanya ada di memori
-        // komponen setelah POST /documents/render-pdf.
-        certificates: s.certificates.map((cert) => {
-          const copy = { ...cert };
-          delete copy.qrToken;
-          return copy;
-        }),
-        notifications: s.notifications,
-        auditLogs: s.auditLogs,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true)

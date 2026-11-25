@@ -175,10 +175,15 @@ export default function LoginPageContent() {
             <CardContent className="space-y-4">
               {mfaSetupRequired && (
                 <div className="rounded-xl bg-warning-50 p-3 text-sm text-warning-600">
-                  Kebijakan keamanan mewajibkan MFA untuk peran Anda. Pada environment
-                  demo/non-production, backend mengizinkan kode OTP demo <strong>123456</strong>{" "}
-                  untuk menyelesaikan login. Pada production, daftarkan akun ke aplikasi
-                  authenticator (Google/Microsoft Authenticator) lebih dahulu.
+                  Kebijakan keamanan mewajibkan MFA untuk peran Anda. Daftarkan akun ke
+                  aplikasi authenticator (Google/Microsoft Authenticator) untuk
+                  menyelesaikan login.
+                  {DEMO_MODE_ENABLED && (
+                    <>
+                      {" "}Pada environment demo, backend juga mengizinkan kode OTP demo{" "}
+                      <strong>123456</strong>.
+                    </>
+                  )}
                 </div>
               )}
               <Input
@@ -319,9 +324,11 @@ export default function LoginPageContent() {
           </Card>
         )}
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Seluruh data pada demo ini bersifat fiktif dan tidak menggunakan data pasien sebenarnya.
-        </p>
+        {DEMO_MODE_ENABLED && (
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Seluruh data pada demo ini bersifat fiktif dan tidak menggunakan data pasien sebenarnya.
+          </p>
+        )}
       </main>
       {/* Pengalih tema: di DOM setelah main agar urutan Tab formulir tetap. */}
       <div className="absolute right-4 top-4">
