@@ -33,6 +33,8 @@ export const ACTION_PERMISSIONS = {
   "visits.call-ticket": "edit-visit",
   // Kolom klinis pada daftar kunjungan/antrean (keluhan utama, diagnosis).
   "visits.view-clinical": "view-clinical-notes",
+  // Rujukan eksternal (mode demo: tersimpan lokal, ditautkan ke kunjungan).
+  "visits.refer": "edit-visit",
   "pharmacy.receive-stock": "manage-stock",
   "pharmacy.dispense": "dispense-medicine",
   "certificates.issue": "issue-certificate",

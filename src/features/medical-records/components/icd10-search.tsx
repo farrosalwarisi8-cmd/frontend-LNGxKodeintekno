@@ -99,34 +99,28 @@ export function Icd10Search({
       <label htmlFor={inputId} className="block text-sm font-medium text-text-secondary">
         {label}
       </label>
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <Input
-          ref={inputRef}
-          id={inputId}
-          role="combobox"
-          aria-expanded={open && matches.length > 0}
-          aria-controls={listId}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            open && matches[activeIndex] ? optionId(matches[activeIndex].id) : undefined
-          }
-          placeholder="Ketik kode atau nama diagnosis (mis. E11 / diabetes)"
-          value={query}
-          disabled={disabled}
-          className="pl-10"
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-            setActiveIndex(0);
-          }}
-          onKeyDown={handleKeyDown}
-          onBlur={() => setOpen(false)}
-        />
-      </div>
+      <Input
+        ref={inputRef}
+        id={inputId}
+        role="combobox"
+        aria-expanded={open && matches.length > 0}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        aria-activedescendant={
+          open && matches[activeIndex] ? optionId(matches[activeIndex].id) : undefined
+        }
+        placeholder="Ketik kode atau nama diagnosis (mis. E11 / diabetes)"
+        value={query}
+        disabled={disabled}
+        leftIcon={<Search />}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          setActiveIndex(0);
+        }}
+        onKeyDown={handleKeyDown}
+        onBlur={() => setOpen(false)}
+      />
 
       {open && needle.length > 0 && (
         <ul

@@ -15,6 +15,7 @@ import { useSavedFilters } from "@/shared/hooks/use-saved-filters";
 import { formatDate } from "@/lib/format";
 import { encounterService, type BackendQueueTicket } from "@/lib/services/encounter.service";
 import { ListOrdered, Clock, CheckCircle, PhoneCall, Search, X } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default" | "info"> = {
   WAITING: "warning",
@@ -24,15 +25,16 @@ const STATUS_VARIANT: Record<string, "success" | "danger" | "warning" | "default
   CANCELLED: "danger",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  WAITING: "Menunggu",
-  CALLED: "Dipanggil",
-  IN_SERVICE: "Dalam Pelayanan",
-  COMPLETED: "Selesai",
-  CANCELLED: "Dibatalkan",
+const STATUS_LABEL_KEY: Record<string, string> = {
+  WAITING: "queue.status.waiting",
+  CALLED: "queue.status.called",
+  IN_SERVICE: "queue.status.inService",
+  COMPLETED: "queue.status.completed",
+  CANCELLED: "queue.status.cancelled",
 };
 
 export default function QueuePage() {
+  const { t: translate } = useI18n();
   const can = useCan();
   const isClinicAdmin = can("visits.call-ticket") && !can("visits.view-clinical");
   const [tickets, setTickets] = useState<BackendQueueTicket[]>([]);
@@ -40,27 +42,48 @@ export default function QueuePage() {
   const [error, setError] = useState<string | null>(null);
   const [callingId, setCallingId] = useState<string | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const siteId = useStore((s) => s.activeSiteId);
   const scopeVersion = useStore((s) => s.scopeVersion);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    // Polling memakai mode silent agar daftar tidak berkedip/skeleton tiap 15 detik.
+    if (!opts?.silent) setLoading(true);
     setError(null);
     try {
       const data = await encounterService.getQueues(siteId ?? undefined);
       setTickets(data ?? []);
+      setLastUpdated(new Date());
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat antrean dari backend.");
+      setError(e instanceof Error ? e.message : translate("queue.loadError"));
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
-  }, [siteId]);
+  }, [siteId, translate]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
   }, [load, scopeVersion]);
+
+  // Antrean diperbarui otomatis tiap 15 detik selama tab terlihat.
+  useEffect(() => {
+    const POLL_MS = 15_000;
+    const interval = setInterval(() => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        void load({ silent: true });
+      }
+    }, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load({ silent: true });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load]);
 
   const handleCallTicket = async (ticketId: string, counterId?: string) => {
     setCallingId(ticketId);
@@ -69,7 +92,7 @@ export default function QueuePage() {
       await encounterService.callNextTicket(counterId ?? "counter-1", ticketId);
       await load();
     } catch (e) {
-      setCallError(e instanceof Error ? e.message : "Gagal memanggil tiket.");
+      setCallError(e instanceof Error ? e.message : translate("queue.callError"));
     } finally {
       setCallingId(null);
     }
@@ -106,12 +129,18 @@ export default function QueuePage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Antrean Klinik</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{translate("page.visitsQueue.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Kelola antrean pasien real-time dari backend
+            {translate("page.visitsQueue.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground" role="status">
+              Terakhir diperbarui ·{" "}
+              {lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          )}
           <Can action="visits.call-ticket">
             <Button
               onClick={() =>
@@ -121,13 +150,13 @@ export default function QueuePage() {
               loading={callingId === nextWaiting?.id && callingId !== null}
             >
               <PhoneCall className="size-4" />
-              Panggil berikutnya
+              {translate("queue.callNext")}
               {nextWaiting ? ` (#${nextWaiting.ticket_no})` : ""}
             </Button>
           </Can>
-          <Button variant="outline" onClick={load} disabled={loading}>
+          <Button variant="outline" onClick={() => void load()} disabled={loading}>
             <ListOrdered className="size-4" />
-            Refresh
+            {translate("queue.refresh")}
           </Button>
         </div>
       </div>
@@ -146,17 +175,13 @@ export default function QueuePage() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search
-              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
+          <div className="flex-1">
             <Input
-              placeholder="Cari nama, MRN, atau nomor tiket..."
-              aria-label="Cari antrean"
+              placeholder={translate("queue.searchPlaceholder")}
+              aria-label={translate("queue.searchAria")}
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <Button
@@ -166,12 +191,12 @@ export default function QueuePage() {
             onClick={() => setFilter("waitingOnly", waitingOnly ? "0" : "1")}
           >
             <Clock className="size-4" />
-            Hanya menunggu ({waiting.length})
+            {translate("queue.onlyWaiting")} ({waiting.length})
           </Button>
           {filterActive && (
             <Button variant="ghost" size="sm" onClick={reset}>
               <X className="size-4" />
-              Reset filter
+              {translate("queue.resetFilter")}
             </Button>
           )}
         </div>
@@ -185,7 +210,9 @@ export default function QueuePage() {
             </div>
             <div>
               <p className="text-xl font-semibold text-foreground">{waiting.length}</p>
-              <p className="text-xs text-muted-foreground">Menunggu</p>
+              <p className="text-xs text-muted-foreground">
+                {translate("queue.status.waiting")}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -196,7 +223,9 @@ export default function QueuePage() {
             </div>
             <div>
               <p className="text-xl font-semibold text-foreground">{inService.length}</p>
-              <p className="text-xs text-muted-foreground">Dalam Pelayanan</p>
+              <p className="text-xs text-muted-foreground">
+                {translate("queue.status.inService")}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -207,14 +236,16 @@ export default function QueuePage() {
             </div>
             <div>
               <p className="text-xl font-semibold text-foreground">{completed.length}</p>
-              <p className="text-xs text-muted-foreground">Selesai</p>
+              <p className="text-xs text-muted-foreground">
+                {translate("queue.status.completed")}
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {error && (
-        <ErrorState title="Gagal memuat antrean" message={error} onRetry={load} />
+        <ErrorState title={translate("queue.errorTitle")} message={error} onRetry={load} />
       )}
 
       {loading && !error && (
@@ -226,11 +257,15 @@ export default function QueuePage() {
 
       {!loading && !error && visible.length === 0 && (
         <EmptyState
-          title={tickets.length === 0 ? "Tidak ada antrean" : "Tidak ada tiket yang cocok"}
+          title={
+            tickets.length === 0
+              ? translate("queue.empty.noQueue")
+              : translate("queue.empty.noMatch")
+          }
           description={
             tickets.length === 0
-              ? "Belum ada tiket antrean pada site ini."
-              : "Ubah kata kunci pencarian atau reset filter."
+              ? translate("queue.empty.noQueueDesc")
+              : translate("queue.empty.noMatchDesc")
           }
           icon={ListOrdered}
         />
@@ -256,20 +291,24 @@ export default function QueuePage() {
                       <div>
                         <p className="font-medium text-foreground">{patientName}</p>
                         <p className="text-xs text-muted-foreground">
-                          MRN: {mrn} · {ticket.appointment?.visit_type ?? "—"}
+                          {translate("queue.mrnLabel")}: {mrn} · {ticket.appointment?.visit_type ?? "—"}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {ticket.appointment?.scheduled_at
                             ? formatDate(ticket.appointment.scheduled_at)
                             : ""}
-                          {ticket.counter ? ` · Counter ${ticket.counter.name}` : ""}
+                          {ticket.counter
+                            ? ` · ${translate("queue.counterLabel")} ${ticket.counter.name}`
+                            : ""}
                         </p>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={statusMeta}>
-                      {STATUS_LABEL[ticket.status] ?? ticket.status}
+                      {STATUS_LABEL_KEY[ticket.status]
+                        ? translate(STATUS_LABEL_KEY[ticket.status])
+                        : ticket.status}
                     </Badge>
                     <Can action="visits.call-ticket">
                       {ticket.status === "WAITING" && (
@@ -279,7 +318,9 @@ export default function QueuePage() {
                           disabled={callingId === ticket.id}
                         >
                           <PhoneCall className="size-3.5" />
-                          {callingId === ticket.id ? "Memanggil..." : "Panggil"}
+                          {callingId === ticket.id
+                            ? translate("queue.calling")
+                            : translate("queue.call")}
                         </Button>
                       )}
                     </Can>

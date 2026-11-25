@@ -75,7 +75,7 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
     <div className="space-y-4">
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <div className="relative flex-1">
+          <div className="flex-1">
             <Search
               className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
@@ -85,7 +85,7 @@ export function LabOrdersPanel({ state }: { state: AsyncState<LabWorkspace> }) {
               placeholder="Cari ID order, kode, atau nama tes..."
               value={filters.search}
               onChange={(e) => patch({ search: e.target.value })}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:items-end">

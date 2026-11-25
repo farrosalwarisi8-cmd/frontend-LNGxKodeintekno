@@ -16,8 +16,10 @@ import { Input } from "@/shared/components/design-system/input";
 import { Select } from "@/shared/components/design-system/select";
 import { Avatar } from "@/shared/components/design-system/avatar";
 import { Search, KeyRound, LockOpen } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export default function UsersPage() {
+  const { t: translate } = useI18n();
   const users = useStore((s) => s.users);
 
   // Modul 7 — daftar akun dari backend (GET /iam/users)
@@ -71,22 +73,21 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Manajemen User</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{translate("page.users.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Daftar akun, role, dan scope dari backend (GET /iam/users)
+            {translate("page.users.subtitle")}
           </p>
         </div>
       </div>
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
               placeholder="Cari nama, username..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <Select

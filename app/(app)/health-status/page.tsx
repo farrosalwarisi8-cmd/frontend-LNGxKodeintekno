@@ -22,8 +22,10 @@ import { MCU_DUE_SOON_DAYS, isDueSoon, todayIso } from "@/shared/utils/due-soon"
 import { formatDate } from "@/lib/format";
 import { Search, AlertTriangle, CheckCircle, Clock, ClipboardCheck, Filter, X } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import { useI18n } from "@/lib/i18n";
 
 export default function HealthStatusPage() {
+  const { t: translate } = useI18n();
   const workHealthStatus = useStore((s) => s.workHealthStatus);
   const employees = useStore((s) => s.employees);
   const user = useCurrentUser();
@@ -78,15 +80,16 @@ export default function HealthStatusPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          {workerOnly ? "Status Kesehatan Saya" : "Status Kesehatan Kerja"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {workerOnly
-            ? "Fitness to Work dan masa berlaku MCU Anda"
-            : "Pantau status kesehatan kerja pekerja"}
-        </p>
+      <div>          <h1 className="text-2xl font-semibold text-foreground">
+            {translate(
+              workerOnly ? "page.healthStatus.workerTitle" : "page.healthStatus.title"
+            )}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {translate(
+              workerOnly ? "page.healthStatus.workerSubtitle" : "page.healthStatus.subtitle"
+            )}
+          </p>
       </div>
 
       {/* HSE only: komponen ini mengembalikan null bila role tidak punya
@@ -98,17 +101,13 @@ export default function HealthStatusPage() {
       {!workerOnly && (
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search
-              className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
+          <div className="flex-1">
             <Input
               placeholder="Cari nama, MRN, atau NIP..."
               aria-label="Cari status kesehatan pekerja"
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <Select

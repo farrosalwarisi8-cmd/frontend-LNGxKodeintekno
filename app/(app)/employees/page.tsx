@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, Users, ChevronRight } from "lucide-react";
 import { useDebounce } from "@/shared/utils/use-debounce";
 import { StatusBadge } from "@/components/status-badge";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Direktori Pekerja.
@@ -30,6 +31,7 @@ import { StatusBadge } from "@/components/status-badge";
  * paginasi server-side lebih tepat daripada virtualisasi berukuran tetap.
  */
 export default function EmployeesPage() {
+  const { t: translate } = useI18n();
   const employees = useStore((s) => s.employees);
   const companies = useStore((s) => s.companies);
 
@@ -59,8 +61,8 @@ export default function EmployeesPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Pekerja</h1>
-          <p className="text-sm text-muted-foreground">Kelola data pekerja dan employment</p>
+          <h1 className="text-2xl font-semibold text-foreground">{translate("page.employees.title")}</h1>
+          <p className="text-sm text-muted-foreground">{translate("page.employees.subtitle")}</p>
         </div>
         <Can action="people.create">
           {/* /employees/new tidak ada — registrasi pekerja memakai wizard /people/new */}
@@ -76,22 +78,14 @@ export default function EmployeesPage() {
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
           <div className="flex-1 space-y-1.5">
-            <label htmlFor="employee-search" className="block text-sm font-medium text-text-secondary">
-              Cari pekerja
-            </label>
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                id="employee-search"
-                placeholder="Nama, Employee ID, MRN, atau NIK"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <Input
+              id="employee-search"
+              aria-label="Cari pekerja"
+              placeholder="Nama, Employee ID, MRN, atau NIK"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              leftIcon={<Search />}
+            />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex">
             <Select

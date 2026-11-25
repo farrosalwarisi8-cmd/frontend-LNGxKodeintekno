@@ -33,7 +33,7 @@ export function Avatar({ name, className, size = "md" }: AvatarProps) {
         className
       )}
     >
-      <AvatarPrimitive.Fallback className="size-full">{initials}</AvatarPrimitive.Fallback>
+      <AvatarPrimitive.Fallback className="flex size-full items-center justify-center">{initials}</AvatarPrimitive.Fallback>
     </AvatarPrimitive.Root>
   );
 }

@@ -29,9 +29,11 @@ import {
   soapDraftLabel,
 } from "@/features/medical-records/soap-draft";
 import { formatDate } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 import { Search, FileText, Lock, History, CheckCircle } from "lucide-react";
 
 export default function MedicalRecordsPage() {
+  const { t: translate } = useI18n();
   const visits = useStore((s) => s.visits);
   const employees = useStore((s) => s.employees);
   const diagnoses = useStore((s) => s.diagnoses);
@@ -43,6 +45,13 @@ export default function MedicalRecordsPage() {
   const [saving, setSaving] = useState(false);
   const [locking, setLocking] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Addendum — koreksi formal untuk record yang sudah LOCKED.
+  const [addendumReason, setAddendumReason] = useState("");
+  const [addendumNote, setAddendumNote] = useState("");
+  const [savingAddendum, setSavingAddendum] = useState(false);
+  const [addendumError, setAddendumError] = useState<string | null>(null);
+  const [addendumMsg, setAddendumMsg] = useState<string | null>(null);
 
   // Rekam medis — data pasien, kunjungan, dan katalog ICD-10 dari backend
   const { loading, error, refetch } = useSyncedModules(async () => {
@@ -96,6 +105,10 @@ export default function MedicalRecordsPage() {
     setTreatment(v.treatment || "");
     setDoctorNote(v.doctorNote || "");
     setFormError(null);
+    setAddendumReason("");
+    setAddendumNote("");
+    setAddendumError(null);
+    setAddendumMsg(null);
 
     // Pulihkan draft lokal bila dokter sebelumnya mengetik tanpa menyimpan.
     const restored = loadSoapDraft(visitId);
@@ -272,6 +285,46 @@ export default function MedicalRecordsPage() {
     }
   };
 
+  /**
+   * POST /clinic/encounters/:id/addendum — koreksi formal setelah record LOCKED.
+   * Addendum tidak mengubah isi asli; backend menyimpannya sebagai entri
+   * terpisah yang tertelusur (dan tercatat di audit log).
+   */
+  const handleAddendum = async () => {
+    if (!selectedVisitRecord) return;
+    const encounterId = selectedVisitRecord.encounterId;
+    if (!encounterId) {
+      setAddendumError(
+        "Encounter backend untuk rekam medis ini tidak ditemukan — addendum tidak dapat dikirim."
+      );
+      return;
+    }
+    const reason = addendumReason.trim();
+    const note = addendumNote.trim();
+    if (!reason || !note) {
+      setAddendumError("Alasan dan isi addendum wajib diisi.");
+      return;
+    }
+
+    setSavingAddendum(true);
+    setAddendumError(null);
+    setAddendumMsg(null);
+    try {
+      const res = await encounterService.addendum(encounterId, reason, note);
+      setAddendumMsg(
+        `Addendum tercatat${res?.addendumId ? ` (ID ${res.addendumId.slice(0, 8)})` : ""} — koreksi tersimpan terpisah dan masuk audit log.`
+      );
+      setAddendumReason("");
+      setAddendumNote("");
+    } catch (e) {
+      setAddendumError(
+        e instanceof Error ? e.message : "Addendum gagal dikirim ke backend."
+      );
+    } finally {
+      setSavingAddendum(false);
+    }
+  };
+
   /** Finalize → backend mengunci record (LOCKED). SOAP disimpan dulu. */
   const handleFinalize = async () => {
     if (!selectedVisit) return;
@@ -309,14 +362,16 @@ export default function MedicalRecordsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Rekam Medis</h1>
-        <p className="text-sm text-muted-foreground">SOAP notes dan diagnosis ICD-10</p>
+        <h1 className="text-2xl font-semibold text-foreground">{translate("page.medicalRecords.title")}</h1>
+        <p className="text-sm text-muted-foreground">{translate("page.medicalRecords.subtitle")}</p>
       </div>
 
       {error && (
         <div className="rounded-xl bg-danger-50 p-3 text-sm text-danger-700">
-          Gagal memuat data: {error}{" "}
-          <button className="underline" onClick={refetch}>Coba lagi</button>
+          {translate("medicalRecords.loadError")}: {error}{" "}
+          <button className="underline" onClick={refetch}>
+            {translate("medicalRecords.retry")}
+          </button>
         </div>
       )}
       {saveMsg && (
@@ -327,13 +382,12 @@ export default function MedicalRecordsPage() {
       )}
 
       <Card className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <div>
           <Input
             placeholder="Cari nomor kunjungan, nama pasien..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            leftIcon={<Search />}
           />
         </div>
       </Card>
@@ -429,7 +483,7 @@ export default function MedicalRecordsPage() {
                 <p className="mb-2 text-xs text-warning-700">Restriction: {patientFtw.restriction}</p>
               )}
               {historyVisits.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Belum ada kunjungan sebelumnya.</p>
+                <p className="text-xs text-muted-foreground">{translate("medicalRecords.noPreviousVisits")}</p>
               ) : (
                 <ul className="space-y-1">
                   {historyVisits.map((h) => (
@@ -462,6 +516,76 @@ export default function MedicalRecordsPage() {
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Addendum formal — satu-satunya jalur koreksi untuk record LOCKED. */}
+          {isLocked && (
+            <Can action="visits.edit-soap">
+              <div className="space-y-3 rounded-xl border border-border p-3">
+                <div>
+                  <h3 className="text-sm font-medium text-foreground">Addendum</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Isi asli tidak diubah. Addendum disimpan sebagai entri terpisah,
+                    tertelusur, dan tercatat di audit log.
+                  </p>
+                </div>
+                <Input
+                  label="Alasan koreksi"
+                  value={addendumReason}
+                  onChange={(e) => setAddendumReason(e.target.value)}
+                  placeholder="cth. Koreksi diagnosis utama setelah konfirmasi lab"
+                  disabled={savingAddendum}
+                />
+                <div>
+                  <label
+                    htmlFor="addendum-note"
+                    className="mb-1 block text-sm font-medium text-text-secondary"
+                  >
+                    Isi addendum
+                  </label>
+                  <textarea
+                    id="addendum-note"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted"
+                    rows={4}
+                    value={addendumNote}
+                    onChange={(e) => setAddendumNote(e.target.value)}
+                    placeholder="Tuliskan koreksi/tambahan yang diperlukan..."
+                    disabled={savingAddendum}
+                  />
+                </div>
+                {!selectedVisitRecord?.encounterId && (
+                  <p className="text-xs text-warning-700" role="status">
+                    Encounter backend belum tersedia untuk rekam medis ini — addendum
+                    tidak dapat dikirim.
+                  </p>
+                )}
+                {addendumError && (
+                  <p className="text-sm text-danger-700" role="alert">
+                    {addendumError}
+                  </p>
+                )}
+                {addendumMsg && (
+                  <p className="text-sm text-success-700" role="status">
+                    {addendumMsg}
+                  </p>
+                )}
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => void handleAddendum()}
+                    loading={savingAddendum}
+                    disabled={
+                      savingAddendum ||
+                      !selectedVisitRecord?.encounterId ||
+                      !addendumReason.trim() ||
+                      !addendumNote.trim()
+                    }
+                  >
+                    <FileText className="size-4" />
+                    Kirim Addendum
+                  </Button>
+                </div>
+              </div>
+            </Can>
           )}
           <div>
             <h3 className="mb-2 text-sm font-medium text-text-secondary">S — Subjective</h3>

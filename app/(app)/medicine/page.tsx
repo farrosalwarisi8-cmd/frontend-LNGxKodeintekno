@@ -15,8 +15,10 @@ import { Select } from "@/shared/components/design-system/select";
 import { Modal } from "@/shared/components/design-system/modal";
 import { EmptyState } from "@/shared/components/design-system/empty-state";
 import { Search, Plus, Pill, AlertTriangle, ChevronRight } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export default function MedicinePage() {
+  const { t: translate } = useI18n();
   const medicines = useStore((s) => s.medicines);
   const stockBatches = useStore((s) => s.stockBatches);
   const locations = useStore((s) => s.locations);
@@ -64,8 +66,8 @@ export default function MedicinePage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Farmasi</h1>
-          <p className="text-sm text-muted-foreground">Stok obat dan batch management</p>
+          <h1 className="text-2xl font-semibold text-foreground">{translate("page.medicine.title")}</h1>
+          <p className="text-sm text-muted-foreground">{translate("page.medicine.subtitle")}</p>
         </div>
         <Can action="pharmacy.receive-stock">
           <Button onClick={() => setShowReceiveModal(true)}>
@@ -77,13 +79,12 @@ export default function MedicinePage() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
               placeholder="Cari obat..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <Select
@@ -97,7 +98,13 @@ export default function MedicinePage() {
 
       <p className="text-sm text-muted-foreground">{filtered.length} obat ditemukan</p>
 
-      {error && <ErrorState title="Gagal memuat inventaris" message={error} onRetry={refetch} />}
+      {error && (
+        <ErrorState
+          title={translate("medicine.errorTitle")}
+          message={error}
+          onRetry={refetch}
+        />
+      )}
 
       {loading && !error && (
         <div className="space-y-2">
@@ -108,7 +115,11 @@ export default function MedicinePage() {
       )}
 
       {!loading && !error && filtered.length === 0 ? (
-        <EmptyState icon={Pill} title="Tidak ada obat ditemukan" description="Coba ubah kata kunci pencarian." />
+        <EmptyState
+          icon={Pill}
+          title={translate("medicine.emptyTitle")}
+          description={translate("medicine.emptyDesc")}
+        />
       ) : !loading && !error ? (
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block">

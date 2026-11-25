@@ -32,6 +32,7 @@ import { SignedPdfButton } from "@/features/tte/components/signed-pdf-button";
 import { mapSignatureStatus } from "@/features/tte/signature-status";
 import { maskId } from "@/features/tte/mask";
 import { formatErrorMessage, TTE_MESSAGES } from "@/features/tte/messages";
+import { useI18n } from "@/lib/i18n";
 
 const SIGNATURE_TYPE_LABEL: Record<string, string> = {
   CERTIFIED_PSRE: "PSrE Tersertifikasi",
@@ -39,6 +40,7 @@ const SIGNATURE_TYPE_LABEL: Record<string, string> = {
 };
 
 export default function SignaturesPage() {
+  const { t: translate } = useI18n();
   const [signatures, setSignatures] = useState<SignatureRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,10 +145,10 @@ export default function SignaturesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
-            Tanda Tangan Elektronik
+            {translate("page.signatures.title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Tracking semua signature request PSrE/PTTE (dari daftar dokumen backend)
+            {translate("page.signatures.subtitle")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -250,13 +252,12 @@ export default function SignaturesPage() {
 
       {/* Search & Filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="w-full sm:max-w-xs">
           <Input
             placeholder="Cari ID dokumen / provider..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            leftIcon={<Search />}
           />
         </div>
         <Select

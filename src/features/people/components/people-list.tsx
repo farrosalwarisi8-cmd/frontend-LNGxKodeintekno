@@ -68,8 +68,7 @@ export function PeopleList() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
               placeholder="Cari nama, MRN, atau Employee ID..."
               value={search}
@@ -77,7 +76,7 @@ export function PeopleList() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="pl-10"
+              leftIcon={<Search />}
               aria-label="Cari pekerja"
             />
           </div>

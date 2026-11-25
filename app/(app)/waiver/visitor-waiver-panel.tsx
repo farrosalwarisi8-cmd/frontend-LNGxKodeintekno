@@ -213,13 +213,12 @@ export default function VisitorWaiverPanel() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="w-full sm:max-w-xs">
             <Input
               placeholder="Cari nama pengunjung / perusahaan..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <Select

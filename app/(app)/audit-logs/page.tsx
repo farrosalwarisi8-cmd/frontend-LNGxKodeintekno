@@ -15,8 +15,10 @@ import { formatDateTime } from "@/lib/format";
 import { Search, History, ShieldCheck } from "lucide-react";
 import { VirtualList } from "@/shared/components/virtual-list";
 import { useDebounce } from "@/shared/utils/use-debounce";
+import { useI18n } from "@/lib/i18n";
 
 export default function AuditLogsPage() {
+  const { t: translate } = useI18n();
   const auditLogs = useStore((s) => s.auditLogs);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
@@ -60,20 +62,19 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Audit Log</h1>
-        <p className="text-sm text-muted-foreground">Immutable audit trail — semua aktivitas tercatat</p>
+        <h1 className="text-2xl font-semibold text-foreground">{translate("page.auditLogs.title")}</h1>
+        <p className="text-sm text-muted-foreground">{translate("page.auditLogs.subtitle")}</p>
       </div>
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
-              label="Cari action, user, object..."
               placeholder="Cari action, user, object..."
+              aria-label="Cari action, user, object..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <Select

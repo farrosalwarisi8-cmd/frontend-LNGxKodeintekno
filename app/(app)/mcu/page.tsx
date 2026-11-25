@@ -21,8 +21,10 @@ import { Search, Plus, Activity, ChevronRight } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import McuBulkImportPanel from "./bulk-import-panel";
 import McuExpiryCheckPanel from "./expiry-check-panel";
+import { useI18n } from "@/lib/i18n";
 
 export default function MCUPage() {
+  const { t: translate } = useI18n();
   const mcus = useStore((s) => s.mcus);
   const employees = useStore((s) => s.employees);
 
@@ -53,8 +55,8 @@ export default function MCUPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Medical Check-Up</h1>
-          <p className="text-sm text-muted-foreground">Kelola MCU pekerja dan kalkulasi klinis</p>
+          <h1 className="text-2xl font-semibold text-foreground">{translate("page.mcu.title")}</h1>
+          <p className="text-sm text-muted-foreground">{translate("page.mcu.subtitle")}</p>
         </div>
         <Can action="mcu.create">
           <Link href="/mcu/new">
@@ -68,14 +70,13 @@ export default function MCUPage() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
-              label="Cari MCU"
               placeholder="Cari nomor MCU, nama pekerja..."
+              aria-label="Cari MCU"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex">

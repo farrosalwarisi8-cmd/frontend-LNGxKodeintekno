@@ -29,6 +29,7 @@ import {
 } from "@/features/tte/validation";
 import { mapTteError, type TteErrorView } from "@/features/tte/error-mapping";
 import { formatErrorMessage } from "@/features/tte/messages";
+import { useI18n } from "@/lib/i18n";
 
 interface IssueTarget {
   mcuId: string;
@@ -39,6 +40,7 @@ interface IssueTarget {
 }
 
 export default function CertificatesPage() {
+  const { t: translate } = useI18n();
   const certificates = useStore((s) => s.certificates);
   const employees = useStore((s) => s.employees);
   const mcus = useStore((s) => s.mcus);
@@ -181,8 +183,8 @@ export default function CertificatesPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Sertifikat Kesehatan</h1>
-        <p className="text-sm text-muted-foreground">Sertifikat kesehatan kerja dengan QR verification</p>
+        <h1 className="text-2xl font-semibold text-foreground">{translate("page.certificates.title")}</h1>
+        <p className="text-sm text-muted-foreground">{translate("page.certificates.subtitle")}</p>
       </div>
 
       {error && (
@@ -202,13 +204,12 @@ export default function CertificatesPage() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
               placeholder="Cari nomor sertifikat, nama pekerja..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <Select

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { VitalsReporter } from "@/components/vitals-reporter";
 import { ThemeProvider } from "@/components/theme-provider";
+import { I18nProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   applicationName: "Kodein Klinik",
@@ -53,7 +54,9 @@ export default function RootLayout({
       >
       <body className="min-h-full bg-surface-page font-sans text-text-primary">
         <ThemeProvider>
-          <ErrorBoundary>{children}</ErrorBoundary>
+          <I18nProvider>
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </I18nProvider>
         </ThemeProvider>
         <Toaster />
         <VitalsReporter />

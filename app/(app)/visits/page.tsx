@@ -15,11 +15,13 @@ import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, ClipboardList, ChevronRight } from "lucide-react";
+import { Search, Plus, ClipboardList, ChevronRight, ExternalLink } from "lucide-react";
 import { useDebounce } from "@/shared/utils/use-debounce";
 import { StatusBadge } from "@/components/status-badge";
+import { useI18n } from "@/lib/i18n";
 
 export default function VisitsPage() {
+  const { t: translate } = useI18n();
   const visits = useStore((s) => s.visits);
   const employees = useStore((s) => s.employees);
   const locations = useStore((s) => s.locations);
@@ -57,17 +59,27 @@ export default function VisitsPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Kunjungan Klinik</h1>
-          <p className="text-sm text-muted-foreground">Kelola kunjungan pasien dan antrean</p>
+          <h1 className="text-2xl font-semibold text-foreground">{translate("page.visits.title")}</h1>
+          <p className="text-sm text-muted-foreground">{translate("page.visits.subtitle")}</p>
         </div>
-        <Can action="visits.create">
-          <Link href="/visits/new">
-            <Button>
-              <Plus className="size-4" />
-              Kunjungan Baru
-            </Button>
-          </Link>
-        </Can>
+        <div className="flex items-center gap-2">
+          <Can action="visits.refer">
+            <Link href="/visits/referrals">
+              <Button variant="outline">
+                <ExternalLink className="size-4" />
+                {translate("referral.action")}
+              </Button>
+            </Link>
+          </Can>
+          <Can action="visits.create">
+            <Link href="/visits/new">
+              <Button>
+                <Plus className="size-4" />
+                Kunjungan Baru
+              </Button>
+            </Link>
+          </Can>
+        </div>
       </div>
 
       {isClinicAdmin && (
@@ -78,14 +90,13 @@ export default function VisitsPage() {
 
       <Card className="p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
-              label="Cari kunjungan"
               placeholder="Cari nomor kunjungan, nama pasien..."
+              aria-label="Cari kunjungan"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search />}
             />
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex">
@@ -110,7 +121,11 @@ export default function VisitsPage() {
       <p className="text-sm text-muted-foreground">{filtered.length} kunjungan ditemukan</p>
 
       {error && (
-        <ErrorState title="Gagal memuat data kunjungan" message={error} onRetry={refetch} />
+        <ErrorState
+          title={translate("visits.errorTitle")}
+          message={error}
+          onRetry={refetch}
+        />
       )}
 
       {loading && !error && (
@@ -124,8 +139,8 @@ export default function VisitsPage() {
       {!loading && !error && filtered.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title="Tidak ada kunjungan ditemukan"
-          description="Coba ubah kata kunci pencarian atau filter Anda."
+          title={translate("visits.emptyTitle")}
+          description={translate("visits.emptyDesc")}
         />
       ) : !loading && !error ? (
         <>

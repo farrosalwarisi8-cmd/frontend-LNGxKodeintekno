@@ -7,6 +7,7 @@ import type {
   Diagnosis,
   Dispensing,
   Employee,
+  ExternalReferral,
   HealthCertificate,
   MCU,
   Medicine,
@@ -340,6 +341,21 @@ function buildVisits(): ClinicVisit[] {
 }
 
 export const VISITS: ClinicVisit[] = buildVisits()
+
+/** Rujukan contoh untuk kunjungan berstatus "Referred" pada data seed. */
+export const REFERRALS: ExternalReferral[] = VISITS.filter(
+  (v) => v.status === "Referred" && v.referralFacility
+)
+  .slice(0, 3)
+  .map((v, i) => ({
+    id: `ref-seed-${i + 1}`,
+    visitId: v.id,
+    destination: v.referralFacility!,
+    reason: v.referralReason ?? "",
+    status: "ISSUED",
+    referralDate: v.date,
+    createdAt: v.createdAt,
+  }))
 
 export const DISPENSINGS: Dispensing[] = [
   { id: "disp1", visitId: "v1", medicineId: "m1", batchId: "b1-1", quantity: 10, dispensedAt: "2026-09-02", by: "Andi Wijaya" },

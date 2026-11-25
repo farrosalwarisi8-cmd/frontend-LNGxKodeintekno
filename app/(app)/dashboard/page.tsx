@@ -38,6 +38,8 @@ import {
 } from "@/features/dashboard/dashboard-metrics";
 import { pharmacyService } from "@/lib/services/pharmacy.service";
 import { StatusBadge } from "@/components/status-badge";
+import { useI18n } from "@/lib/i18n";
+import { translateDashboardPhrase } from "@/features/dashboard/dashboard-i18n";
 
 const TONE_CLASS: Record<string, string> = {
   primary: "bg-primary-100 text-primary-700",
@@ -73,6 +75,9 @@ export default function DashboardPage() {
   const canViewMcu = role ? can(role, "view-mcu") && !isWorker : false;
   const canViewVisits = role ? can(role, "view-visits") : false;
   const canViewClinical = role ? can(role, "view-clinical-notes") : false;
+
+  const { language } = useI18n();
+  const tp = (text: string) => translateDashboardPhrase(language, text);
 
   const employees = useStore((s) => s.employees);
   const mcus = useStore((s) => s.mcus);
@@ -201,10 +206,10 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
-            Halo, {demoEnabled ? greetingName : greetingName.split(" ")[0]}
+            {tp("Halo,")} {demoEnabled ? greetingName : greetingName.split(" ")[0]}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {roleMeta?.label ?? user.role} — {profile.focus}
+            {roleMeta?.label ?? user.role} — {tp(profile.focus)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -214,12 +219,12 @@ export default function DashboardPage() {
               className="flex items-center gap-2 rounded-xl bg-warning-50 px-3 py-2 text-sm text-warning-700"
             >
               <AlertTriangle className="size-4" aria-hidden="true" />
-              {unreadCount} notifikasi
+              {unreadCount} {tp("notifikasi")}
             </Link>
           )}
           <Button variant="outline" size="sm" onClick={refetch} disabled={loading}>
             <RefreshCw className={cn("size-4", loading && "animate-spin")} aria-hidden="true" />
-            Muat ulang
+            {tp("Muat ulang")}
           </Button>
         </div>
       </div>
@@ -227,7 +232,7 @@ export default function DashboardPage() {
       {/* Tindakan cepat — pintasan tugas yang paling sering dipakai peran ini. */}
       <section aria-labelledby="quick-actions-heading" className="space-y-3">
         <h2 id="quick-actions-heading" className="text-sm font-semibold text-text-secondary">
-          Tindakan cepat
+          {tp("Tindakan cepat")}
         </h2>
         <div
           className={cn(
@@ -247,8 +252,8 @@ export default function DashboardPage() {
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium text-foreground">{task.label}</span>
-                  <span className="block text-xs text-muted-foreground">{task.description}</span>
+                  <span className="block font-medium text-foreground">{tp(task.label)}</span>
+                  <span className="block text-xs text-muted-foreground">{tp(task.description)}</span>
                 </span>
                 <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               </Link>
@@ -260,10 +265,10 @@ export default function DashboardPage() {
       {error && (
         <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-danger-700">
-            Sebagian ringkasan gagal dimuat dari backend: {error}
+            {tp("Sebagian ringkasan gagal dimuat dari backend")}: {error}
           </p>
           <Button variant="outline" size="sm" onClick={refetch}>
-            Coba lagi
+            {tp("Coba lagi")}
           </Button>
         </Card>
       )}
@@ -292,7 +297,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-2xl font-semibold text-foreground">{tile.value}</p>
-                      <p className="text-xs text-muted-foreground">{tile.label}</p>
+                      <p className="text-xs text-muted-foreground">{tp(tile.label)}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -315,7 +320,7 @@ export default function DashboardPage() {
       {profile.compact ? (
         <section aria-labelledby="my-links-heading" className="space-y-3">
           <h2 id="my-links-heading" className="text-sm font-semibold text-text-secondary">
-            Ruang saya
+            {tp("Ruang saya")}
           </h2>
           <div className="grid gap-3">
             {workerLinks.map((link) => {
@@ -330,8 +335,8 @@ export default function DashboardPage() {
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-medium text-foreground">{link.label}</span>
-                    <span className="block text-xs text-muted-foreground">{link.description}</span>
+                    <span className="block font-medium text-foreground">{tp(link.label)}</span>
+                    <span className="block text-xs text-muted-foreground">{tp(link.description)}</span>
                   </span>
                   <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 </Link>
@@ -344,11 +349,11 @@ export default function DashboardPage() {
           {canViewMcu && (
             <Card>
             <CardHeader>
-              <CardTitle>MCU terbaru</CardTitle>
+              <CardTitle>{tp("MCU terbaru")}</CardTitle>
             </CardHeader>
             <CardContent>
               {recentMCU.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Belum ada data MCU.</p>
+                <p className="text-sm text-muted-foreground">{tp("Belum ada data MCU.")}</p>
               ) : (
                 <div className="space-y-3">
                   {recentMCU.map((mcu) => {
@@ -363,7 +368,7 @@ export default function DashboardPage() {
                           <Avatar name={emp?.fullName ?? "?"} size="sm" />
                           <div>
                             <p className="text-sm font-medium text-foreground">
-                              {emp?.fullName ?? "Unknown"}
+                              {emp?.fullName ?? tp("Tidak diketahui")}
                             </p>
                             <p className="text-xs text-muted-foreground">{mcu.mcuNumber}</p>
                           </div>
@@ -381,11 +386,11 @@ export default function DashboardPage() {
           {canViewVisits && (
             <Card>
             <CardHeader>
-              <CardTitle>Kunjungan berjalan</CardTitle>
+              <CardTitle>{tp("Kunjungan berjalan")}</CardTitle>
             </CardHeader>
             <CardContent>
               {recentVisits.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Tidak ada kunjungan berjalan.</p>
+                <p className="text-sm text-muted-foreground">{tp("Tidak ada kunjungan berjalan.")}</p>
               ) : (
                 <div className="space-y-3">
                   {recentVisits.map((visit) => {

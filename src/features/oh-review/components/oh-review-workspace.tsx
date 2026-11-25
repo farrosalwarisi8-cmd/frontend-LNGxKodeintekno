@@ -239,14 +239,13 @@ export function OhReviewWorkspace() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 lg:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <div>
               <Input
-                label="Pencarian"
                 placeholder="Nama, MRN, NIP, nomor MCU..."
+                aria-label="Pencarian"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                leftIcon={<Search />}
               />
             </div>
             <Select

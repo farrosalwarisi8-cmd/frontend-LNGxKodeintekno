@@ -30,6 +30,7 @@ import {
 } from "@/features/pharmacy/stock-hints";
 import { todayIso } from "@/shared/utils/due-soon";
 import { diffStockLedger, type BackendInventoryItem, type StockLedgerEntry } from "@/lib/services/pharmacy.service";
+import { useI18n } from "@/lib/i18n";
 
 interface PendingRx {
   id: string;
@@ -41,6 +42,7 @@ interface PendingRx {
 }
 
 export default function DispensePage() {
+  const { t: translate } = useI18n();
   const [prescriptions, setPrescriptions] = useState<PendingRx[]>([]);
   const [search, setSearch] = useState("");
   const [selectedRx, setSelectedRx] = useState<PendingRx | null>(null);
@@ -123,8 +125,8 @@ export default function DispensePage() {
       setMessage({
         type: "error",
         text: dispensingGuard.isDispensed(selectedRx.id)
-          ? "Resep ini sudah didispensasi — tidak dapat diproses dua kali."
-          : "Dispensing resep ini sedang berjalan. Tunggu hingga selesai.",
+          ? translate("dispense.alreadyDispensed")
+          : translate("dispense.inProgress"),
       });
       return;
     }
@@ -253,7 +255,7 @@ export default function DispensePage() {
             ? e.message
             : e instanceof Error
               ? e.message
-              : "Dispensing gagal.",
+              : translate("dispense.failed"),
       });
     } finally {
       setBusy(false);
@@ -263,9 +265,9 @@ export default function DispensePage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Dispensing Obat</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{translate("page.dispense.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          FEFO dispensing dari resep aktif backend (GET /pharmacy/prescriptions/pending)
+          {translate("page.dispense.subtitle")}
         </p>
       </div>
 
@@ -315,20 +317,27 @@ export default function DispensePage() {
       )}
 
       <Card className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <div>
           <Input
-            placeholder="Cari resep / pasien..."
+            placeholder={translate("dispense.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
+            leftIcon={<Search />}
           />
         </div>
       </Card>
 
-      <p className="text-sm text-muted-foreground">{filtered.length} resep menunggu dispensing</p>
+      <p className="text-sm text-muted-foreground">
+        {filtered.length} {translate("dispense.pendingLabel")}
+      </p>
 
-      {error && <ErrorState title="Gagal memuat resep dari backend" message={error} onRetry={refetch} />}
+      {error && (
+        <ErrorState
+          title={translate("dispense.errorTitle")}
+          message={error}
+          onRetry={refetch}
+        />
+      )}
 
       {loading && !error && (
         <div className="space-y-3">
@@ -340,7 +349,7 @@ export default function DispensePage() {
       {!loading && !error && filtered.length === 0 ? (
         <Card className="p-8 text-center">
           <CheckCircle className="mx-auto mb-3 size-8 text-success-600" />
-          <p className="text-sm text-muted-foreground">Tidak ada resep yang menunggu dispensing.</p>
+          <p className="text-sm text-muted-foreground">{translate("dispense.empty")}</p>
         </Card>
       ) : !loading && !error ? (
         <div className="space-y-3">
@@ -358,15 +367,15 @@ export default function DispensePage() {
                       {rx.prescribedAt ? formatDate(rx.prescribedAt) : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {rx.items.length} item obat
+                      {rx.items.length} {translate("dispense.itemUnit")}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {dispensingGuard.isDispensed(rx.id) ? (
-                    <Badge variant="success">Terdispensasi</Badge>
+                    <Badge variant="success">{translate("dispense.status.dispensed")}</Badge>
                   ) : (
-                    <Badge variant="warning">Menunggu</Badge>
+                    <Badge variant="warning">{translate("dispense.status.pending")}</Badge>
                   )}
                   <Can action="pharmacy.dispense">
                     <Button
@@ -378,7 +387,7 @@ export default function DispensePage() {
                       }
                     >
                       <Pill className="size-3.5" />
-                      Dispense
+                      {translate("dispense.dispense")}
                     </Button>
                   </Can>
                 </div>
@@ -391,7 +400,7 @@ export default function DispensePage() {
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title="Dispensing Obat (FEFO)"
+        title={translate("dispense.modalTitle")}
         description={selectedRx ? `${selectedRx.visitNumber} — ${selectedRx.patientName}` : ""}
         size="lg"
       >
@@ -449,7 +458,8 @@ export default function DispensePage() {
                     return (
                       <div className="mt-1 flex flex-wrap items-center gap-1">
                         <Badge variant={hint.currentStock === null ? "outline" : hint.shortfall > 0 ? "danger" : "success"}>
-                          Stok: {hint.currentStock ?? "tidak diketahui"}
+                          {translate("dispense.stock")}:{" "}
+                          {hint.currentStock ?? translate("dispense.unknownStock")}
                         </Badge>
                         {hint.nearestExpiryDate && (
                           <Badge variant={hint.expiresSoon ? "warning" : "outline"}>
@@ -457,10 +467,12 @@ export default function DispensePage() {
                           </Badge>
                         )}
                         {hint.shortfall > 0 && (
-                          <Badge variant="danger">Kurang {hint.shortfall}</Badge>
+                          <Badge variant="danger">
+                            {translate("dispense.short")} {hint.shortfall}
+                          </Badge>
                         )}
                         {hint.isLowStock && hint.shortfall === 0 && (
-                          <Badge variant="warning">Stok minimum</Badge>
+                          <Badge variant="warning">{translate("dispense.lowStock")}</Badge>
                         )}
                       </div>
                     );
@@ -500,7 +512,7 @@ export default function DispensePage() {
 
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowModal(false)} disabled={busy}>
-              Batal
+              {translate("dispense.cancel")}
             </Button>
             <Can action="pharmacy.dispense">
               <Button
@@ -509,7 +521,7 @@ export default function DispensePage() {
                 disabled={busy || warnings.blocked}
               >
                 <CheckCircle className="size-4" />
-                Proses Dispensing
+                {translate("dispense.process")}
               </Button>
             </Can>
           </div>

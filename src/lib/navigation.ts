@@ -54,6 +54,11 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { label: "Kunjungan", href: "/visits", icon: "clipboard-list", permission: "view-visits" },
   { label: "Registrasi Kunjungan", href: "/visits/new", icon: "user-plus", permission: "register-patient" },
   { label: "Antrean", href: "/visits/queue", icon: "list-ordered", permission: "view-visits" },
+  // Entri berobat luar klinik — bagian dari kewenangan Admin Klinik (tanpa
+  // membuka catatan klinis SOAP).
+  { label: "Berobat Luar", href: "/visits/outside-treatment", icon: "stethoscope", permission: "view-visits" },
+  // Rujukan eksternal ditautkan ke kunjungan; mode demo menyimpan di store lokal.
+  { label: "Rujukan Eksternal", href: "/visits/referrals", icon: "stethoscope", permission: "view-visits" },
   { label: "Rekam Medis", href: "/medical-records", icon: "file-text", permission: "view-clinical-notes" },
   { label: "Farmasi", href: "/medicine", icon: "pill", permission: "manage-stock" },
   { label: "Dispensing", href: "/medicine/dispense", icon: "pill", permission: "dispense-medicine" },
@@ -105,6 +110,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   "/visits": "Kunjungan Klinik",
   "/visits/new": "Kunjungan Baru",
   "/visits/queue": "Antrean Klinik",
+  "/visits/outside-treatment": "Berobat Luar Klinik",
+  "/visits/referrals": "Rujukan Eksternal",
   "/medical-records": "Rekam Medis",
   "/medicine": "Farmasi",
   "/medicine/dispense": "Dispensing",

@@ -31,6 +31,8 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { EnvironmentBanner } from "@/components/environment-banner";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useI18n } from "@/lib/i18n";
 import { RouteTitle } from "@/components/route-title";
 import { RouteFocus } from "@/components/route-focus";
 import { useIdleTimeout } from "@/features/auth/use-idle-timeout";
@@ -59,6 +61,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const user = useCurrentUser();
   const logout = useStore((s) => s.logout);
+  const { t, navLabel } = useI18n();
 
   const prevOnline = useRef(isOnline);
 
@@ -126,7 +129,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
       >
-        Lewati ke konten utama
+        {t("shell.skipContent")}
       </a>
       <RouteTitle />
       <RouteFocus />
@@ -142,7 +145,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             "hidden h-full shrink-0 flex-col border-r border-border bg-card transition-[width] duration-150 lg:flex",
             collapsed ? "w-[76px]" : "w-64"
           )}
-          aria-label="Navigasi utama"
+          aria-label={t("shell.mainNav")}
         >
           <div
             className={cn(
@@ -154,7 +157,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             {!collapsed && (
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">Kodein Klinik</p>
-                <p className="text-[10px] text-muted-foreground">EMR Okupasi</p>
+                <p className="text-[10px] text-muted-foreground">{t("shell.tagline")}</p>
               </div>
             )}
           </div>
@@ -171,7 +174,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold">{roleLabel}</p>
                   <p className="truncate text-[10px] text-muted-foreground">
-                    {demoEnabled ? "Demo role aktif" : "Peran sesi"}
+                    {demoEnabled ? t("shell.demoActive") : t("shell.sessionRole")}
                     {scopeLabel ? ` · ${scopeLabel}` : ""}
                   </p>
                 </div>
@@ -180,8 +183,8 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                 <Link
                   href="/demo"
                   className="ml-auto -my-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-lg opacity-70 transition-opacity hover:bg-foreground/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Ubah demo role"
-                  title="Ubah demo role"
+                  aria-label={t("shell.changeDemoRole")}
+                  title={t("shell.changeDemoRole")}
                 >
                   <ChevronRight className="size-4" aria-hidden="true" />
                 </Link>
@@ -204,8 +207,8 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => setCollapsed((v) => !v)}
               className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label={collapsed ? "Perbesar sidebar" : "Ciutkan sidebar"}
-              title={collapsed ? "Perbesar sidebar" : "Ciutkan sidebar"}
+              aria-label={collapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
+              title={collapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
               aria-pressed={!collapsed}
             >
               {collapsed ? (
@@ -231,11 +234,12 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <LanguageSwitcher />
               <NotificationBell />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="flex size-11 items-center justify-center rounded-lg text-text-secondary hover:bg-muted"
-                aria-label="Menu"
+                aria-label={t("shell.menu")}
                 aria-expanded={mobileMenuOpen}
               >
                 <Menu className="size-5" />
@@ -253,11 +257,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               <div className="fixed inset-0 bg-foreground/40" onClick={() => setMobileMenuOpen(false)} />
               <div className="scrollbar-subtle fixed right-0 top-0 flex h-full w-72 flex-col overflow-y-auto bg-card p-4 shadow-xl">
                 <div className="mb-4 flex items-center justify-between">
-                  <span className="font-semibold text-foreground">Menu</span>
+                  <span className="font-semibold text-foreground">{t("shell.menu")}</span>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
-                    aria-label="Tutup menu"
+                    aria-label={t("shell.closeMenu")}
                   >
                     <X className="size-5" />
                   </button>
@@ -269,11 +273,11 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   items={nav}
                   pathname={pathname}
                   onNavigate={() => setMobileMenuOpen(false)}
-                  ariaLabel="Navigasi mobile"
+                  ariaLabel={t("shell.mobileNav")}
                   className="p-0"
                 />
                 <div className="mt-4 border-t border-border pt-4">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">Tema tampilan</p>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">{t("shell.theme")}</p>
                   <ThemeToggle />
                 </div>
               </div>
@@ -287,6 +291,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               <span className="hidden max-w-40 truncate rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-text-secondary xl:inline">
                 {roleLabel}
               </span>
+              <LanguageSwitcher />
               <ThemeToggle />
               {!isOnline && (
                 <div
@@ -294,7 +299,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                   className="flex items-center gap-1.5 rounded-full bg-warning-50 px-2.5 py-1 text-xs text-warning-700"
                 >
                   <WifiOff className="size-3.5" aria-hidden="true" />
-                  <span>Offline</span>
+                  <span>{t("common.offline")}</span>
                 </div>
               )}
               <ScopeSelector />
@@ -330,7 +335,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted"
                       >
-                        <User className="size-4" aria-hidden="true" /> Profil Saya
+                        <User className="size-4" aria-hidden="true" /> {t("shell.myProfile")}
                       </Link>
                       <button
                         type="button"
@@ -338,7 +343,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
                         onClick={handleLogout}
                         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-muted"
                       >
-                        <LogOut className="size-4" aria-hidden="true" /> Keluar
+                        <LogOut className="size-4" aria-hidden="true" /> {t("shell.logout")}
                       </button>
                     </div>
                   </>
@@ -352,13 +357,13 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
             <div className="shrink-0 border-b border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700" role="status">
               <div className="flex items-center gap-2">
                 <WifiOff className="size-4 shrink-0" aria-hidden="true" />
-                <span>Offline — aksi disimpan secara lokal</span>
+                <span>{t("shell.offlineSaved")}</span>
                 {offlineQueueLength > 0 && (
                   <span className="ml-auto flex shrink-0 items-center gap-1 rounded bg-warning-200 px-2 py-0.5 text-[10px] font-medium">
-                    {offlineQueueLength} antrean
+                    {offlineQueueLength} {t("shell.offlineQueued")}
                   </span>
                 )}
-                <span className="text-warning-600">Akan disinkronkan saat tersambung kembali</span>
+                <span className="text-warning-600">{t("shell.offlineWillSync")}</span>
               </div>
             </div>
           )}
@@ -375,7 +380,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
 
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
-        aria-label="Navigasi bawah"
+        aria-label={t("shell.bottomNav")}
       >
         {bottomNav.map((item) => {
           const Icon = ICON_MAP[item.icon] ?? Activity;
@@ -391,7 +396,7 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
               aria-current={active ? "page" : undefined}
             >
               <Icon className={cn("size-5", active ? "text-primary-600" : "text-muted-foreground")} aria-hidden="true" />
-              <span>{item.label}</span>
+              <span>{navLabel(item.href, item.label)}</span>
             </Link>
           );
         })}
@@ -399,10 +404,10 @@ export function EmrShell({ children }: { children: React.ReactNode }) {
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="flex min-h-11 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium text-muted-foreground hover:text-text-secondary"
-            aria-label="Menu lainnya"
+            aria-label={t("shell.moreMenu")}
           >
             <MoreHorizontal className="size-5" aria-hidden="true" />
-            <span>Lainnya</span>
+            <span>{t("shell.more")}</span>
           </button>
         )}
       </nav>

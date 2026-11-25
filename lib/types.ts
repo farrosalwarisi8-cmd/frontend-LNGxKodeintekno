@@ -192,6 +192,24 @@ export interface WorkHealthStatus {
   createdAt: string
 }
 
+export type ReferralStatus = "ISSUED" | "COMPLETED" | "CANCELLED"
+
+/**
+ * Rujukan pasien ke fasilitas kesehatan eksternal.
+ *
+ * Mode demo: disimpan di store lokal (belum ada endpoint tulis di backend).
+ */
+export interface ExternalReferral {
+  id: string
+  visitId: string
+  destination: string
+  reason: string
+  status: ReferralStatus
+  referralDate: string
+  createdAt: string
+  createdByName?: string
+}
+
 export interface ClinicVisit {
   id: string
   visitNumber: string

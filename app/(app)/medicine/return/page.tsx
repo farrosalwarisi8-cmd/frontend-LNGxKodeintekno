@@ -22,8 +22,18 @@ import {
 } from "@/lib/services/pharmacy.service";
 import { Undo2, Search, AlertTriangle, ScrollText } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { useI18n } from "@/lib/i18n";
+
+// Nilai alasan tetap Bahasa Indonesia (dikirim ke backend); labelnya diterjemahkan.
+const RETURN_REASONS = [
+  { value: "Tidak digunakan", key: "ret.reasonNotUsed" },
+  { value: "Kedaluwarsa", key: "ret.reasonExpired" },
+  { value: "Salah obat", key: "ret.reasonWrong" },
+  { value: "Pasien menolak", key: "ret.reasonRefused" },
+] as const;
 
 export default function ReturnMedicinePage() {
+  const { t: translate } = useI18n();
   const [history, setHistory] = useState<DispensingHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +74,7 @@ export default function ReturnMedicinePage() {
       setInventory(inventoryData);
       setStockSnapshot(inventoryData);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat inventory farmasi.");
+      setError(e instanceof Error ? e.message : translate("ret.inventoryError"));
       setLoading(false);
       return;
     }
@@ -76,7 +86,7 @@ export default function ReturnMedicinePage() {
     try {
       historyData = await pharmacyService.getDispensingHistory();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat riwayat dispensing.");
+      setError(e instanceof Error ? e.message : translate("ret.historyError"));
       setLoading(false);
       return;
     }
@@ -96,7 +106,7 @@ export default function ReturnMedicinePage() {
         : historyData;
     setHistory(scopedHistory);
     setLoading(false);
-  }, []);
+  }, [translate]);
 
   useEffect(() => {
     // Defer agar setState tidak dipanggil sinkron di dalam effect
@@ -116,12 +126,12 @@ export default function ReturnMedicinePage() {
   const handleReturn = async () => {
     if (!selectedDispensing) return;
     if (!returnBatchId || !returnQuantity || !returnReason) {
-      setActionError("Batch, jumlah, dan alasan wajib diisi.");
+      setActionError(translate("ret.validationMissing"));
       return;
     }
     const qty = Number(returnQuantity);
     if (qty <= 0) {
-      setActionError("Jumlah harus lebih dari 0.");
+      setActionError(translate("ret.validationQuantity"));
       return;
     }
     setSaving(true);
@@ -163,7 +173,7 @@ export default function ReturnMedicinePage() {
           ? e.message
           : e instanceof Error
             ? e.message
-            : "Gagal memproses retur."
+            : translate("ret.failed")
       );
     } finally {
       setSaving(false);
@@ -185,9 +195,9 @@ export default function ReturnMedicinePage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Retur Obat</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{translate("page.medicineReturn.title")}</h1>
         <p className="text-sm text-muted-foreground">
-          Proses retur obat yang sudah dispensing kembali ke stok inventory
+          {translate("page.medicineReturn.subtitle")}
         </p>
       </div>
 
@@ -197,13 +207,12 @@ export default function ReturnMedicinePage() {
         </div>
       )}
 
-      <div className="relative w-full sm:max-w-xs">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="w-full sm:max-w-xs">
         <Input
           placeholder="Cari dispensing / pasien / obat..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
+          leftIcon={<Search />}
         />
       </div>
 
@@ -257,12 +266,14 @@ export default function ReturnMedicinePage() {
         </div>
       )}
 
-      {!loading && error && <ErrorState title="Gagal memuat data" message={error} onRetry={load} />}
+      {!loading && error && (
+        <ErrorState title={translate("ret.errorTitle")} message={error} onRetry={load} />
+      )}
 
       {!loading && !error && filtered.length === 0 && (
         <EmptyState
-          title="Belum ada riwayat dispensing"
-          description="Belum ada dispensing pada sesi ini. Dispensing yang berhasil dari halaman farmasi akan muncul di sini dan dapat diretur."
+          title={translate("ret.emptyTitle")}
+          description={translate("ret.emptyDesc")}
           icon={Undo2}
         />
       )}
@@ -354,7 +365,7 @@ export default function ReturnMedicinePage() {
                         }}
                       >
                         <Undo2 className="size-3.5" />
-                        Retur
+                        {translate("ret.action")}
                       </Button>
                     </Can>
                   </div>
@@ -368,19 +379,19 @@ export default function ReturnMedicinePage() {
       <Modal
         open={showReturnModal}
         onClose={() => setShowReturnModal(false)}
-        title="Retur Obat"
+        title={translate("ret.modalTitle")}
       >
         <div className="space-y-4">
           {selectedDispensing && (
             <div className="rounded-lg bg-muted p-3 text-sm text-text-secondary">
               <p>
-                Pasien:{" "}
+                {translate("ret.patient")}:{" "}
                 <span className="font-medium">
                   {selectedDispensing.prescription?.encounter?.patient?.full_name ?? "-"}
                 </span>
               </p>
               <p>
-                Obat:{" "}
+                {translate("ret.medicine")}:{" "}
                 {selectedDispensing.prescription?.items
                   ?.map((i) => `${i.medication?.generic_name ?? "?"} (${i.quantity})`)
                   .join(", ") ?? "-"}
@@ -391,7 +402,7 @@ export default function ReturnMedicinePage() {
           {selectedDispensing?.dispensing_items && selectedDispensing.dispensing_items.length > 0 && (
             <div>
               <label htmlFor="return-batch" className="mb-1 block text-sm font-medium text-text-secondary">
-                Pilih Batch
+                {translate("ret.selectBatch")}
               </label>
               <select
                 id="return-batch"
@@ -399,7 +410,7 @@ export default function ReturnMedicinePage() {
                 value={returnBatchId}
                 onChange={(e) => setReturnBatchId(e.target.value)}
               >
-                <option value="">-- Pilih batch --</option>
+                <option value="">{translate("ret.chooseBatch")}</option>
                 {selectedDispensing.dispensing_items.map((item) => (
                   <option key={item.id} value={item.stock_batch_id ?? ""}>
                     {item.stock_batch?.batch_no ?? item.stock_batch_id} (Qty: {item.quantity})
@@ -423,12 +434,12 @@ export default function ReturnMedicinePage() {
               }}
             >
               <Undo2 className="size-4" aria-hidden="true" />
-              Isi dari item pertama
+              {translate("ret.fillFirst")}
             </Button>
           )}
 
           <Input
-            label="Jumlah Retur"
+            label={translate("ret.quantity")}
             type="number"
             inputMode="numeric"
             value={returnQuantity}
@@ -437,27 +448,27 @@ export default function ReturnMedicinePage() {
           />
 
           <div>
-            <label htmlFor="return-reason" className="mb-1 block text-sm font-medium text-text-secondary">Alasan Retur</label>
+            <label htmlFor="return-reason" className="mb-1 block text-sm font-medium text-text-secondary">{translate("ret.reason")}</label>
             <textarea
               id="return-reason"
               className="w-full rounded-lg border border-input p-2 text-sm"
               rows={2}
               value={returnReason}
               onChange={(e) => setReturnReason(e.target.value)}
-              placeholder="Contoh: Obat tidak digunakan, kedaluwarsa, dll."
+              placeholder={translate("ret.reasonPlaceholder")}
             />
             {/* Alasan tersering sebagai tombol — menghindari mengetik ulang. */}
             <div className="mt-2 flex flex-wrap gap-2">
-              {["Tidak digunakan", "Kedaluwarsa", "Salah obat", "Pasien menolak"].map((reason) => (
+              {RETURN_REASONS.map((reason) => (
                 <Button
-                  key={reason}
+                  key={reason.value}
                   type="button"
                   size="sm"
-                  variant={returnReason === reason ? "primary" : "outline"}
-                  aria-pressed={returnReason === reason}
-                  onClick={() => setReturnReason(reason)}
+                  variant={returnReason === reason.value ? "primary" : "outline"}
+                  aria-pressed={returnReason === reason.value}
+                  onClick={() => setReturnReason(reason.value)}
                 >
-                  {reason}
+                  {translate(reason.key)}
                 </Button>
               ))}
             </div>
@@ -465,22 +476,19 @@ export default function ReturnMedicinePage() {
 
           <div className="flex items-start gap-2 rounded-lg bg-warning-50 p-3 text-xs text-warning-700">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-            <p>
-              Retur akan mengembalikan stok ke batch yang dipilih dan tercatat di stock movement
-              ledger. Pastikan batch dan jumlah benar.
-            </p>
+            <p>{translate("ret.warning")}</p>
           </div>
 
           {actionError && <p className="text-xs text-danger-600">{actionError}</p>}
 
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setShowReturnModal(false)} disabled={saving}>
-              Batal
+              {translate("ret.cancel")}
             </Button>
             {/* Hanya apoteker (dispense-medicine) yang boleh memproses retur. */}
             <Can action="pharmacy.dispense">
               <Button onClick={handleReturn} disabled={saving}>
-                {saving ? "Memproses..." : "Proses Retur"}
+                {saving ? translate("ret.processing") : translate("ret.process")}
               </Button>
             </Can>
           </div>

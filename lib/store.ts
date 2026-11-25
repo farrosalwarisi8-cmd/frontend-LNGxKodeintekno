@@ -10,6 +10,7 @@ import type {
   Department,
   Dispensing,
   Employee,
+  ExternalReferral,
   HealthCertificate,
   HealthStatus,
   MCU,
@@ -36,6 +37,7 @@ import {
   MCUS,
   MEDICINES,
   NOTIFICATIONS,
+  REFERRALS,
   STOCK_BATCHES,
   STOCK_TRANSACTIONS,
   USERS,
@@ -101,6 +103,7 @@ interface AppState {
   mcus: MCU[]
   workHealthStatus: WorkHealthStatus[]
   visits: ClinicVisit[]
+  referrals: ExternalReferral[]
   dispensings: Dispensing[]
   certificates: HealthCertificate[]
   notifications: AppNotification[]
@@ -154,6 +157,12 @@ interface AppState {
   registerVisit: (input: { employeeId: string; locationId: string; chiefComplaint: string }) => string
   updateVisit: (id: string, patch: Partial<ClinicVisit>) => void
   referVisit: (id: string, facility: string, reason: string) => void
+  addReferral: (input: {
+    visitId: string
+    destination: string
+    reason: string
+    referralDate: string
+  }) => string
 
   receiveStock: (input: { medicineId: string; locationId: string; batchNumber: string; quantity: number; expiresAt: string }) => void
   dispense: (visitId: string, items: DispenseItem[]) => { ok: boolean; error?: string }
@@ -279,6 +288,7 @@ export const useStore = create<AppState>()(
       mcus: MCUS,
       workHealthStatus: WORK_HEALTH_STATUS,
       visits: VISITS,
+      referrals: REFERRALS,
       dispensings: DISPENSINGS,
       certificates: CERTIFICATES,
       notifications: NOTIFICATIONS,
@@ -789,6 +799,35 @@ export const useStore = create<AppState>()(
         }))
       },
 
+      addReferral: (input) => {
+        const id = uid("ref")
+        const author = resolveUser(get())
+        set((s) => ({
+          referrals: [
+            {
+              id,
+              ...input,
+              status: "ISSUED" as const,
+              createdAt: new Date().toISOString(),
+              createdByName: author?.name ?? "",
+            },
+            ...s.referrals,
+          ],
+          visits: s.visits.map((v) =>
+            v.id === input.visitId
+              ? {
+                  ...v,
+                  status: "Referred",
+                  referralFacility: input.destination,
+                  referralReason: input.reason,
+                }
+              : v
+          ),
+          auditLogs: pushAudit(s.auditLogs, get().currentUserId ?? "", author?.name ?? "", "CREATE_REFERRAL", "ExternalReferral", id, { after: input.destination }),
+        }))
+        return id
+      },
+
       receiveStock: (input) => {
         const id = uid("b")
         set((s) => ({
@@ -962,6 +1001,7 @@ export const useStore = create<AppState>()(
         mcus: s.mcus,
         workHealthStatus: s.workHealthStatus,
         visits: s.visits,
+        referrals: s.referrals,
         dispensings: s.dispensings,
         // Token QR tidak pernah dipersist: nilai mentah hanya ada di memori
         // komponen setelah POST /documents/render-pdf.

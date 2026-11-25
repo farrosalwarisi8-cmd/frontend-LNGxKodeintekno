@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { formatDate } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
 import {
   BarChart3,
   Download,
@@ -70,6 +71,7 @@ function StatusBar({ label, count, total, barClass }: StatusBarProps) {
 }
 
 export default function ReportsPage() {
+  const { t: translate } = useI18n();
   const employees = useStore((s) => s.employees);
   const mcus = useStore((s) => s.mcus);
   const visits = useStore((s) => s.visits);
@@ -277,12 +279,12 @@ export default function ReportsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">
-            {isWorker ? "Ringkasan Saya" : "Laporan & Analitik"}
+            {translate(isWorker ? "page.reports.workerTitle" : "page.reports.title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {isWorker
-              ? "Hanya data kesehatan milik Anda sendiri"
-              : "Ringkasan sesuai cakupan peran Anda"}
+            {translate(
+              isWorker ? "page.reports.workerSubtitle" : "page.reports.subtitle"
+            )}
           </p>
         </div>
         <Can action="reports.export">

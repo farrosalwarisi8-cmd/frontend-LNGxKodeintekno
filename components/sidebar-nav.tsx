@@ -5,6 +5,7 @@ import { Activity } from "lucide-react";
 import { ICON_MAP } from "@/shared/components/icon-map";
 import { isNavActive, type NavigationItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export interface SidebarNavProps {
   items: NavigationItem[];
@@ -31,6 +32,7 @@ export function SidebarNav({
   ariaLabel = "Navigasi utama",
   className,
 }: SidebarNavProps) {
+  const { navLabel } = useI18n();
   return (
     <nav
       className={cn("scrollbar-subtle space-y-0.5 overflow-y-auto p-3", className)}
@@ -38,6 +40,7 @@ export function SidebarNav({
     >
       {items.map((item) => {
         const Icon = ICON_MAP[item.icon] ?? Activity;
+        const label = navLabel(item.href, item.label);
         const active = isNavActive(pathname, item.href, item.end);
         const itemClass = cn(
           "flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -52,13 +55,13 @@ export function SidebarNav({
             <span
               key={item.href}
               aria-disabled="true"
-              title={collapsed ? `${item.label} — segera hadir` : "Segera hadir"}
+              title={collapsed ? `${label} — segera hadir` : "Segera hadir"}
               className={cn(itemClass, "cursor-not-allowed text-muted-foreground hover:bg-transparent")}
             >
               <Icon className="size-4 shrink-0" aria-hidden="true" />
               {!collapsed && (
                 <>
-                  <span className="min-w-0 truncate">{item.label}</span>
+                  <span className="min-w-0 truncate">{label}</span>
                   <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[9px] font-normal text-muted-foreground">
                     Segera
                   </span>
@@ -73,13 +76,13 @@ export function SidebarNav({
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            title={collapsed ? item.label : undefined}
-            aria-label={collapsed ? item.label : undefined}
+            title={collapsed ? label : undefined}
+            aria-label={collapsed ? label : undefined}
             className={itemClass}
             aria-current={active ? "page" : undefined}
           >
             <Icon className="size-4 shrink-0" aria-hidden="true" />
-            {!collapsed && <span className="truncate">{item.label}</span>}
+            {!collapsed && <span className="truncate">{label}</span>}
           </Link>
         );
       })}
